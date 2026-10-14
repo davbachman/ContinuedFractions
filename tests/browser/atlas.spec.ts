@@ -375,3 +375,36 @@ test("two-finger vertical touch drag zooms in and out, and lifting one finger ne
   );
   expect(errors).toEqual([]);
 });
+
+test("modular overlay refines during zoom and stays independent of Farey and Ford overlays", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const canvas = page.getByRole("img", { name: /Upper half-plane/ });
+  await page.getByRole("checkbox", { name: "Modular domains" }).check();
+  await page.getByRole("checkbox", { name: "Farey edges" }).uncheck();
+  await page.getByRole("checkbox", { name: "Ford circles" }).uncheck();
+  const scrub = page.getByRole("slider", { name: "Scrub trajectory" });
+  for (const time of ["0", "4", "8"]) {
+    await scrub.fill(time);
+    await expect
+      .poll(async () =>
+        Number(await canvas.getAttribute("data-modular-arc-count")),
+      )
+      .toBeGreaterThan(15);
+  }
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect
+    .poll(async () =>
+      Number(await canvas.getAttribute("data-modular-arc-count")),
+    )
+    .toBeGreaterThan(15);
+  await scrub.fill("4");
+  await canvas.screenshot({
+    path: `test-results/${testInfo.project.name}-modular-zoom.png`,
+  });
+  await page.getByRole("checkbox", { name: "Modular domains" }).uncheck();
+  await expect(canvas).toHaveAttribute("data-modular-arc-count", "0");
+  expect(errors).toEqual([]);
+});

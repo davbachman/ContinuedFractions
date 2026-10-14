@@ -4,7 +4,7 @@ import { type Scene } from "../state";
 import { approximate, convergents, terms } from "../math/continuedFraction";
 import { visibleFarey, type Crossing } from "../math/farey";
 import { rational, label, value, type Rational, snap } from "../math/rational";
-import { apply, modularTiles } from "../math/modular";
+import { visibleModularArcs } from "./modularGeometry";
 import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
 import { heightAt } from "../math/trajectory";
 type Props = {
@@ -16,7 +16,6 @@ type Props = {
   onEndpointMove: (r: Rational) => void;
   onEndpointEnd: (cancelled: boolean) => void;
 };
-const tiles = modularTiles(4);
 export function HalfPlane({
   scene,
   crossings,
@@ -209,44 +208,21 @@ export function HalfPlane({
         ctx.stroke();
       }
     }
-    if (scene.overlays.modular) {
-      ctx.strokeStyle = "#a597b77a";
-      ctx.lineWidth = 1;
-      for (const m of tiles) {
-        for (let side = 0; side < 3; side++) {
-          ctx.beginPath();
-          let active = false;
-          for (let i = 0; i <= 90; i++) {
-            const t = i / 90;
-            const z =
-              side < 2
-                ? {
-                    x: side ? 0.5 : -0.5,
-                    y: (Math.sqrt(3) / 2) * Math.exp(t * 6),
-                  }
-                : {
-                    x: Math.cos(Math.PI / 3 + (t * Math.PI) / 3),
-                    y: Math.sin(Math.PI / 3 + (t * Math.PI) / 3),
-                  };
-            const p = apply(m, z),
-              px = X(p.x),
-              py = Y(p.y);
-            if (
-              Math.abs(px) > size.width * 5 ||
-              Math.abs(py) > size.height * 5
-            ) {
-              active = false;
-              continue;
-            }
-            if (active) ctx.lineTo(px, py);
-            else {
-              ctx.moveTo(px, py);
-              active = true;
-            }
-          }
-          ctx.stroke();
-        }
+    const modularArcs = scene.overlays.modular
+      ? visibleModularArcs(geometry, min, max, scale, bottom)
+      : [];
+    node.dataset.modularArcCount = String(modularArcs.length);
+    ctx.strokeStyle = "#9781ad99";
+    ctx.lineWidth = 1;
+    for (const arc of modularArcs) {
+      ctx.beginPath();
+      if (arc.kind === "vertical") {
+        ctx.moveTo(X(arc.x), Y(arc.low));
+        ctx.lineTo(X(arc.x), Y(Math.min(arc.high, bottom / scale)));
+      } else {
+        ctx.arc(X(arc.x), bottom, arc.radius * scale, -arc.high, -arc.low);
       }
+      ctx.stroke();
     }
     for (const e of crossings.filter((e) => e.term === selectedTerm))
       edge(value(e.left), value(e.right), "#cf7448", 2.5);

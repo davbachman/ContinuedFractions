@@ -126,18 +126,3 @@ export function quotientTrace(
   }
   return { segments, seams, limited: true };
 }
-export function modularTiles(depth = 4): Matrix[] {
-  const map = new Map<string, Matrix>();
-  let layer: Matrix[] = [I];
-  for (let i = 0; i <= depth; i++) {
-    const next: Matrix[] = [];
-    for (const m of layer) {
-      const key = matrixKey(m);
-      if (map.has(key)) continue;
-      map.set(key, m);
-      for (const n of [S, T, inverse(T)]) next.push(multiply(m, n));
-    }
-    layer = next;
-  }
-  return [...map.values()];
-}
