@@ -5,7 +5,7 @@ import { approximate, convergents, terms } from "../math/continuedFraction";
 import { visibleFarey, type Crossing } from "../math/farey";
 import { rational, label, value, type Rational, snap } from "../math/rational";
 import { apply, modularTiles } from "../math/modular";
-import { cameraScale, endpointAtPointer } from "./camera";
+import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
 import { heightAt } from "../math/trajectory";
 type Props = {
   scene: Scene;
@@ -41,7 +41,34 @@ export function HalfPlane({
       scale: number;
       endpoint: boolean;
       lastX: number;
-    } | null>(null);
+    } | null>(null),
+    pointers = useRef(new Map<number, { x: number; y: number }>()),
+    zoomGesture = useRef<{ lastY: number } | null>(null);
+  const pointerMidpointY = () => {
+    const points = [...pointers.current.values()];
+    return points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  };
+  function releasePointer(id: number, cancelled: boolean) {
+    if (!pointers.current.delete(id)) return;
+    if (zoomGesture.current) {
+      // Do not turn the remaining finger into an endpoint edit or a pan.
+      if (!pointers.current.size) zoomGesture.current = null;
+      else zoomGesture.current.lastY = pointerMidpointY();
+      return;
+    }
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if (d.endpoint) onEndpointEnd(cancelled);
+    else if (!cancelled && Math.abs(d.lastX - d.x) < 4) {
+      const target = targets.current
+        .filter(
+          (t) => Math.hypot(t.x - d.x, t.y - d.y) <= Math.max(t.radius, 8),
+        )
+        .sort((a, b) => a.radius - b.radius)[0];
+      if (target) onInspect(target.r);
+    }
+  }
   const alpha = approximate(scene.spec),
     y = heightAt(scene.time),
     scale = cameraScale(size.height, zoom, scene.time, scene.follow, alpha),
@@ -61,6 +88,23 @@ export function HalfPlane({
     setAnchorTime(scene.time);
     setZoom(1);
   }, [scene.spec]);
+  useEffect(() => {
+    const node = canvas.current;
+    if (!node) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (drag.current || zoomGesture.current) return;
+      const unit =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? node.clientHeight
+            : 1;
+      setZoom((z) => zoomFromVerticalDrag(z, event.deltaY * unit));
+    };
+    node.addEventListener("wheel", wheel, { passive: false });
+    return () => node.removeEventListener("wheel", wheel);
+  }, []);
   useEffect(() => {
     const parent = canvas.current?.parentElement;
     if (!parent) return;
@@ -318,11 +362,21 @@ export function HalfPlane({
       <canvas
         ref={canvas}
         data-scale={scale}
+        data-manual-zoom={zoom}
         data-point-y={bottom - y * scale}
         data-alpha-x={size.width / 2 + (alpha - center) * scale}
         aria-label={`Upper half-plane. Vertical geodesic at ${label(scene.spec.kind === "rational" ? scene.spec.value : snap(alpha, 100))}; height ${y.toPrecision(4)}. Use the labeled controls and rational inspector for keyboard access.`}
         role="img"
         onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          e.currentTarget.setPointerCapture(e.pointerId);
+          if (pointers.current.size >= 2 || zoomGesture.current) {
+            if (drag.current?.endpoint) onEndpointEnd(false);
+            drag.current = null;
+            zoomGesture.current = { lastY: pointerMidpointY() };
+            return;
+          }
           const rect = e.currentTarget.getBoundingClientRect();
           const x = e.clientX - rect.left,
             py = e.clientY - rect.top;
@@ -339,9 +393,19 @@ export function HalfPlane({
             lastX: x,
           };
           if (drag.current.endpoint) onEndpointStart();
-          e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
+          if (!pointers.current.has(e.pointerId)) return;
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (zoomGesture.current) {
+            if (pointers.current.size >= 2) {
+              const midpoint = pointerMidpointY();
+              const delta = midpoint - zoomGesture.current.lastY;
+              zoomGesture.current.lastY = midpoint;
+              setZoom((z) => zoomFromVerticalDrag(z, delta));
+            }
+            return;
+          }
           if (!drag.current) return;
           const x = e.clientX - e.currentTarget.getBoundingClientRect().left;
           drag.current.lastX = x;
@@ -353,29 +417,12 @@ export function HalfPlane({
             onEndpointMove(endpointAtPointer(world, d.scale));
           } else setBaseCenter(d.center - (x - d.x) / d.scale);
         }}
-        onPointerCancel={() => {
-          if (drag.current?.endpoint) onEndpointEnd(true);
-          drag.current = null;
-        }}
-        onLostPointerCapture={() => {
-          if (drag.current?.endpoint) onEndpointEnd(true);
-          drag.current = null;
-        }}
+        onPointerCancel={(e) => releasePointer(e.pointerId, true)}
+        onLostPointerCapture={(e) => releasePointer(e.pointerId, true)}
         onPointerUp={(e) => {
-          const d = drag.current;
-          if (!d) return;
-          if (d.endpoint) onEndpointEnd(false);
-          else if (Math.abs(d.lastX - d.x) < 4) {
-            const target = targets.current
-              .filter(
-                (t) =>
-                  Math.hypot(t.x - d.x, t.y - d.y) <= Math.max(t.radius, 8),
-              )
-              .sort((a, b) => a.radius - b.radius)[0];
-            if (target) onInspect(target.r);
-          }
-          drag.current = null;
-          e.currentTarget.releasePointerCapture(e.pointerId);
+          releasePointer(e.pointerId, false);
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
         }}
       />
       <div className="plot-coordinate">
@@ -424,8 +471,8 @@ export function HalfPlane({
         </button>
       </div>
       <div className="plot-hint">
-        <Move size={12} /> Drag to pan · drag α to move (snap q ≤ 64 within 6
-        px)
+        <Move size={12} /> Drag to pan · drag α to move · two fingers ↑ zoom in
+        / ↓ out
       </div>
       <span className="boundary-label">ideal boundary · y = 0</span>
     </div>

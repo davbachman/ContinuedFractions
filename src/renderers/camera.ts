@@ -26,3 +26,8 @@ export function endpointAtPointer(x: number, scale: number) {
   const digits = Math.min(15, Math.max(0, Math.ceil(Math.log10(scale)) + 1));
   return parseRational(bounded.toFixed(digits));
 }
+
+// 200 vertical pixels change scale by e. Shared by touch and trackpad input.
+export function zoomFromVerticalDrag(zoom: number, deltaY: number) {
+  return Math.max(0.4, Math.min(10000, zoom * Math.exp(-deltaY / 200)));
+}

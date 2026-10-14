@@ -270,3 +270,108 @@ test("automatic zoom accompanies playback with a slow on-screen descent and dete
     Number(deepY),
   );
 });
+
+test("trackpad vertical scrolling zooms only the canvas without editing the number or scrolling the page", async ({
+  page,
+}) => {
+  const canvas = page.getByRole("img", { name: /Upper half-plane/ });
+  await canvas.evaluate((node) => node.scrollIntoView({ block: "center" }));
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const scroll = await page.evaluate(() => scrollY);
+  await page.mouse.wheel(0, -120);
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-manual-zoom")))
+    .toBeGreaterThan(1.1);
+  await page.mouse.wheel(0, 120);
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-manual-zoom")))
+    .toBeCloseTo(1, 5);
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await expect(
+    page.getByRole("button", { name: "Undo number edit" }),
+  ).toBeDisabled();
+  await page.mouse.move(5, 100);
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(scroll);
+});
+
+test("two-finger vertical touch drag zooms in and out, and lifting one finger never edits alpha", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "mobile",
+    "Real touchscreen gesture coverage.",
+  );
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const canvas = page.getByRole("img", { name: /Upper half-plane/ });
+  await canvas.evaluate((node) => node.scrollIntoView({ block: "center" }));
+  const box = (await canvas.boundingBox())!,
+    x = box.x + box.width / 2,
+    y = box.y + box.height / 2;
+  const scroll = await page.evaluate(() => scrollY);
+  const touch = await page.context().newCDPSession(page);
+  const points = (dy: number) => [
+    { id: 1, x: x - 25, y: y + dy },
+    { id: 2, x: x + 25, y: y + dy },
+  ];
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: points(0),
+  });
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: points(-80),
+  });
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-manual-zoom")))
+    .toBeCloseTo(Math.exp(0.4), 5);
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: points(0),
+  });
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-manual-zoom")))
+    .toBeCloseTo(1, 5);
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [points(0)[0]],
+  });
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ id: 1, x: x + 60, y: y + 30 }],
+  });
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await expect(
+    page.getByRole("button", { name: "Undo number edit" }),
+  ).toBeDisabled();
+  expect(Number(await canvas.getAttribute("data-alpha-x"))).toBeCloseTo(
+    box.width / 2,
+    5,
+  );
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  // A fresh one-finger gesture still pans after the multi-touch gesture ends.
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ id: 1, x, y }],
+  });
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ id: 1, x: x + 40, y }],
+  });
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  expect(Number(await canvas.getAttribute("data-alpha-x"))).toBeCloseTo(
+    box.width / 2 + 40,
+    3,
+  );
+  expect(errors).toEqual([]);
+});

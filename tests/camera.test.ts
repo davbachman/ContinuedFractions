@@ -44,3 +44,12 @@ describe("slow-descent camera", () => {
     ).toBe(false);
   });
 });
+
+import { zoomFromVerticalDrag } from "../src/renderers/camera";
+it("vertical gestures reverse their zoom and stay inside manual camera bounds", () => {
+  const zoomed = zoomFromVerticalDrag(1, -100);
+  expect(zoomed).toBeGreaterThan(1);
+  expect(zoomFromVerticalDrag(zoomed, 100)).toBeCloseTo(1, 12);
+  expect(zoomFromVerticalDrag(1, 1e6)).toBe(0.4);
+  expect(zoomFromVerticalDrag(1, -1e6)).toBe(10000);
+});

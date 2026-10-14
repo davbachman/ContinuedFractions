@@ -1136,11 +1136,13 @@ export default function App() {
           Space plays or pauses; ←/→ step Farey crossings; Shift+←/→ step
           coefficient runs. Ctrl/Cmd+Z undoes a number edit. All actions also
           have labeled buttons. Drag the canvas to pan or use its arrow buttons.
-          Drag the α marker along the real axis to update the number and all
-          views immediately. Playback pauses while dragging; release finishes
-          one undoable edit. Nearby rationals with denominator ≤64 snap within 6
-          pixels; otherwise the displayed value is a rounded decimal rational.
-          Inspecting a Ford circle does not change α.
+          Drag two fingers upward to zoom in, or downward to zoom out, on a
+          touchscreen or trackpad over the hyperbolic view. Drag the α marker
+          along the real axis to update the number and all views immediately.
+          Playback pauses while dragging; release finishes one undoable edit.
+          Nearby rationals with denominator ≤64 snap within 6 pixels; otherwise
+          the displayed value is a rounded decimal rational. Inspecting a Ford
+          circle does not change α.
         </p>
         <p>
           Scenes save automatically in this browser. Download and Load preserve
