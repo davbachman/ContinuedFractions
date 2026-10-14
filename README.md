@@ -9,11 +9,12 @@ An interactive mathematical instrument connecting continued fractions, the Farey
 Start at **5/13 = [0; 2, 1, 1, 2]**, or select 7/19, 355/113, φ, or √2. Enter a rational, signed integer, exact decimal, or regular continued-fraction list. A finite prefix can terminate or explicitly continue with an infinite tail of ones.
 
 - **Play**, reverse, scrub, or step between Farey crossings and coefficient runs. Time measures hyperbolic distance, with `z(t) = α + 2i exp(−t)`.
+- **Auto zoom** is on by default: the view magnifies as `exp(0.92t)`, so the point keeps descending slowly in the viewport, with remaining screen height proportional to `exp(−0.08t)`. Turn it off for a fixed camera. Seeking and reverse playback retrace the same camera motion.
 - Switch Farey edges, Ford circles, modular domains, labels, convergents, and the dual-tree path independently.
 - Select a coefficient to inspect its convergent, error, determinant, and actual crossing run. Edit it to recompute the scene; undo/redo restores number edits.
-- Inspect a Ford circle without changing the endpoint. Use **Use this endpoint** to apply it. Dragging α previews a rational snap with denominator at most 64.
+- Inspect a Ford circle without changing the endpoint. Use **Use this endpoint** to apply it. Drag the α handle on the real axis to update the endpoint and every view immediately. Playback pauses during the drag, and the entire gesture is one undoable edit. Simple rationals with denominator at most 64 snap within 6 screen pixels; at deeper zoom, other positions use an explicitly rounded decimal rational.
 - Compare the folded modular domain with the rotatable **Schematic 3D** quotient. Paired seams represent the same points; the curve never draws a false chord across a seam.
-- **Download**, **Load**, or **Share scene**. Exact integers are serialized as decimal strings in versioned JSON. A scene is also saved in local browser storage.
+- **Download**, **Load**, or **Share scene**. Exact integers are serialized as decimal strings in versioned JSON (version 2; version 1 imports enable the new automatic zoom). A scene is also saved in local browser storage.
 - On mobile, switch visual panels without changing the underlying state. Essential actions have labeled controls and touch support.
 
 Keyboard: **Space** plays/pauses; **← / →** step Farey crossings; **Shift + ← / →** step coefficient runs; **Ctrl/Cmd + Z** undoes a number edit. Shortcuts do not intercept typing or native form controls. Reduced-motion preferences suppress decorative transitions; playback only begins by explicit action.

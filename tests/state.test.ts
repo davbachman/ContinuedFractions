@@ -18,7 +18,7 @@ it("round trips exact rational and periodic scenes and rejects unsafe schema dat
     const scene = { ...initialScene, spec, time: 4.3 };
     expect(deserialize(serialize(scene))).toEqual(scene);
   }
-  expect(() => deserialize('{"version":2}')).toThrow();
+  expect(() => deserialize('{"version":3}')).toThrow();
   expect(() =>
     deserialize(serialize({ ...initialScene, time: 999 })),
   ).toThrow();

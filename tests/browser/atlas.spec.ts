@@ -59,13 +59,11 @@ test("scene share, download, load, validation and local persistence", async ({
   await page.getByLabel("ENDPOINT α").fill("1/0");
   await page.getByRole("button", { name: "Apply endpoint" }).click();
   await expect(page.getByRole("alert")).toContainText("finite endpoint");
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "invalid.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"version":9}'),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"version":9}'),
+  });
   await expect(page.getByRole("alert")).toContainText("version 1");
   const path = await file.path();
   if (path) {
@@ -172,4 +170,103 @@ test("integer inputs, alternate expressions, and mobile panel changes remain sta
     fullPage: true,
   });
   expect(errors).toEqual([]);
+});
+
+test("dragging alpha updates immediately, stays under the pointer, and undoes in one step", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const canvas = page.getByRole("img", { name: /Upper half-plane/ });
+  await canvas.evaluate((node) => node.scrollIntoView({ block: "center" }));
+  const box = (await canvas.boundingBox())!;
+  const x = box.x + Number(await canvas.getAttribute("data-alpha-x")),
+    y = box.y + box.height - 32;
+  const endpoint = page.getByLabel("ENDPOINT α");
+  let touch;
+  if (testInfo.project.name === "mobile") {
+    touch = await page.context().newCDPSession(page);
+    await touch.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x, y }],
+    });
+    await touch.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: x + 55, y }],
+    });
+  } else {
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 55, y, { steps: 5 });
+  }
+  await expect(endpoint).not.toHaveValue("5/13");
+  expect(
+    Math.abs(
+      Number(await canvas.getAttribute("data-alpha-x")) - (x + 55 - box.x),
+    ),
+  ).toBeLessThan(7);
+  if (touch)
+    await touch.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+  else await page.mouse.up();
+  const moved = await endpoint.inputValue();
+  const dragX = Number(await canvas.getAttribute("data-alpha-x"));
+  await page.getByRole("slider", { name: "Scrub trajectory" }).fill("2");
+  expect(Number(await canvas.getAttribute("data-alpha-x"))).toBeCloseTo(
+    dragX,
+    5,
+  );
+  expect(
+    Math.abs(
+      Number(await canvas.getAttribute("data-alpha-x")) - (x + 55 - box.x),
+    ),
+  ).toBeLessThan(7);
+  await expect(
+    page.getByText("Endpoint preview:", { exact: false }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(endpoint).toHaveValue("5/13");
+  await page.getByRole("button", { name: "Redo number edit" }).click();
+  await expect(endpoint).toHaveValue(moved);
+  expect(errors).toEqual([]);
+});
+
+test("automatic zoom accompanies playback with a slow on-screen descent and deterministic seeking", async ({
+  page,
+}) => {
+  const canvas = page.getByRole("img", { name: /Upper half-plane/ });
+  await expect(page.getByRole("checkbox", { name: "Auto zoom" })).toBeChecked();
+  const initialY = Number(await canvas.getAttribute("data-point-y")),
+    initialScale = Number(await canvas.getAttribute("data-scale"));
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect
+    .poll(async () => Number(await canvas.getAttribute("data-scale")))
+    .toBeGreaterThan(initialScale * 1.4);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const t = Number(
+    await page.getByRole("slider", { name: "Scrub trajectory" }).inputValue(),
+  );
+  const box = (await canvas.boundingBox())!,
+    bottom = box.height - 32;
+  const currentY = Number(await canvas.getAttribute("data-point-y"));
+  expect(currentY).toBeGreaterThan(initialY);
+  expect((bottom - currentY) / (bottom - initialY)).toBeCloseTo(
+    Math.exp(-0.08 * t),
+    3,
+  );
+  const scrub = page.getByRole("slider", { name: "Scrub trajectory" });
+  await scrub.fill("8");
+  const deepY = await canvas.getAttribute("data-point-y");
+  await scrub.fill("3");
+  await scrub.fill("8");
+  expect(await canvas.getAttribute("data-point-y")).toBe(deepY);
+  await page.getByRole("checkbox", { name: "Auto zoom" }).uncheck();
+  expect(Number(await canvas.getAttribute("data-scale"))).toBeCloseTo(
+    initialScale,
+  );
+  expect(Number(await canvas.getAttribute("data-point-y"))).toBeGreaterThan(
+    Number(deepY),
+  );
 });

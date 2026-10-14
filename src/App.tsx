@@ -80,7 +80,6 @@ export default function App() {
     [termSelection, setSelectedTerm] = useState(1),
     [coefficient, setCoefficient] = useState("2"),
     [inspect, setInspect] = useState<Rational | null>(null),
-    [preview, setPreview] = useState<Rational | null>(null),
     [mobilePanel, setMobilePanel] = useState<"plane" | "quotient">("plane"),
     [showGuide, setShowGuide] = useState(false),
     [eventFilter, setEventFilter] = useState<"farey" | "ford" | "seam">(
@@ -88,7 +87,8 @@ export default function App() {
     ),
     [alternateEnding, setAlternateEnding] = useState(false);
   const file = useRef<HTMLInputElement>(null),
-    guide = useRef<HTMLDialogElement>(null);
+    guide = useRef<HTMLDialogElement>(null),
+    endpointDragStart = useRef<Scene | null>(null);
   const math = useMemo(
       () => derive(scene.spec, scene.end),
       [scene.spec, scene.end],
@@ -111,13 +111,44 @@ export default function App() {
       setHistory((h) => execute(h, { type: "number", spec }));
       setPlaying(false);
       setError("");
-      setPreview(null);
       setInspect(null);
       setSelectedTerm(1);
       setAlternateEnding(false);
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+  function startEndpointDrag() {
+    setPlaying(false);
+    endpointDragStart.current = scene;
+    setInspect(null);
+    setError("");
+    setAlternateEnding(false);
+  }
+  function moveEndpoint(r: Rational) {
+    if (!endpointDragStart.current) return;
+    setHistory((h) => {
+      if (
+        h.present.spec.kind === "rational" &&
+        h.present.spec.value.p === r.p &&
+        h.present.spec.value.q === r.q
+      )
+        return h;
+      return {
+        ...h,
+        present: { ...h.present, spec: { kind: "rational", value: r } },
+      };
+    });
+  }
+  function endEndpointDrag(cancelled: boolean) {
+    const original = endpointDragStart.current;
+    if (!original) return;
+    endpointDragStart.current = null;
+    setHistory((h) => {
+      if (cancelled) return { ...h, present: original };
+      if (serialize(original) === serialize(h.present)) return h;
+      return { ...h, past: [...h.past.slice(-49), original], future: [] };
+    });
   }
   function submitInput() {
     try {
@@ -136,7 +167,9 @@ export default function App() {
   }
   function step(direction: number, kind: "farey" | "term" = "farey") {
     if (kind === "term") {
-      selectTerm(Math.max(0, Math.min(cf.length - 1, selectedTerm + direction)));
+      selectTerm(
+        Math.max(0, Math.min(cf.length - 1, selectedTerm + direction)),
+      );
       return;
     }
     const events = math.farey.crossings;
@@ -187,7 +220,7 @@ export default function App() {
               ...h,
               present: { ...s, time: t, end: Math.min(24, s.end + 4) },
             };
-          if (t >= s.end || t <= 0) {
+          if ((!reverse && t >= s.end) || (reverse && t <= 0)) {
             setPlaying(false);
             return {
               ...h,
@@ -520,7 +553,7 @@ export default function App() {
                   checked={scene.follow}
                   onChange={(e) => patch({ follow: e.target.checked })}
                 />{" "}
-                Follow point
+                Auto zoom
               </label>
             </div>
             <div className="overlay-bar">
@@ -572,10 +605,9 @@ export default function App() {
               crossings={math.farey.crossings}
               selectedTerm={selectedTerm}
               onInspect={setInspect}
-              onPreview={(r) => {
-                setPlaying(false);
-                setPreview(r);
-              }}
+              onEndpointStart={startEndpointDrag}
+              onEndpointMove={moveEndpoint}
+              onEndpointEnd={endEndpointDrag}
             />
             <div className="plot-footer">
               <span>
@@ -608,20 +640,6 @@ export default function App() {
             />
           </section>
         </div>
-        {preview && (
-          <div className="inspection" role="status">
-            <span>
-              <strong>Endpoint preview: {label(preview)}</strong> · rational
-              snap, denominator ≤ 64
-            </span>
-            <button
-              onClick={() => changeNumber({ kind: "rational", value: preview })}
-            >
-              Use this endpoint
-            </button>
-            <button onClick={() => setPreview(null)}>Cancel</button>
-          </div>
-        )}
         {inspect && (
           <div className="inspection">
             <span>
@@ -1103,7 +1121,7 @@ export default function App() {
           Rendering uses floating point, |α| ≤ 10,000 and t ≤ 24. Detail stops
           at pixel, depth, and event budgets. The Ford timeline covers q ≤ 32
           plus computed convergents. Very deep points can leave the fixed
-          camera; use Follow point.
+          camera; use Auto zoom for a slow descent while the view magnifies.
         </p>
         <h3>The quotient</h3>
         <p>
@@ -1118,8 +1136,11 @@ export default function App() {
           Space plays or pauses; ←/→ step Farey crossings; Shift+←/→ step
           coefficient runs. Ctrl/Cmd+Z undoes a number edit. All actions also
           have labeled buttons. Drag the canvas to pan or use its arrow buttons.
-          Drag the endpoint marker for a rational preview (denominator ≤64),
-          then confirm. Inspecting a Ford circle does not change α.
+          Drag the α marker along the real axis to update the number and all
+          views immediately. Playback pauses while dragging; release finishes
+          one undoable edit. Nearby rationals with denominator ≤64 snap within 6
+          pixels; otherwise the displayed value is a rounded decimal rational.
+          Inspecting a Ford circle does not change α.
         </p>
         <p>
           Scenes save automatically in this browser. Download and Load preserve

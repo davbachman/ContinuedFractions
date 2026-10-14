@@ -5,13 +5,16 @@ import { approximate, convergents, terms } from "../math/continuedFraction";
 import { visibleFarey, type Crossing } from "../math/farey";
 import { rational, label, value, type Rational, snap } from "../math/rational";
 import { apply, modularTiles } from "../math/modular";
+import { cameraScale, endpointAtPointer } from "./camera";
 import { heightAt } from "../math/trajectory";
 type Props = {
   scene: Scene;
   crossings: readonly Crossing[];
   selectedTerm: number;
   onInspect: (r: Rational) => void;
-  onPreview: (r: Rational) => void;
+  onEndpointStart: () => void;
+  onEndpointMove: (r: Rational) => void;
+  onEndpointEnd: (cancelled: boolean) => void;
 };
 const tiles = modularTiles(4);
 export function HalfPlane({
@@ -19,33 +22,43 @@ export function HalfPlane({
   crossings,
   selectedTerm,
   onInspect,
-  onPreview,
+  onEndpointStart,
+  onEndpointMove,
+  onEndpointEnd,
 }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null),
     [size, setSize] = useState({ width: 800, height: 430 }),
     [zoom, setZoom] = useState(1),
-    [pan, setPan] = useState(0);
+    [baseCenter, setBaseCenter] = useState(() => approximate(scene.spec)),
+    [anchorTime, setAnchorTime] = useState(scene.time);
   const targets = useRef<
       { x: number; y: number; radius: number; r: Rational }[]
     >([]),
     drag = useRef<{
       x: number;
       y: number;
-      pan: number;
+      center: number;
+      scale: number;
       endpoint: boolean;
       lastX: number;
     } | null>(null);
   const alpha = approximate(scene.spec),
     y = heightAt(scene.time),
-    scale =
-      ((size.height - 52) / 2.25) *
-      zoom *
-      (scene.follow ? Math.min(150000, 1.3 / Math.max(y, 0.000008)) : 1),
-    center = alpha + pan,
+    scale = cameraScale(size.height, zoom, scene.time, scene.follow, alpha),
+    anchorScale = cameraScale(
+      size.height,
+      zoom,
+      anchorTime,
+      scene.follow,
+      alpha,
+    ),
+    center = alpha + ((baseCenter - alpha) * anchorScale) / scale,
     bottom = size.height - 32;
   const toWorld = (x: number) => center + (x - size.width / 2) / scale;
   useEffect(() => {
-    setPan(0);
+    if (drag.current?.endpoint) return;
+    setBaseCenter(approximate(scene.spec));
+    setAnchorTime(scene.time);
     setZoom(1);
   }, [scene.spec]);
   useEffect(() => {
@@ -241,14 +254,19 @@ export function HalfPlane({
       ctx.strokeStyle = "#fffdf7";
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x, bottom - 7);
-      ctx.lineTo(x - 5, bottom + 1);
-      ctx.lineTo(x + 5, bottom + 1);
-      ctx.closePath();
-      ctx.fillStyle = "#bc6944";
-      ctx.fill();
     }
+    const endpointX = X(alpha);
+    ctx.beginPath();
+    ctx.arc(endpointX, bottom, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = "#fbfbf6";
+    ctx.fill();
+    ctx.strokeStyle = "#bc6944";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = "bold 16px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#a34f2c";
+    ctx.fillText("α", endpointX, bottom - 14);
     ctx.strokeStyle = "#c7cdc2";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -287,7 +305,6 @@ export function HalfPlane({
     scene,
     size,
     zoom,
-    pan,
     crossings,
     selectedTerm,
     scale,
@@ -300,37 +317,54 @@ export function HalfPlane({
     <div className="canvas-wrap">
       <canvas
         ref={canvas}
+        data-scale={scale}
+        data-point-y={bottom - y * scale}
+        data-alpha-x={size.width / 2 + (alpha - center) * scale}
         aria-label={`Upper half-plane. Vertical geodesic at ${label(scene.spec.kind === "rational" ? scene.spec.value : snap(alpha, 100))}; height ${y.toPrecision(4)}. Use the labeled controls and rational inspector for keyboard access.`}
         role="img"
         onPointerDown={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const x = e.clientX - rect.left,
             py = e.clientY - rect.top;
+          setBaseCenter(center);
+          setAnchorTime(scene.time);
           drag.current = {
             x,
             y: py,
-            pan,
+            center,
+            scale,
             endpoint:
-              Math.abs(x - size.width / 2 + pan * scale) < 18 &&
+              Math.abs(x - (size.width / 2 + (alpha - center) * scale)) < 18 &&
               Math.abs(py - bottom) < 25,
             lastX: x,
           };
+          if (drag.current.endpoint) onEndpointStart();
           e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
           if (!drag.current) return;
           const x = e.clientX - e.currentTarget.getBoundingClientRect().left;
           drag.current.lastX = x;
-          if (!drag.current.endpoint)
-            setPan(drag.current.pan - (x - drag.current.x) / scale);
+          const d = drag.current;
+          if (d.endpoint) {
+            const world =
+              d.center +
+              (Math.max(0, Math.min(size.width, x)) - size.width / 2) / d.scale;
+            onEndpointMove(endpointAtPointer(world, d.scale));
+          } else setBaseCenter(d.center - (x - d.x) / d.scale);
         }}
         onPointerCancel={() => {
+          if (drag.current?.endpoint) onEndpointEnd(true);
+          drag.current = null;
+        }}
+        onLostPointerCapture={() => {
+          if (drag.current?.endpoint) onEndpointEnd(true);
           drag.current = null;
         }}
         onPointerUp={(e) => {
           const d = drag.current;
           if (!d) return;
-          if (d.endpoint) onPreview(snap(toWorld(d.lastX)));
+          if (d.endpoint) onEndpointEnd(false);
           else if (Math.abs(d.lastX - d.x) < 4) {
             const target = targets.current
               .filter(
@@ -364,26 +398,34 @@ export function HalfPlane({
           aria-label="Reset camera"
           onClick={() => {
             setZoom(1);
-            setPan(0);
+            setBaseCenter(alpha);
+            setAnchorTime(scene.time);
           }}
         >
           <LocateFixed size={16} />
         </button>
         <button
           aria-label="Pan left"
-          onClick={() => setPan((p) => p - 100 / scale)}
+          onClick={() => {
+            setBaseCenter(center - 100 / scale);
+            setAnchorTime(scene.time);
+          }}
         >
           ←
         </button>
         <button
           aria-label="Pan right"
-          onClick={() => setPan((p) => p + 100 / scale)}
+          onClick={() => {
+            setBaseCenter(center + 100 / scale);
+            setAnchorTime(scene.time);
+          }}
         >
           →
         </button>
       </div>
       <div className="plot-hint">
-        <Move size={12} /> Drag to pan · drag α to preview a rational
+        <Move size={12} /> Drag to pan · drag α to move (snap q ≤ 64 within 6
+        px)
       </div>
       <span className="boundary-label">ideal boundary · y = 0</span>
     </div>

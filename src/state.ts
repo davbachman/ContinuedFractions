@@ -29,7 +29,7 @@ export const initialScene: Scene = {
   time: 0,
   end: 12,
   speed: 1,
-  follow: false,
+  follow: true,
   overlays: {
     farey: true,
     ford: true,
@@ -65,7 +65,7 @@ export function redo(h: History): History {
   };
 }
 export function serialize(scene: Scene) {
-  return JSON.stringify({ version: 1, scene }, (_, v) =>
+  return JSON.stringify({ version: 2, scene }, (_, v) =>
     typeof v === "bigint" ? v.toString() : v,
   );
 }
@@ -73,8 +73,8 @@ export function deserialize(text: string): Scene {
   if (text.length > 32000)
     throw new Error("Scene file exceeds the 32 KB limit.");
   const data = JSON.parse(text);
-  if (data.version !== 1 || !data.scene)
-    throw new Error("Expected an Atlas scene with version 1.");
+  if (![1, 2].includes(data.version) || !data.scene)
+    throw new Error("Expected an Atlas scene with version 1 or 2.");
   const raw = data.scene,
     s = raw.spec;
   const integer = (v: unknown) => {
@@ -123,7 +123,7 @@ export function deserialize(text: string): Scene {
     time: raw.time,
     end: raw.end,
     speed: raw.speed,
-    follow: raw.follow === true,
+    follow: data.version === 1 ? true : raw.follow === true,
     overlays,
   };
 }
