@@ -1,0 +1,246 @@
+CONTINUED FRACTIONS ATLAS
+Design and implementation handoff for Codex
+Version 1.0 — October 14, 2026
+
+1. PRODUCT IDEA
+
+Build an interactive mathematical instrument that makes a single continued fraction visible in several geometries. Its central experience is selecting a real number alpha, watching a point descend along the vertical hyperbolic geodesic ending at alpha, and seeing synchronized changes in the Farey tessellation, continued fraction, and modular quotient. Later, users can manipulate rational tangles and torus triangulations to change the same underlying data.
+
+The audience includes mathematically curious students and experienced mathematicians. Favor exploration, reversible operations, exact labels, and visual explanations over lengthy lectures. Every panel should explain what its objects represent and expose its conventions. Never sacrifice mathematical correctness to make animations line up.
+
+This document specifies an application, not a static presentation. Do not implement all proposed connections simultaneously. Finish the core hyperbolic-plane/continued-fraction/quotient experience before adding tangles, covers, and advanced topology.
+
+Working name: Continued Fractions Atlas. Keep branding replaceable.
+
+2. PRINCIPAL EXPERIENCE AND LAYOUT
+
+Desktop layout:
+- A large upper-half-plane viewer on the left.
+- A quotient viewer on the right, initially the modular orbifold.
+- An exact-number and continued-fraction strip across the bottom.
+- A common animation transport and event timeline.
+
+On small screens, show one large visual panel at a time with a persistent compact continued-fraction strip. Switching panels must preserve state. All essential actions must work with touch and keyboard, without hover.
+
+A new user opens the app at alpha = 5/13, with Farey edges and a modest number of Ford circles visible. A short caption explains that all three panels show the same trajectory in different coordinates. Play moves the point down the vertical line; stepping pauses at a mathematically meaningful event. Clicking a continued-fraction term selects its corresponding run of triangle crossings. Editing a coefficient recomputes every relevant panel.
+
+Recommended presets: 5/13, 7/19, 355/113, golden ratio, sqrt(2), and an editable continued-fraction prefix. Distinguish exact inputs from numerical approximations everywhere.
+
+3. SINGLE SOURCE OF TRUTH
+
+Maintain one application state with separate mathematical and presentation layers.
+
+Mathematical state:
+- Number specification: exact rational, eventually periodic continued fraction, or finite prefix with an explicit completion policy.
+- Canonical continued fraction and optional alternative expression.
+- Chosen lift of the trajectory in H^2, initially infinity to alpha.
+- Marking conventions, quotient type, and optional cover sheet.
+- Derived convergents, Farey crossing events, and tangle data when enabled.
+
+Presentation state:
+- Camera, overlays, selected objects, animation time, and display truncations.
+- Event selection, open explanations, and temporary edit previews.
+
+Selecting an object is not always editing the number. Clicking a Ford circle may inspect its rational label; an explicit “Use this endpoint” action changes alpha. Scrubbing time does not alter alpha. Rotating the 3D camera never changes a slope. Keep these distinctions visible and predictable.
+
+All mathematical changes pass through typed commands and support undo/redo. Renderers receive derived immutable data. They must never infer a fraction from screen pixels when an exact object is already available.
+
+4. UPPER HALF-PLANE PANEL
+
+Use the upper-half-plane model H^2 = {x + iy : y > 0}, with metric ds^2 = (dx^2 + dy^2)/y^2. Keep the real axis visible when practical, clearly labeled as the ideal boundary, not part of the surface.
+
+Independent overlay switches:
+- Modular fundamental-domain tessellation.
+- Farey ideal-triangle tessellation.
+- Ford horocycles and shaded horoballs.
+- Selected trajectory and its traveled trace.
+- Optional rational labels, convergents, and dual-tree path.
+
+These overlays are distinct. A Farey triangle is not a fundamental domain for PSL(2,Z): it has hyperbolic area pi, whereas a modular fundamental domain has area pi/3. Do not label either tessellation with the other's name.
+
+Use the standard modular domain F = {z : |Re(z)| <= 1/2, |z| >= 1}. Generators are T(z) = z + 1 and S(z) = -1/z. Record a deterministic rule for points on shared boundaries.
+
+Farey vertices are reduced fractions p/q plus infinity = 1/0. Two vertices p/q and r/s are adjacent precisely when |ps - qr| = 1. Draw their connecting hyperbolic geodesic as an orthogonal semicircle, or a vertical line if one endpoint is infinity. Generate only visible geometry, with pixel-based detail thresholds.
+
+For reduced p/q with q > 0, its Ford circle has center (p/q, 1/(2q^2)) and radius 1/(2q^2). Include the horocycle y = 1 at infinity. The corresponding horoballs are modular images of y >= 1; their interiors are disjoint. Smaller cusp neighborhoods use y >= Y, Y > 1, and radii 1/(2Yq^2). Ford-circle boundaries are horocycles, not geodesics.
+
+Dragging an endpoint provides a preview. Offer explicit rational snapping with a displayed denominator limit. Arbitrary decimal mouse positions must not silently masquerade as intended exact rationals or exact irrationals.
+
+5. NUMBER INPUT AND CONTINUED FRACTIONS
+
+Accept rational strings such as 355/113, signed integers, and continued-fraction lists [a0; a1, ..., an]. Use regular simple continued fractions for the core view: a0 is an integer, subsequent coefficients are positive integers. Canonical finite expressions have final coefficient greater than one unless there is only one coefficient.
+
+Preserve the distinction between a value and an expression. The alternate rational ending [..., a] = [..., a-1, 1] may be explored, but the app must explain that the value is unchanged. Signed tangle continued fractions are a separate expression type with conversion to the core number; they are not automatically regular continued fractions.
+
+Use BigInt integer arithmetic, gcd normalization, and q > 0. Handle infinity explicitly rather than as a floating-point overflow. Use floor division for negative rational inputs.
+
+Convergents use:
+ p[-2] = 0, p[-1] = 1;
+ q[-2] = 1, q[-1] = 0;
+ p[n] = a[n]*p[n-1] + p[n-2];
+ q[n] = a[n]*q[n-1] + q[n-2].
+
+Display the selected convergent, approximation error when meaningful, and its determinant relation to the preceding convergent. Example: 5/13 = [0; 2, 1, 1, 2], with convergents 0/1, 1/2, 1/3, 2/5, 5/13.
+
+For irrational examples, store the exact symbolic/periodic specification and compute as many terms as needed. A finite prefix describes many real numbers: either show its cylinder interval or explicitly choose a completion. Never use “irrational” to describe a finite decimal without additional specification.
+
+6. MOTION AND EVENT SYNCHRONIZATION
+
+The initial trajectory is z(t) = alpha + i*y0*exp(-t). Thus equal increments of t represent equal hyperbolic arclength along the vertical line. Infinity is not a finite starting position; explain that playback starts at a chosen finite height. Offer fixed-camera and follow-camera modes.
+
+The event model must distinguish:
+- Crossing a Farey edge and entering a new triangle.
+- Completing a left/right run in a chosen continued-fraction coding convention.
+- Entering, leaving, or tangentially contacting a Ford horoball.
+- Crossing a modular fundamental-domain seam.
+
+Do not advance one continued-fraction term per Ford-circle contact. These events are not in one-to-one correspondence. A vertical trajectory intersects a Ford disk only when its horizontal distance from the rational center is at most the radius. Not every convergent must produce such an intersection for this fixed normalization. For the golden ratio, convergent 1/1 is missed. At alpha = 1/2, the 0/1 and 1/1 circles have tangential contacts, not interior encounters. If delta = alpha-p/q and r = 1/(2q^2), an interior encounter has descending entry/exit heights y+ = r+sqrt(r^2-delta^2), y- = delta^2/y+. The latter form avoids cancellation. When delta = 0, entry is 1/q^2 and exit is at ideal height zero; do not emit a finite-time exit.
+
+The authoritative term synchronization comes from a documented Farey cutting sequence and its run-length coding. Initial and terminal offsets depend on conventions; implement and test them explicitly. Do not assume that a generic run-count formula applies unchanged to the first or last segment of the infinity-to-alpha trajectory. Retain the actual crossing sequence so the UI can show which crossings contribute to each coefficient. A concrete arithmetic fixture convention is: subtract a0, bracket by [0/1,1/1], compare with the mediant; L replaces the upper bound, R replaces the lower bound, and equality terminates. This gives 2/5 -> LR, 1/2 -> the empty word, and sqrt(2)-1 -> LRRLLRR... . The initial Farey-edge crossing is separate. Derive and test the geometric correspondence and run offsets against these fixtures before animating coefficient highlights.
+
+Rational endpoints eventually head into a cusp; irrational endpoints continue indefinitely. A periodic continued fraction does not make the vertical infinity-to-alpha trajectory closed. For a quadratic irrational, a separate periodic-orbit mode must use the axis joining alpha to its algebraic conjugate and identify the stabilizing hyperbolic group element. Stop rational animations at a disclosed cusp-depth threshold, never claim the ideal endpoint was reached in finite hyperbolic time. Treat a trajectory coinciding with a Farey edge as a special case with a deterministic side convention or a visible “on edge” state.
+
+Provide Play/Pause, speed, scrub, next/previous Farey crossing, and next/previous coefficient. Reversing playback reverses events exactly. Camera changes must not create or erase mathematical events.
+
+7. MODULAR ORBIFOLD VIEW
+
+Make the modular quotient the default because it directly quotients the H^2 scene by the same group and needs no additional slope identification. The orbifold has one cusp and cone points of orders two and three. Its underlying topological surface is a sphere with one puncture; it is not a torus.
+
+First ship a reliable folded-domain view: reduce the moving point into F, show paired seams with colors, and split the trace at seam transitions rather than drawing a false chord across the screen. Show the applied modular transformation on inspection.
+
+Then add a rotatable schematic 3D surface with a cusp and labeled cone points. Map quotient coordinates onto that display using a tested atlas and seam identifications. The curve is the image of a hyperbolic geodesic under the display map; it is generally not a geodesic of the displayed Euclidean mesh. Include a persistent unobtrusive “schematic geometry” label. Do not promise a smooth complete isometric embedding in Euclidean 3-space.
+
+Clicking a visible point on the displayed trajectory selects its time. Editing the trajectory from the quotient requires a point AND direction, plus a chosen lift. Moving an arbitrary surface point alone cannot uniquely specify the real endpoint. Advanced arbitrary-geodesic editing belongs after the vertical-ray mode works.
+
+Reduction implementation: alternate integer translations with S when |z| < 1, retaining an exact integer matrix for the composite transformation. Use numerical tolerance only for geometric comparisons, with deterministic tie-breaking and an iteration guard. If precision is insufficient, report it rather than drawing an incorrect reduction. Keep tangent-vector transformations consistent with point transformations.
+
+8. OPTIONAL SIX-SHEETED PUNCTURED-TORUS VIEW
+
+There is a once-punctured torus covering the modular orbifold with degree six, obtained from the commutator subgroup of PSL(2,Z). Implement this specific subgroup and verified coset action. Do not substitute Gamma(2): it also has index six, but its quotient is a thrice-punctured sphere.
+
+The commutator subgroup is torsion-free, with one cusp of width six. Six standard modular domains give area 2*pi. A concrete fundamental polygon is the union of T^j(F) for j = 0,...,5. Pair the outer vertical sides by T^6. Pair circular sides j and j+3 for j = 0,1,2 using T^(j+3) S T^(-j), with inverse transformations in the reverse direction. Verify side orientations and boundary ownership in tests. The compactified polygon has two finite corner classes and one cusp class. Its tiling must follow these group data and exact pairings, not a guessed hexagon.
+
+Terminology gate: six full modular domains are not six reflection triangles. Each standard modular domain divides into two (pi/2, pi/3, 0) reflection triangles, giving twelve such pieces in the cover. The separate ideal triangulation of a once-punctured torus has two ideal triangles. Label these constructions separately.
+
+A hexagon with opposite sides identified can model the compactified torus; deleting its center models a puncture. Its Euclidean hexagonal tiling with centers removed is an intermediate cover, not the simply connected universal cover of the punctured torus. Do not equate that picture with H^2.
+
+For playback, track sheet changes across modular seams and draw the same lifted trajectory on the punctured torus. Choosing a different sheet changes the lift, not the underlying modular trajectory. Show a six-sheet indicator and a quotient toggle only after every seam has automated tests. Use the abelianization chi(S)=3 and chi(T)=1 modulo 6 for sheet bookkeeping; verify whether the stored reduction matrix acts forward or inversely before updating the sheet. Tangents transform by v/(cz+d)^2.
+
+Most importantly, alpha = p/q as an endpoint on the boundary of this H^2 is not automatically the homology slope p/q on the displayed punctured torus. These use different identifications. A cusp-to-cusp geodesic need not be a simple arc. Keep a distinct marked torus-slope view and construct any bridge through explicit combinatorial data.
+
+9. TORUS TRIANGULATIONS AND THE FAREY BRIDGE
+
+A separate marked torus panel uses primitive vectors (q,p) for slopes p/q, with the basis displayed. Its one-vertex triangulation, or ideal triangulation after puncturing, has two triangles and three slope-labeled edges. Farey triangles encode compatible triples. Neighboring Farey triangles correspond to diagonal flips.
+
+Give this panel genuine editing controls: click an edge to flip it, follow the resulting dual-tree move, and highlight the corresponding Farey triangle. For adjacent primitive vectors u and v, the two possible third slopes are represented by u+v and u-v, up to sign. Use exact determinant tests and normalize vectors consistently.
+
+This is a combinatorial correspondence between marked triangulations and Farey triangles. It does not say that the evolving triangulated torus is literally the same object as the modular quotient or its six-sheeted cover. The UI should distinguish the spaces even while it synchronizes their data.
+
+10. RATIONAL TANGLES AND 2-BRIDGE KNOTS
+
+The natural bidirectional knot interface is a marked rational-tangle editor, with a closure toggle. Keep four boundary endpoints labeled NW, NE, SW, SE. Users add or remove signed twists in specified endpoint pairs, rotate through an explicitly defined operation, or edit continued-fraction twist blocks. Every operation updates an exact rational fraction and all number-dependent views.
+
+Before rendering polished knots, freeze a convention document specifying zero and infinity tangles, positive crossing, active versus passive rotation, twist order, and numerator versus denominator closure. For a usual convention, adding one horizontal twist implements f -> f+1 and a quarter-turn implements f -> -1/f. A reciprocal operation requires an additional reflection under that convention. Verify these against diagrams; never silently use the same icon for -1/f and 1/f.
+
+Allow unconstrained signed tangle expressions internally, while presenting their normalized rational value beside the canonical regular continued fraction. Undoing a twist must exactly restore both the diagram data and number. Preserve a user's expression when canonicalization would conceal the operation they just made.
+
+The numerator closure gives a 2-bridge knot or link. With the chosen standard p/q convention, odd numerator yields a knot and even numerator a two-component link; explicitly handle zero/infinity exceptions. Distinct rational tangles can have isotopic closures, so the closed knot alone is not a unique reverse control for p/q. Keep the marked tangle as authoritative. A future knot-table selector may offer multiple representatives, never claim a unique inverse.
+
+The deeper visual bridge is the double cover of the four-marked-point sphere by a torus: a pillowcase. The double branched cover of a rational tangle is a solid torus; its meridian gives a slope on the marked boundary torus. Animate a tangle endpoint half-twist and the corresponding lifted Dehn twist. This supports meaningful bidirectional edits through a fixed basis and verified convention map.
+
+Gluing two such tangles produces a 2-bridge closure; gluing the solid-torus covers produces a lens space. Lens-space labels depend on orientation and slope conventions, so defer numerical L(p,q) labeling until fixtures establish the exact convention. The pillowcase torus and six-sheeted modular cover are different constructions and must never be conflated.
+
+11. IMPLEMENTATION ARCHITECTURE
+
+Recommended stack: TypeScript, React, Vite; Canvas 2D for the main H^2 scene, SVG/HTML for small diagrams and accessible labels, Three.js for the optional quotient mesh. Use an established math-typesetting library for formulas if useful. Static hosting, no account or backend required. Save/share scenes as versioned JSON and URL state, with BigInt serialized as decimal strings.
+
+Modules:
+- math/rational: normalization, arithmetic, infinities.
+- math/continuedFraction: canonicalization, convergents, intervals.
+- math/modular: integer matrices, generators, reduction, cosets.
+- math/farey: adjacency, triangle traversal, cutting sequences.
+- math/horocycles: circle data and intersection events.
+- math/trajectory: parameterization and event timeline.
+- math/tangles: operations and diagram topology, later phase.
+- state: commands, history, serialized scenes.
+- renderers: independent H^2, quotient, torus, and tangle views.
+
+Keep exact topology separate from floating-point rendering. For deep zoom, use local modular coordinates or precision-aware calculations; a tiny denominator error can put the trajectory in the wrong triangle. Do not enumerate all rationals up to a huge denominator. Generate visible Farey regions adaptively, cache geometry, and move expensive work to a worker if needed.
+
+Target smooth interaction on an ordinary recent laptop: 60 fps for normal scenes, responsive touch, and no main-thread stalls above 100 ms during routine edits. Benchmark a declared fixture scene rather than claiming unlimited precision or infinite rendering. Show depth and precision limits explicitly.
+
+12. BUILD PHASES AND ACCEPTANCE GATES
+
+Phase A: exact kernel and fixtures.
+Deliver rational/continued-fraction arithmetic, matrices, Farey adjacency, and a documented cutting-sequence convention. Test negative inputs, infinity, alternate rational endings, and cancellation. No 3D work before these pass.
+
+Phase B: playable H^2 + continued fractions.
+Deliver overlays, endpoint editing, exact labels, play/scrub/step, event selection, and save/load. Show coefficient run groups independently from Ford entry events. This is the first usable release.
+
+Phase C: modular quotient.
+Deliver folded-domain playback first, then schematic 3D. Acceptance requires seam continuity, consistent tangent direction, and no false line segments across the domain. The 2D view remains available as the geometric reference.
+
+Phase D: marked torus flips and six-sheeted cover.
+Build these as separate modes. Verify topology, sheet transitions, and displayed labels. Do not gate the useful core app on this phase.
+
+Phase E: rational tangles and pillowcase bridge.
+Start with exact operations and a clear 2D tangle diagram; add closure and 3D curves only after crossing conventions and connectivity pass. Lens-space and essential-surface features are later extensions.
+
+Mandatory tests:
+- Random rational CF round-trips and determinant identity for consecutive convergents.
+- 5/13 fixture above, 355/113 = [3;7,16], sqrt(2) = [1;2,2,...].
+- S(S(z)) = z and group relations up to PSL sign; determinant-one matrices for modular actions (continued-fraction step matrices may have determinant -1).
+- Ford circles tangent exactly for Farey neighbors; test actual trajectory-circle intersections separately from convergence status.
+- Rational trajectory terminates only by display cutoff; irrational playback extends its prefix on demand.
+- Every event is identical before and after a seek/replay or camera change.
+- Six-sheet cover has one cusp, no elliptic stabilizers, and genus one; reject accidental Gamma(2) implementation.
+- Flip twice restores the marked triangulation.
+- Tangle operation followed by inverse restores exact fraction and endpoint connectivity.
+- Closure fixtures include unknot, unlink, Hopf link, trefoil, and figure-eight, with mirror/sign conventions independently checked before names are displayed.
+- Screenshots at mobile and desktop sizes, keyboard navigation, reduced-motion support, and color-independent labels.
+
+13. SOURCES AND VERIFICATION RESPONSIBILITIES
+
+These are starting references, not permission to copy figures or source code without checking licenses. The implementation must document which convention it adopts and add precise page/section references to its mathematical specification.
+
+Caroline Series, The Modular Surface and Continued Fractions:
+https://doi.org/10.1112/jlms/s2-31.1.69
+Use for the relationship between Farey cutting sequences, geodesics, and continued fractions; check initial and terminal conventions before coding.
+
+Louis Kauffman and Sofia Lambropoulou, On the Classification of Rational Tangles:
+https://arxiv.org/abs/math/0311499
+Use for rational-tangle fractions and operations, with diagrams to fix signs.
+
+David Grabiner and Jeffrey Lagarias, Cutting Sequences for Geodesic Flow on the Modular Surface and Continued Fractions:
+https://arxiv.org/abs/math/9707215
+Use for the distinction between standard-domain coding and ordinary continued fractions.
+
+Ian Short, Ford Circles, Continued Fractions, and Rational Approximation:
+https://arxiv.org/abs/0912.1997
+Use for Ford-circle and approximation connections; circle-intersection formulas above follow directly from the Euclidean circle equation.
+
+Kauffman and Lambropoulou, On the Classification of Rational Knots:
+https://arxiv.org/abs/math/0212011
+Use for closure equivalences and the non-uniqueness of a rational representative of a closed knot/link.
+
+Boris Springborn, The Hyperbolic Geometry of Markov's Theorem, sections 12–14:
+https://ems.press/content/serial-article-files/44352
+Use for the modular punctured torus and its relationship to the modular group.
+
+William Jaco and J. Hyam Rubinstein, Layered-Triangulations of 3-Manifolds:
+https://arxiv.org/abs/math/0603601
+Use for later connections between boundary triangulations, diagonal flips, and layered 3-dimensional constructions.
+
+Arithmetic Modular Links, section 6:
+https://users.monash.edu/~jpurcell/papers/arithmetic_modular_links.pdf
+Optional later reference for a distinct closed-geodesic/slope construction. Do not silently substitute it for the selected vertical cusp-to-boundary trajectory.
+
+Verification gate: derive the branched-cover slope and orientation conventions before Phase E. Prove/check the cover index, cusp, and Euler-characteristic calculations in the repository rather than relying on conversational descriptions.
+
+14. INITIAL CODEX PROMPT
+
+Build Continued Fractions Atlas from this design document. Start with a short implementation plan and a mathematical conventions file, then implement Phases A and B end to end. Use TypeScript/React/Vite with an exact BigInt mathematical kernel and a Canvas H^2 renderer. Do not start with a decorative mockup or attempt every advanced panel at once.
+
+The first deliverable must allow exact rational or continued-fraction input, show Farey/Ford/modular overlays, animate a vertical geodesic at constant hyperbolic speed, and synchronize a documented Farey crossing/run coding with the continued-fraction panel. Ford-circle contacts must remain separate events. Include tested presets, scrubbing, undo, scene persistence, and a mobile layout.
+
+Add automated mathematical tests before relying on any convention-sensitive visualization. If a proposed correspondence is not mathematically correct or uniquely defined, document the distinction and implement the honest version. Treat 3D surfaces as schematic images of the intrinsic hyperbolic geometry. Keep the modular cover, marked torus slopes, and branched-cover torus explicitly separate. Report completed behavior, passing tests, and remaining mathematical gates at each phase. Continue to Phase C once the core release is verified; do not silently expand into later topology features.

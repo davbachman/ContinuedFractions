@@ -1,0 +1,337 @@
+import { useMemo, useState, type MouseEvent } from "react";
+import { type Segment, apply, tangent, reduce } from "../math/modular";
+import { heightAt } from "../math/trajectory";
+import { schematicPoint, project3d } from "./geometry";
+type Props = {
+  alpha: number;
+  time: number;
+  segments: readonly Segment[];
+  onSeek: (t: number) => void;
+  limited: boolean;
+};
+export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
+  const [mode, setMode] = useState<"folded" | "schematic">("folded"),
+    [rotation, setRotation] = useState(-0.4);
+  const active = segments.find((s) => time >= s.start && time <= s.end),
+    z = { x: alpha, y: heightAt(time) },
+    reduced = active
+      ? { matrix: active.matrix, point: apply(active.matrix, z) }
+      : reduce(z),
+    p = reduced.point;
+  const currentTangent = tangent(reduced.matrix, z, { x: 0, y: -z.y });
+  // Logarithmic vertical screen coordinate retains the reference domain's cusp.
+  const project = (p: { x: number; y: number }) => ({
+    x: 190 + p.x * 235,
+    y: 328 - 100 * Math.log(Math.max(p.y, 0.001) / (Math.sqrt(3) / 2)),
+  });
+  const point = project(p),
+    tv = { x: currentTangent.x * 235, y: (-100 * currentTangent.y) / p.y },
+    len = Math.hypot(tv.x, tv.y) || 1;
+  const circle = Array.from({ length: 61 }, (_, i) =>
+    project({ x: -0.5 + i / 60, y: Math.sqrt(1 - (-0.5 + i / 60) ** 2) }),
+  );
+  const path = (points: readonly { x: number; y: number }[]) =>
+    points
+      .map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(3)},${p.y.toFixed(3)}`)
+      .join(" ");
+  const schematic = (p: { x: number; y: number }) => {
+    const q = project3d(schematicPoint(p), rotation);
+    return { x: 190 + q.x * 125, y: 250 - q.y * 130 };
+  };
+  const wires = useMemo(() => {
+    const list: { x: number; y: number }[][] = [];
+    for (let h = 0; h < 0.98; h += 0.08) {
+      const v = h / (1 - h);
+      list.push(
+        Array.from({ length: 81 }, (_, i) => {
+          const x = -0.5 + i / 80;
+          return { x, y: Math.sqrt(1 - x * x) * Math.exp(v) };
+        }),
+      );
+    }
+    for (let u = 0; u < 1; u += 1 / 12) {
+      const x = u - 0.5;
+      list.push(
+        Array.from({ length: 60 }, (_, i) => {
+          const h = i / 62;
+          return { x, y: Math.sqrt(1 - x * x) * Math.exp(h / (1 - h)) };
+        }),
+      );
+    }
+    return list;
+  }, []);
+  function selectTracePoint(
+    event: MouseEvent<SVGPathElement>,
+    points: readonly { x: number; y: number; time: number }[],
+  ) {
+    const svg = event.currentTarget.ownerSVGElement;
+    if (!svg || !points.length) return;
+    const cursor = svg.createSVGPoint();
+    cursor.x = event.clientX;
+    cursor.y = event.clientY;
+    const transform = svg.getScreenCTM();
+    if (!transform) return;
+    const local = cursor.matrixTransform(transform.inverse());
+    let nearest = points[0],
+      distance = Infinity;
+    for (const point of points) {
+      const q = mode === "folded" ? project(point) : schematic(point),
+        d = Math.hypot(q.x - local.x, q.y - local.y);
+      if (d < distance) {
+        distance = d;
+        nearest = point;
+      }
+    }
+    onSeek(nearest.time);
+  }
+  const drawable = segments.map((seg) => ({
+    seg,
+    points: seg.points.filter((p) => p.time <= time),
+  }));
+  return (
+    <>
+      <div className="quotient-mode" role="group" aria-label="Quotient view">
+        <button
+          className={mode === "folded" ? "active" : ""}
+          onClick={() => setMode("folded")}
+        >
+          Folded domain
+        </button>
+        <button
+          className={mode === "schematic" ? "active" : ""}
+          onClick={() => setMode("schematic")}
+        >
+          Schematic 3D
+        </button>
+      </div>
+      <div className="quotient-plot">
+        <svg
+          viewBox="0 0 380 370"
+          role="img"
+          aria-label={
+            mode === "folded"
+              ? "Modular fundamental domain with paired vertical and circular seams, and the reduced trajectory."
+              : "Schematic punctured sphere, with one cusp and cone points of orders 2 and 3."
+          }
+        >
+          <defs>
+            <linearGradient id="domain-fill" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#e3e9d7" />
+              <stop offset="1" stopColor="#edf0e5" stopOpacity="0.1" />
+            </linearGradient>
+            <clipPath id="quotient-clip">
+              <rect width="380" height="355" />
+            </clipPath>
+          </defs>
+          {mode === "folded" ? (
+            <>
+              <path
+                d={`M72.5 20 L72.5 328 ${path(circle).replace(/^M/, "L")} L307.5 20 Z`}
+                fill="url(#domain-fill)"
+              />
+              <path
+                d="M72.5 20V328 M307.5 20V328"
+                stroke="#6b9787"
+                strokeWidth="2"
+                strokeDasharray="6 4"
+                fill="none"
+              />
+              <path
+                d={path(circle)}
+                stroke="#9e82a3"
+                strokeWidth="2"
+                fill="none"
+              />
+              <text x="190" y="32" className="svg-muted" textAnchor="middle">
+                one cusp · y → ∞
+              </text>
+              <path d="M190 57v-14m-4 4 4-4 4 4" stroke="#8a9488" fill="none" />
+              <text
+                x="190"
+                y="170"
+                className="domain-letter"
+                textAnchor="middle"
+              >
+                ℱ
+              </text>
+              <text x="55" y="200" className="svg-muted" textAnchor="middle">
+                T
+              </text>
+              <text x="325" y="200" className="svg-muted" textAnchor="middle">
+                T⁻¹
+              </text>
+              <text x="190" y="348" className="svg-muted" textAnchor="middle">
+                S : z ↦ −1/z
+              </text>
+              <text x="72" y="365" className="svg-muted" textAnchor="middle">
+                −½
+              </text>
+              <text x="307" y="365" className="svg-muted" textAnchor="middle">
+                ½
+              </text>
+              {[
+                { x: 0, y: 1, n: "2" },
+                { x: -0.5, y: Math.sqrt(3) / 2, n: "3" },
+                { x: 0.5, y: Math.sqrt(3) / 2, n: "3" },
+              ].map((q, i) => {
+                const s = project(q);
+                return (
+                  <g key={i}>
+                    <circle
+                      cx={s.x}
+                      cy={s.y}
+                      r="5"
+                      fill="#f7f7ef"
+                      stroke="#8a7497"
+                    />
+                    <text
+                      x={s.x + (i === 1 ? 13 : i === 2 ? -13 : 0)}
+                      y={s.y - 12}
+                      className="svg-muted"
+                      textAnchor="middle"
+                    >
+                      {q.n}
+                    </text>
+                  </g>
+                );
+              })}
+              <g clipPath="url(#quotient-clip)">
+                {drawable.map(({ seg, points }, i) => (
+                  <path
+                    key={i}
+                    d={path(points.map(project))}
+                    stroke="#c7744d"
+                    strokeWidth="1.8"
+                    fill="none"
+                    opacity="0.65"
+                    onClick={(event) => selectTracePoint(event, points)}
+                  />
+                ))}
+                {point.y < 20 ? (
+                  <text
+                    x="190"
+                    y="75"
+                    className="svg-muted"
+                    textAnchor="middle"
+                  >
+                    ↑ point higher in cusp
+                  </text>
+                ) : (
+                  <>
+                    <line
+                      x1={point.x}
+                      y1={point.y}
+                      x2={point.x + (tv.x / len) * 18}
+                      y2={point.y + (tv.y / len) * 18}
+                      stroke="#a95734"
+                      strokeWidth="2"
+                    />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="5"
+                      fill="#c7744d"
+                      stroke="#fff"
+                      strokeWidth="2"
+                    />
+                  </>
+                )}
+              </g>
+            </>
+          ) : (
+            <>
+              <text x="190" y="28" className="svg-muted" textAnchor="middle">
+                SCHEMATIC GEOMETRY
+              </text>
+              {wires.map((wire, i) => (
+                <path
+                  key={i}
+                  d={path(wire.map(schematic))}
+                  stroke="#8aa292"
+                  opacity="0.4"
+                  fill="none"
+                  strokeWidth="0.8"
+                />
+              ))}
+              {drawable.map(({ seg, points }, i) => (
+                <path
+                  key={i}
+                  d={path(points.map(schematic))}
+                  stroke="#c7744d"
+                  strokeWidth="2"
+                  fill="none"
+                  onClick={(event) => selectTracePoint(event, points)}
+                />
+              ))}
+              <circle
+                cx={schematic(p).x}
+                cy={schematic(p).y}
+                r="5"
+                fill="#c7744d"
+                stroke="#fff"
+              />
+              {[
+                { x: 0, y: 1, n: "order 2" },
+                { x: -0.5, y: Math.sqrt(3) / 2, n: "order 3" },
+              ].map((q) => {
+                const a = schematic(q);
+                return (
+                  <g key={q.n}>
+                    <circle cx={a.x} cy={a.y} r="4" fill="#8a7497" />
+                    <text
+                      x={a.x}
+                      y={a.y + 20}
+                      textAnchor="middle"
+                      className="svg-muted"
+                    >
+                      {q.n}
+                    </text>
+                  </g>
+                );
+              })}
+              <text x="190" y="78" textAnchor="middle" className="svg-muted">
+                cusp
+              </text>
+            </>
+          )}
+        </svg>
+      </div>
+      {mode === "schematic" && (
+        <label className="rotation">
+          Rotate surface
+          <input
+            aria-label="Rotate schematic surface"
+            type="range"
+            min="-3.14"
+            max="3.14"
+            step="0.01"
+            value={rotation}
+            onChange={(e) => setRotation(Number(e.target.value))}
+          />
+        </label>
+      )}
+      <div className="quotient-caption">
+        {limited
+          ? "Precision limit: the verified trace ends before the requested cutoff."
+          : mode === "folded"
+            ? "Paired boundaries are the same points. The trace splits at every seam."
+            : "A topological display of the quotient. Its Euclidean shape is not the hyperbolic metric."}
+      </div>
+      <details className="matrix-details">
+        <summary>
+          Inspect transformation <span>PSL(2, ℤ)</span>
+        </summary>
+        <div className="matrix-content">
+          <code>
+            [ {reduced.matrix.slice(0, 2).join("  ")} ;{" "}
+            {reduced.matrix.slice(2).join("  ")} ]
+          </code>
+          <span>z ↦ (az + b)/(cz + d)</span>
+          <span>
+            Reduced point ≈ {p.x.toFixed(5)} + {p.y.toPrecision(5)}i
+          </span>
+        </div>
+      </details>
+    </>
+  );
+}
