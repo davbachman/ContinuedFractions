@@ -21,6 +21,16 @@ import {
 } from "lucide-react";
 import { HalfPlane } from "./renderers/HalfPlane";
 import { Quotient } from "./renderers/Quotient";
+import {
+  RectangleDissection,
+  DissectionExplanation,
+} from "./renderers/RectangleDissection";
+import {
+  dissect,
+  dissectionUnavailable,
+  MAX_DISSECTION_STAGES,
+} from "./math/dissection";
+import { stageColor } from "./renderers/dissectionColors";
 import { StackedFraction } from "./renderers/StackedFraction";
 import {
   type NumberSpec,
@@ -72,6 +82,14 @@ export default function App() {
       future: [],
     }),
     scene = history.present;
+  const [viewer, setViewer] = useState<"hyperbolic" | "rectangle">(
+    "hyperbolic",
+  );
+  const [rectanglePlaying, setRectanglePlaying] = useState(false);
+  const [rectangleDepth, setRectangleDepth] = useState(8);
+  const [rectangleCamera, setRectangleCamera] = useState<"full" | "remainder">(
+    "full",
+  );
   const [input, setInput] = useState(specLabel(scene.spec)),
     [completion, setCompletion] = useState<"finite" | "ones">("finite"),
     [error, setError] = useState(boot.error ?? ""),
@@ -99,14 +117,62 @@ export default function App() {
     ),
     cf = useMemo(
       () =>
-        terms(scene.spec, Math.min(64, Math.max(12, Math.ceil(scene.end * 2)))),
-      [scene.spec, scene.end],
+        terms(
+          scene.spec,
+          Math.max(
+            rectangleDepth,
+            Math.min(64, Math.max(12, Math.ceil(scene.end * 2))),
+          ),
+        ),
+      [scene.spec, scene.end, rectangleDepth],
     ),
     cs = useMemo(() => convergents(cf), [cf]),
     selectedTerm = Math.min(termSelection, cf.length - 1),
     alpha = approximate(scene.spec),
     current = cs[Math.min(selectedTerm, cs.length - 1)],
     rationalInput = scene.spec.kind === "rational";
+  const rectangleUnavailable = useMemo(
+    () => dissectionUnavailable(scene.spec),
+    [scene.spec],
+  );
+  const rectangleStages = useMemo(
+    () => dissect(scene.spec, Math.max(rectangleDepth, selectedTerm + 1)),
+    [scene.spec, rectangleDepth, selectedTerm],
+  );
+  const rectangleStage = rectangleStages[selectedTerm];
+  function switchViewer(next: "hyperbolic" | "rectangle") {
+    setPlaying(false);
+    setRectanglePlaying(false);
+    setViewer(next);
+    setMobilePanel("plane");
+    setAlternateEnding(false);
+  }
+  function advanceRectangle(direction: number) {
+    const limit =
+      scene.spec.kind === "rational"
+        ? cf.length - 1
+        : MAX_DISSECTION_STAGES - 1;
+    const next = Math.max(0, Math.min(limit, selectedTerm + direction));
+    if (next >= rectangleDepth)
+      setRectangleDepth(Math.min(MAX_DISSECTION_STAGES, next + 8));
+    setSelectedTerm(next);
+  }
+  useEffect(() => {
+    setRectanglePlaying(false);
+  }, [scene.spec]);
+  useEffect(() => {
+    if (!rectanglePlaying || viewer !== "rectangle" || !rectangleStage) return;
+    if (
+      rectangleStage.terminal ||
+      (selectedTerm >= MAX_DISSECTION_STAGES - 1 &&
+        scene.spec.kind === "periodic")
+    ) {
+      setRectanglePlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => advanceRectangle(1), 1400 / scene.speed);
+    return () => clearTimeout(timer);
+  }, [rectanglePlaying, viewer, rectangleStage, selectedTerm, scene.speed]);
   const patch = (changes: Partial<Scene>) =>
     setHistory((h) => ({ ...h, present: { ...h.present, ...changes } }));
   function changeNumber(spec: NumberSpec) {
@@ -119,11 +185,16 @@ export default function App() {
       setSelectedTerm(1);
       setAlternateEnding(false);
     } catch (e) {
-      setError((e as Error).message);
+      setError(
+        viewer === "rectangle" && spec.kind === "rational" && !spec.value.q
+          ? `${dissectionUnavailable(spec)} The shared number has not been changed.`
+          : (e as Error).message,
+      );
     }
   }
   function startEndpointDrag() {
     setPlaying(false);
+    setRectanglePlaying(false);
     endpointDragStart.current = scene;
     setInspect(null);
     setError("");
@@ -244,19 +315,30 @@ export default function App() {
     function key(e: KeyboardEvent) {
       if (
         (e.target as HTMLElement).closest(
-          "input,select,textarea,button,dialog,.stacked-scroll",
+          'input,select,textarea,button,dialog,.stacked-scroll,[role="button"],[role="slider"]',
         )
       )
         return;
-      if (e.code === "Space") {
+      if (viewer === "rectangle") {
+        if (e.code === "Space" && rectangleStage) {
+          e.preventDefault();
+          setRectanglePlaying((p) => !p);
+        }
+        if (e.code === "ArrowRight" || e.code === "ArrowLeft") {
+          e.preventDefault();
+          setRectanglePlaying(false);
+          advanceRectangle(e.code === "ArrowRight" ? 1 : -1);
+        }
+      }
+      if (e.code === "Space" && viewer === "hyperbolic") {
         e.preventDefault();
         setPlaying((p) => !p);
       }
-      if (e.code === "ArrowRight") {
+      if (e.code === "ArrowRight" && viewer === "hyperbolic") {
         e.preventDefault();
         step(1, e.shiftKey ? "term" : "farey");
       }
-      if (e.code === "ArrowLeft") {
+      if (e.code === "ArrowLeft" && viewer === "hyperbolic") {
         e.preventDefault();
         step(-1, e.shiftKey ? "term" : "farey");
       }
@@ -279,6 +361,11 @@ export default function App() {
     return () => clearTimeout(id);
   }, [notice]);
   function selectTerm(i: number) {
+    setRectanglePlaying(false);
+    if (viewer === "rectangle") {
+      setSelectedTerm(i);
+      return;
+    }
     const first = math.farey.crossings.find((e) => e.term === i);
     if (first) seek(first.time);
     else setPlaying(false);
@@ -306,6 +393,7 @@ export default function App() {
           ];
         changeNumber({ kind: "periodic", prefix, period });
       }
+      setSelectedTerm(selectedTerm);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -398,9 +486,9 @@ export default function App() {
               One number. <em>Many geometries.</em>
             </h1>
             <p>
-              Follow a continued fraction through the hyperbolic plane.
-              <br className="desktop-break" /> Every view follows the same
-              trajectory, in different coordinates.
+              Explore a continued fraction through geometry.
+              <br className="desktop-break" /> One exact number connects the
+              hyperbolic plane and Euclidean dissection.
             </p>
           </div>
           <div className="intro-note">
@@ -532,121 +620,183 @@ export default function App() {
             </button>
           </div>
         )}
+        <div className="viewer-selector" role="group" aria-label="Main viewer">
+          <button
+            aria-pressed={viewer === "hyperbolic"}
+            onClick={() => switchViewer("hyperbolic")}
+          >
+            Hyperbolic plane
+          </button>
+          <button
+            aria-pressed={viewer === "rectangle"}
+            onClick={() => switchViewer("rectangle")}
+          >
+            Rectangle dissection
+          </button>
+        </div>
         <div className="mobile-tabs" role="group" aria-label="Visual panel">
           <button
             className={mobilePanel === "plane" ? "active" : ""}
             onClick={() => setMobilePanel("plane")}
           >
-            01 Upper half-plane
+            {viewer === "hyperbolic"
+              ? "01 Upper half-plane"
+              : "01 Rectangle dissection"}
           </button>
           <button
             className={mobilePanel === "quotient" ? "active" : ""}
             onClick={() => setMobilePanel("quotient")}
           >
-            02 Modular quotient
+            {viewer === "hyperbolic"
+              ? "02 Modular quotient"
+              : "02 Euclidean division"}
           </button>
         </div>
-        <div className={`view-grid mobile-${mobilePanel}`}>
-          <section className="panel half-plane">
-            <div className="panel-heading">
-              <div>
-                <span className="panel-number">01</span>
-                <h2>The upper half-plane</h2>
+        {viewer === "rectangle" ? (
+          <div className={`view-grid rectangle-grid mobile-${mobilePanel}`}>
+            <section className="panel half-plane">
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-number">01</span>
+                  <h2>Rectangle dissection</h2>
+                </div>
+                <span className="small-tag">α × 1</span>
               </div>
-              <label className="follow-toggle">
-                <input
-                  type="checkbox"
-                  checked={scene.follow}
-                  onChange={(e) => patch({ follow: e.target.checked })}
-                />{" "}
-                Auto zoom
-              </label>
-            </div>
-            <div className="overlay-bar">
-              <Layers size={14} />
-              {(["farey", "ford", "modular"] as const).map((key) => (
-                <label key={key}>
+              {rectangleUnavailable ? (
+                <div className="rectangle-unavailable" role="status">
+                  {rectangleUnavailable}
+                </div>
+              ) : (
+                <RectangleDissection
+                  spec={scene.spec}
+                  stages={rectangleStages}
+                  selected={selectedTerm}
+                  camera={rectangleCamera}
+                  onCamera={setRectangleCamera}
+                  onSelect={selectTerm}
+                  onStart={startEndpointDrag}
+                  onMove={moveEndpoint}
+                  onEnd={endEndpointDrag}
+                />
+              )}
+            </section>
+            <section className="panel quotient">
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-number">02</span>
+                  <h2>Euclidean division</h2>
+                </div>
+              </div>
+              <DissectionExplanation
+                spec={scene.spec}
+                stage={rectangleStage}
+                unavailable={rectangleUnavailable}
+              />
+            </section>
+          </div>
+        ) : (
+          <div className={`view-grid mobile-${mobilePanel}`}>
+            <section className="panel half-plane">
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-number">01</span>
+                  <h2>The upper half-plane</h2>
+                </div>
+                <label className="follow-toggle">
                   <input
                     type="checkbox"
-                    checked={scene.overlays[key]}
-                    onChange={(e) =>
-                      patch({
-                        overlays: {
-                          ...scene.overlays,
-                          [key]: e.target.checked,
-                        },
-                      })
-                    }
-                  />
-                  {overlayNames[key]}
+                    checked={scene.follow}
+                    onChange={(e) => patch({ follow: e.target.checked })}
+                  />{" "}
+                  Auto zoom
                 </label>
-              ))}
-              <details className="more-overlays">
-                <summary>More</summary>
-                <div>
-                  {(
-                    ["trajectory", "labels", "convergents", "dual"] as const
-                  ).map((key) => (
-                    <label key={key}>
-                      <input
-                        type="checkbox"
-                        checked={scene.overlays[key]}
-                        onChange={(e) =>
-                          patch({
-                            overlays: {
-                              ...scene.overlays,
-                              [key]: e.target.checked,
-                            },
-                          })
-                        }
-                      />
-                      {overlayNames[key]}
-                    </label>
-                  ))}
-                </div>
-              </details>
-            </div>
-            <HalfPlane
-              scene={scene}
-              crossings={math.farey.crossings}
-              selectedTerm={selectedTerm}
-              onInspect={setInspect}
-              onEndpointStart={startEndpointDrag}
-              onEndpointMove={moveEndpoint}
-              onEndpointEnd={endEndpointDrag}
-            />
-            <div className="plot-footer">
-              <span>
-                <i className="legend-line" /> α = {specLabel(scene.spec)}
-              </span>
-              <span>y ≈ {heightAt(scene.time).toPrecision(4)}</span>
-              <span>
-                {math.farey.onEdge
-                  ? "On a Farey edge"
-                  : lastCrossing
-                    ? `Crossed ${label(lastCrossing.left)} ↔ ${label(lastCrossing.right)}`
-                    : "Descending from y₀ = 2"}
-              </span>
-            </div>
-          </section>
-          <section className="panel quotient">
-            <div className="panel-heading">
-              <div>
-                <span className="panel-number">02</span>
-                <h2>The modular quotient</h2>
               </div>
-              <span className="small-tag">PSL(2, ℤ)</span>
-            </div>
-            <Quotient
-              alpha={alpha}
-              time={scene.time}
-              segments={math.quotient.segments}
-              limited={math.quotient.limited}
-              onSeek={seek}
-            />
-          </section>
-        </div>
-        {inspect && (
+              <div className="overlay-bar">
+                <Layers size={14} />
+                {(["farey", "ford", "modular"] as const).map((key) => (
+                  <label key={key}>
+                    <input
+                      type="checkbox"
+                      checked={scene.overlays[key]}
+                      onChange={(e) =>
+                        patch({
+                          overlays: {
+                            ...scene.overlays,
+                            [key]: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    {overlayNames[key]}
+                  </label>
+                ))}
+                <details className="more-overlays">
+                  <summary>More</summary>
+                  <div>
+                    {(
+                      ["trajectory", "labels", "convergents", "dual"] as const
+                    ).map((key) => (
+                      <label key={key}>
+                        <input
+                          type="checkbox"
+                          checked={scene.overlays[key]}
+                          onChange={(e) =>
+                            patch({
+                              overlays: {
+                                ...scene.overlays,
+                                [key]: e.target.checked,
+                              },
+                            })
+                          }
+                        />
+                        {overlayNames[key]}
+                      </label>
+                    ))}
+                  </div>
+                </details>
+              </div>
+              <HalfPlane
+                scene={scene}
+                crossings={math.farey.crossings}
+                selectedTerm={selectedTerm}
+                onInspect={setInspect}
+                onEndpointStart={startEndpointDrag}
+                onEndpointMove={moveEndpoint}
+                onEndpointEnd={endEndpointDrag}
+              />
+              <div className="plot-footer">
+                <span>
+                  <i className="legend-line" /> α = {specLabel(scene.spec)}
+                </span>
+                <span>y ≈ {heightAt(scene.time).toPrecision(4)}</span>
+                <span>
+                  {math.farey.onEdge
+                    ? "On a Farey edge"
+                    : lastCrossing
+                      ? `Crossed ${label(lastCrossing.left)} ↔ ${label(lastCrossing.right)}`
+                      : "Descending from y₀ = 2"}
+                </span>
+              </div>
+            </section>
+            <section className="panel quotient">
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-number">02</span>
+                  <h2>The modular quotient</h2>
+                </div>
+                <span className="small-tag">PSL(2, ℤ)</span>
+              </div>
+              <Quotient
+                alpha={alpha}
+                time={scene.time}
+                segments={math.quotient.segments}
+                limited={math.quotient.limited}
+                onSeek={seek}
+              />
+            </section>
+          </div>
+        )}
+        {viewer === "hyperbolic" && inspect && (
           <div className="inspection">
             <span>
               <strong>Ford circle {label(inspect)}</strong> · radius = 1/
@@ -665,108 +815,199 @@ export default function App() {
             </button>
           </div>
         )}
-        <section className="transport panel" aria-label="Animation transport">
-          <div className="play-controls">
-            <button aria-label="Restart trajectory" onClick={() => seek(0)}>
-              <RotateCcw size={17} />
-            </button>
-            <button
-              aria-label="Previous Farey crossing"
-              onClick={() => step(-1)}
-            >
-              <SkipBack size={17} />
-            </button>
-            <button
-              className="play-button"
-              aria-label={playing ? "Pause" : "Play"}
-              onClick={() => {
-                if (
-                  !playing &&
-                  ((!reverse && scene.time >= scene.end) ||
-                    (reverse && scene.time <= 0))
-                )
-                  patch({ time: reverse ? scene.end : 0 });
-                setPlaying((p) => !p);
-              }}
-            >
-              {playing ? (
-                <Pause size={17} fill="currentColor" />
-              ) : (
-                <Play size={17} fill="currentColor" />
-              )}
-            </button>
-            <button aria-label="Next Farey crossing" onClick={() => step(1)}>
-              <SkipForward size={17} />
-            </button>
-          </div>
-          <div className="timeline">
-            <div className="timeline-label">
+        {viewer === "rectangle" ? (
+          <section
+            className="transport panel rectangle-transport"
+            aria-label="Rectangle stage transport"
+          >
+            <div className="play-controls">
+              <button
+                aria-label="Restart dissection"
+                disabled={!rectangleStage}
+                onClick={() => {
+                  setRectanglePlaying(false);
+                  setSelectedTerm(0);
+                }}
+              >
+                <RotateCcw size={17} />
+              </button>
+              <button
+                aria-label="Previous rectangle stage"
+                disabled={!rectangleStage || selectedTerm === 0}
+                onClick={() => {
+                  setRectanglePlaying(false);
+                  advanceRectangle(-1);
+                }}
+              >
+                <SkipBack size={17} />
+              </button>
+              <button
+                className="play-button"
+                aria-label={
+                  rectanglePlaying ? "Pause dissection" : "Play dissection"
+                }
+                disabled={!rectangleStage}
+                onClick={() => {
+                  if (
+                    !rectanglePlaying &&
+                    (rectangleStage?.terminal ||
+                      (scene.spec.kind === "periodic" &&
+                        selectedTerm >= MAX_DISSECTION_STAGES - 1))
+                  )
+                    setSelectedTerm(0);
+                  setRectanglePlaying((p) => !p);
+                }}
+              >
+                {rectanglePlaying ? <Pause size={17} /> : <Play size={17} />}
+              </button>
+              <button
+                aria-label="Next rectangle stage"
+                disabled={
+                  !rectangleStage ||
+                  rectangleStage.terminal ||
+                  (scene.spec.kind === "periodic" &&
+                    selectedTerm >= MAX_DISSECTION_STAGES - 1)
+                }
+                onClick={() => {
+                  setRectanglePlaying(false);
+                  advanceRectangle(1);
+                }}
+              >
+                <SkipForward size={17} />
+              </button>
+            </div>
+            <div className="rectangle-progress" aria-live="polite">
+              <strong>
+                {rectangleStage
+                  ? `Stage a${selectedTerm} = ${rectangleStage.count}`
+                  : "Dissection unavailable"}
+              </strong>
               <span>
-                HYPERBOLIC TIME <strong>t = {scene.time.toFixed(2)}</strong>
+                {scene.spec.kind === "periodic"
+                  ? `Infinite expansion · ${rectangleStages.length} stages generated · display cap ${MAX_DISSECTION_STAGES}`
+                  : rectangleStage?.terminal
+                    ? "Exact zero remainder · complete"
+                    : `${rectangleStages.length} Euclidean stages`}
               </span>
-              <span>{scene.end.toFixed(0)}</span>
             </div>
-            <div className="timeline-track">
-              <input
-                aria-label="Scrub trajectory"
-                type="range"
-                min="0"
-                max={scene.end}
-                step="0.001"
-                value={scene.time}
-                onChange={(e) => seek(Number(e.target.value))}
-              />
-              <div className="event-ticks" aria-hidden="true">
-                {math.farey.crossings.map((e) => (
-                  <i
-                    key={e.id}
-                    className={e.time <= scene.time ? "passed" : ""}
-                    style={{ left: `${(e.time / scene.end) * 100}%` }}
-                  />
-                ))}
+            <span className="cf-help">
+              One square group per step. Rectangle playback is independent of
+              hyperbolic time.
+            </span>
+          </section>
+        ) : (
+          <>
+            <section
+              className="transport panel"
+              aria-label="Animation transport"
+            >
+              <div className="play-controls">
+                <button aria-label="Restart trajectory" onClick={() => seek(0)}>
+                  <RotateCcw size={17} />
+                </button>
+                <button
+                  aria-label="Previous Farey crossing"
+                  onClick={() => step(-1)}
+                >
+                  <SkipBack size={17} />
+                </button>
+                <button
+                  className="play-button"
+                  aria-label={playing ? "Pause" : "Play"}
+                  onClick={() => {
+                    if (
+                      !playing &&
+                      ((!reverse && scene.time >= scene.end) ||
+                        (reverse && scene.time <= 0))
+                    )
+                      patch({ time: reverse ? scene.end : 0 });
+                    setPlaying((p) => !p);
+                  }}
+                >
+                  {playing ? (
+                    <Pause size={17} fill="currentColor" />
+                  ) : (
+                    <Play size={17} fill="currentColor" />
+                  )}
+                </button>
+                <button
+                  aria-label="Next Farey crossing"
+                  onClick={() => step(1)}
+                >
+                  <SkipForward size={17} />
+                </button>
               </div>
+              <div className="timeline">
+                <div className="timeline-label">
+                  <span>
+                    HYPERBOLIC TIME <strong>t = {scene.time.toFixed(2)}</strong>
+                  </span>
+                  <span>{scene.end.toFixed(0)}</span>
+                </div>
+                <div className="timeline-track">
+                  <input
+                    aria-label="Scrub trajectory"
+                    type="range"
+                    min="0"
+                    max={scene.end}
+                    step="0.001"
+                    value={scene.time}
+                    onChange={(e) => seek(Number(e.target.value))}
+                  />
+                  <div className="event-ticks" aria-hidden="true">
+                    {math.farey.crossings.map((e) => (
+                      <i
+                        key={e.id}
+                        className={e.time <= scene.time ? "passed" : ""}
+                        style={{ left: `${(e.time / scene.end) * 100}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="speed-controls">
+                <label className="reverse-control">
+                  <input
+                    type="checkbox"
+                    checked={reverse}
+                    onChange={(e) => setReverse(e.target.checked)}
+                  />
+                  Reverse
+                </label>
+                <select
+                  aria-label="Playback speed"
+                  value={scene.speed}
+                  onChange={(e) => patch({ speed: Number(e.target.value) })}
+                >
+                  <option value="0.25">0.25×</option>
+                  <option value="0.5">0.5×</option>
+                  <option value="1">1× speed</option>
+                  <option value="2">2× speed</option>
+                  <option value="4">4× speed</option>
+                </select>
+              </div>
+            </section>
+            <div className="motion-note">
+              <span>
+                z(t) = α + 2i e<sup>−t</sup> · equal time, equal hyperbolic
+                distance
+              </span>
+              <span>
+                {rationalInput
+                  ? `Display cutoff y = ${heightAt(scene.end).toExponential(1)}; the ideal endpoint is never reached.`
+                  : "Periodic prefix extends on demand · numerical display limit t = 24."}
+              </span>
+              {scene.end < 24 && (
+                <button
+                  className="inline-link"
+                  onClick={() => patch({ end: Math.min(24, scene.end + 4) })}
+                >
+                  Extend depth +4
+                </button>
+              )}
             </div>
-          </div>
-          <div className="speed-controls">
-            <label className="reverse-control">
-              <input
-                type="checkbox"
-                checked={reverse}
-                onChange={(e) => setReverse(e.target.checked)}
-              />
-              Reverse
-            </label>
-            <select
-              aria-label="Playback speed"
-              value={scene.speed}
-              onChange={(e) => patch({ speed: Number(e.target.value) })}
-            >
-              <option value="0.25">0.25×</option>
-              <option value="0.5">0.5×</option>
-              <option value="1">1× speed</option>
-              <option value="2">2× speed</option>
-              <option value="4">4× speed</option>
-            </select>
-          </div>
-        </section>
-        <div className="motion-note">
-          <span>
-            z(t) = α + 2i e<sup>−t</sup> · equal time, equal hyperbolic distance
-          </span>
-          <span>
-            {rationalInput
-              ? `Display cutoff y = ${heightAt(scene.end).toExponential(1)}; the ideal endpoint is never reached.`
-              : "Periodic prefix extends on demand · numerical display limit t = 24."}
-          </span>
-          {scene.end < 24 && (
-            <button
-              className="inline-link"
-              onClick={() => patch({ end: Math.min(24, scene.end + 4) })}
-            >
-              Extend depth +4
-            </button>
-          )}
-        </div>
+          </>
+        )}
         <section className="panel fraction-panel">
           <div className="panel-heading">
             <div>
@@ -844,7 +1085,12 @@ export default function App() {
                       <button
                         disabled={alternateEnding}
                         aria-label={`Select coefficient a${i} = ${a}`}
-                        className={selectedTerm === i ? "active" : ""}
+                        className={`${selectedTerm === i ? "active" : ""}${viewer === "rectangle" ? " colored-coefficient" : ""}`}
+                        style={
+                          viewer === "rectangle"
+                            ? { borderBottomColor: stageColor(i) }
+                            : undefined
+                        }
                         onClick={() => selectTerm(Math.min(i, cf.length - 1))}
                       >
                         <span className="term-index">
@@ -889,6 +1135,7 @@ export default function App() {
                     periodic={!rationalInput}
                     selectedTerm={selectedTerm}
                     disabled={alternateEnding}
+                    colored={viewer === "rectangle"}
                     onSelect={(i) => selectTerm(Math.min(i, cf.length - 1))}
                   />
                 </div>
@@ -903,7 +1150,9 @@ export default function App() {
             <p className="cf-help">
               {alternateEnding
                 ? "Alternate expression: same value. Switch back to the canonical expression to edit or select runs."
-                : "Select a term to inspect its convergent and Farey run. Ford contacts have their own timeline."}
+                : viewer === "rectangle"
+                  ? "Select a coefficient or square group to inspect its Euclidean division. Colors identify the same stages in both displays."
+                  : "Select a term to inspect its convergent and Farey run. Ford contacts have their own timeline."}
             </p>
           </div>
           <div className="coefficient-detail">
@@ -974,7 +1223,7 @@ export default function App() {
                 · endpoints bound possible completions
               </span>
             </span>
-            {rationalInput && (
+            {rationalInput && viewer === "hyperbolic" && (
               <label>
                 <input
                   type="checkbox"

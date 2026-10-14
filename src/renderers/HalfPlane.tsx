@@ -337,6 +337,7 @@ export function HalfPlane({
     <div className="canvas-wrap">
       <canvas
         ref={canvas}
+        data-selected-term={selectedTerm}
         data-scale={scale}
         data-manual-zoom={zoom}
         data-point-y={bottom - y * scale}

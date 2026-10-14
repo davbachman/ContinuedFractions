@@ -1869,3 +1869,166 @@ footer,
     bottom: 70px;
   }
 }
+
+.viewer-selector,
+.rectangle-camera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 0;
+}
+.viewer-selector button,
+.rectangle-camera button {
+  border: 1px solid #d4dccb;
+  border-radius: 5px;
+  padding: 7px 14px;
+  font-size: 12px;
+}
+.viewer-selector [aria-pressed="true"],
+.rectangle-camera [aria-pressed="true"] {
+  background: #e7eddd;
+  border-color: #819877;
+  color: #244c3d;
+}
+.rectangle-camera {
+  padding: 12px 18px;
+}
+.rectangle-canvas {
+  display: block;
+  width: 100%;
+  height: 380px;
+  background: #f9faf3;
+  overflow: hidden;
+}
+.rectangle-stage {
+  cursor: pointer;
+}
+.rectangle-stage:focus {
+  outline: none;
+}
+.rectangle-stage:focus rect {
+  stroke: #152e27;
+  stroke-width: 4;
+}
+.rectangle-stage.current rect {
+  animation: square-removal 650ms ease-out;
+}
+@keyframes square-removal {
+  from {
+    fill-opacity: 0.12;
+  }
+  to {
+    fill-opacity: 0.85;
+  }
+}
+.rectangle-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 12px 20px;
+  font-size: 11px;
+  border-top: 1px solid #e0e5d7;
+  overflow-wrap: anywhere;
+}
+.rectangle-overview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px 16px;
+  border-top: 1px solid #e0e5d7;
+  font-size: 11px;
+}
+.rectangle-overview svg {
+  width: 48%;
+  min-width: 130px;
+  flex-shrink: 0;
+}
+.rectangle-overview output {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.rectangle-overview p {
+  font-size: 10px;
+  line-height: 1.6;
+}
+.rectangle-resize-handle {
+  touch-action: none;
+  cursor: ew-resize;
+}
+.rectangle-resize-handle:focus {
+  outline: 2px solid #d59e3e;
+}
+.dissection-explanation {
+  padding: 24px;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.division-equation {
+  font:
+    22px/1.6 Georgia,
+    serif;
+  padding: 16px 0;
+  border-bottom: 1px solid #dde4d3;
+}
+.dissection-explanation dt {
+  color: #60705a;
+  font-size: 11px;
+  margin-top: 20px;
+}
+.dissection-explanation dd {
+  margin: 4px 0 16px;
+  font:
+    21px/1.5 Georgia,
+    serif;
+}
+.dissection-status {
+  border-left: 3px solid #789568;
+  padding-left: 12px;
+}
+.rectangle-unavailable {
+  padding: 60px 28px;
+  min-height: 380px;
+  line-height: 1.8;
+}
+.rectangle-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.rectangle-progress span {
+  font-size: 11px;
+}
+.term-wrap button.colored-coefficient,
+.stacked-coefficient.colored-coefficient {
+  border-bottom-width: 4px;
+}
+@media (max-width: 850px) {
+  .rectangle-transport {
+    flex-wrap: wrap;
+  }
+  .rectangle-grid .rectangle-canvas {
+    height: 340px;
+  }
+  .rectangle-overview {
+    flex-wrap: wrap;
+  }
+  .rectangle-overview svg {
+    width: 100%;
+    max-width: 360px;
+    margin: auto;
+  }
+  .rectangle-overview > div {
+    width: 100%;
+  }
+  .dissection-explanation {
+    padding: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rectangle-stage.current rect {
+    animation: none;
+  }
+}

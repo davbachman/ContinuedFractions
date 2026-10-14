@@ -50,16 +50,24 @@ For `v>0`, cross sections are nested ellipses; as `v→∞` they shrink to the r
 
 On the managed Linux environment used for the initial release (Node 24), `npm run benchmark` measured mean event derivation times of **0.29 ms** for 5/13, **0.37 ms** for 355/113, and **13.22 ms** for φ, all through `t=18`, with Ford denominator bound 32 plus computed convergents. The declared 800-pixel Farey geometry fixture averaged **0.06 ms**. These measurements cover the mathematical derivation, not browser frame rate. They are reproducible benchmarks, not a promise of unlimited precision or universal 60 fps.
 
-
 ## Slow-descent automatic camera
 
 Automatic zoom is enabled by default. Its scale multiplier is `exp(0.92t)`, giving screen distance above the fixed real axis proportional to `y(t) exp(0.92t) = 2 exp(−0.08t)`. Thus the point still descends, with 8% of the fixed-camera logarithmic descent rate. This is a camera transformation only: mathematical time, event IDs, and crossing heights remain unchanged. Seeking and reversing use the same absolute-time formula. Manual zoom multiplies this scale; disabling Auto zoom gives a fixed camera. At extreme zoom or large coordinates, scale is capped at `1/(64 ε max(1, |center|))` to keep neighboring screen pixels numerically distinguishable; beyond that limit the point descends without further magnification.
 
 Scene format version 2 preserves this camera preference; importing a legacy version 1 scene enables the new automatic zoom.
 
-
 ## Adaptive modular tessellation
 
 In the reference ideal triangle `(0,1,∞)`, six modular boundary spokes meet at `1/2 + i√3/2`. They combine into three geodesic pieces: the unit-circle quarter arc from `i` to `1`, the unit-circle quarter arc centered at `1` from `1+i` to `0`, and the vertical ray from `1/2+i/2` to infinity. These are boundary portions of full PSL(2,ℤ) domains, not Farey edges and not a claim that a Farey triangle is itself a modular domain. Across Farey sides the pieces join the adjacent triangle's subdivision.
 
 For Farey neighbors `l=p/q < r=u/v`, the determinant-one matrix `[[u,p],[v,q]]` maps `(0,1,∞)` to `(l, mediant(l,r), r)`. We transform the three geodesic pieces with this matrix for every visible Farey interval, and also include translated `(n,n+1,∞)` triangles. The transformed ideal support endpoints determine each circle or vertical line; their exact integer determinant determines the diameter, avoiding subtraction of almost equal endpoint coordinates. Canvas draws the resulting analytic arcs, with vertical rays clipped to the viewport rather than approximating infinity by a finite sample. Finer visible triangles therefore reveal finer modular copies during automatic zoom, manual zoom, or two-finger zoom.
+
+## Rectangle dissection
+
+The initial rectangle is `[0, α] × [0, 1]`, with α positive. At even coefficient index n, remove aₙ squares along the width; at odd n, remove them along the height. If the working dimensions are w × h, an even stage leaves `(w − aₙh) × h` and an odd stage leaves `w × (h − aₙw)`. Square positions and the remainder share the same original coordinate system. For 0 < α < 1, a₀ = 0 changes the cutting orientation and leaves the original rectangle intact.
+
+The kernel stores coordinates and dimensions as integer linear forms `mα + b`. For rational α = p/q these evaluate exactly to `(mp + bq)/q`; termination is tested against an exact zero numerator. For an exact periodic input, the existing prefix/period supplies the Euclidean quotients on demand. All remainders stay symbolic and no periodic stage is marked terminal. The stage-area identity `wh = aₙs² + remainder area` is a polynomial identity in α, verified without floating-point approximations.
+
+The renderer evaluates symbolic differences before converting to screen coordinates. A 128-term exact convergent supplies only a projection for periodic values; counts and termination never depend on that approximation. Follow-remainder coordinates are normalized relative to the working rectangle so that deep stages do not lose their position through subtraction of nearby floating-point numbers. Rendering budgets and the 96-stage periodic display cap do not assert mathematical termination.
+
+Rectangle stage indices are canonical continued-fraction coefficient indices. The existing Farey coding map selects the corresponding run in H²; rectangle playback neither advances hyperbolic time nor associates a stage with a Ford contact.

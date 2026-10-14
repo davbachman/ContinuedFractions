@@ -19,7 +19,21 @@ Start at **5/13 = [0; 2, 1, 1, 2]**, or select 7/19, 355/113, φ, or √2. Enter
 - **Download**, **Load**, or **Share scene**. Exact integers are serialized as decimal strings in versioned JSON (version 2; version 1 imports enable the new automatic zoom). A scene is also saved in local browser storage.
 - On mobile, switch visual panels without changing the underlying state. Essential actions have labeled controls and touch support.
 
-Keyboard: **Space** plays/pauses; **← / →** step Farey crossings; **Shift + ← / →** step coefficient runs; **Ctrl/Cmd + Z** undoes a number edit. Shortcuts do not intercept typing or native form controls. Reduced-motion preferences suppress decorative transitions; playback only begins by explicit action.
+## Rectangle dissection
+
+Choose **Rectangle dissection** above the main viewer. The same exact number, coefficient selection, editor, and undo/redo history are shared with the hyperbolic view. The companion panel explains the selected Euclidean division and gives the actual working and remaining dimensions. On mobile, use **02 Euclidean division** to open that explanation.
+
+- Start with width **α** and height **1**. A stage removes the maximum number of squares of the shorter side. For **13/5**, the counts are **2, 1, 1, 2**. For **5/13**, the canonical coefficients are **0, 2, 1, 1, 2**: stage a₀ changes orientation without removing squares or replacing α by its reciprocal.
+- **Play/Pause**, restart, or step through groups. Click a coefficient, a square group, or an overview group to select its stage. Removed groups remain colored for inspection, and coefficient colors match the groups. Rectangle playback advances by Euclidean stages, independently of hyperbolic time. Switching back restores the H² timeline and highlights the selected coefficient's Farey run where it is inside the current display window.
+- **Full dissection** keeps the original rectangle visible. **Follow remainder** fits the working remainder from the preceding stage and smoothly rotates its cutting direction horizontally. The current square group and its leftover rectangle stay visible; the overview always shows their original position. Reduced-motion preferences disable transitions.
+- Drag the right edge of the **original rectangle overview** to change α. This updates both views immediately and creates one undoable edit. It uses the H² viewer's denominator-64 rational snapping within 6 pixels, otherwise an explicitly rounded decimal. The displayed value is the actual shared value. The focused handle supports left/right arrows (Shift for larger steps) and Escape to cancel an active drag. Dragging is limited to **0.0001 ≤ α ≤ 10,000**; smaller positive numbers can still be entered exactly.
+- Rational sides and remainders are exact; a zero remainder ends the process. Periodic numbers, including φ and √2, use exact symbolic dimensions in α and generate more stages on demand. They never acquire a false zero remainder at a display cutoff. Up to **96 periodic stages** are available. Full rational expansions use the existing 128-term input budget.
+- Detail is bounded: at most 24 individual squares in the selected group and 4 in earlier groups; larger or subpixel groups become aggregate rectangles with exact counts in the explanation. Extreme aspect ratios may be thinner than a screen pixel. Screen coordinates use an exact 128-term convergent before conversion to floating point; it never decides counts or termination. Very large camera jumps skip interpolation.
+- Zero and negative inputs show an unavailable state without changing the number. Infinity is rejected by the existing finite-endpoint input guard, with a rectangle-specific explanation and the previous shared number preserved. The canonical expansion is used for square groups; the alternate rational ending remains available in H² mode.
+
+The viewer choice and rectangle camera are session UI settings; scene files retain the existing exact-number and H² playback format.
+
+Keyboard: **Space** plays/pauses; **← / →** step rectangle stages in rectangle mode or Farey crossings in H² mode; **Shift + ← / →** step coefficient runs; **Ctrl/Cmd + Z** undoes a number edit. Shortcuts do not intercept typing or native form controls. Reduced-motion preferences suppress decorative transitions; playback only begins by explicit action.
 
 ## Run locally
 
@@ -67,9 +81,9 @@ Farey crossings, coefficient runs, Ford contacts, and modular seams are **differ
 
 ## Project map
 
-- `src/math/`: rational arithmetic, continued fractions, Farey traversal, Ford contacts, modular matrices/reduction, and a deterministic event timeline.
+- `src/math/`: rational arithmetic, exact renderer-independent rectangle dissection, continued fractions, Farey traversal, Ford contacts, modular matrices/reduction, and a deterministic event timeline.
 - `src/state.ts`: typed number/load commands, undo/redo, validation, and versioned persistence.
-- `src/renderers/`: Canvas upper-half-plane, SVG folded quotient, and the schematic atlas.
+- `src/renderers/`: Canvas upper-half-plane, SVG rectangle dissection and folded quotient, and the schematic atlas.
 - `tests/`: exact fixtures, generated rational tests, seam/atlas tests, state checks, browser checks, and benchmarks.
 
 ## Credits and license

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { stageColor } from "./dissectionColors";
 
 /** Each denominator contains the next complete quotient, at a fixed font size. */
 export function StackedFraction({
@@ -6,12 +7,14 @@ export function StackedFraction({
   periodic,
   selectedTerm,
   disabled,
+  colored = false,
   onSelect,
 }: {
   coefficients: bigint[];
   periodic: boolean;
   selectedTerm: number;
   disabled: boolean;
+  colored?: boolean;
   onSelect: (index: number) => void;
 }) {
   let tail: ReactNode = periodic ? (
@@ -24,7 +27,8 @@ export function StackedFraction({
     tail = (
       <span className="stacked-quotient">
         <button
-          className={`stacked-coefficient${selectedTerm === i ? " active" : ""}`}
+          className={`stacked-coefficient${selectedTerm === i ? " active" : ""}${colored ? " colored-coefficient" : ""}`}
+          style={colored ? { borderBottomColor: stageColor(i) } : undefined}
           disabled={disabled}
           aria-label={`Select coefficient a${i} = ${coefficients[i]}`}
           aria-pressed={selectedTerm === i}
