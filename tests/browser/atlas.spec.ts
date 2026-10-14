@@ -408,3 +408,115 @@ test("modular overlay refines during zoom and stays independent of Farey and For
   await expect(canvas).toHaveAttribute("data-modular-arc-count", "0");
   expect(errors).toEqual([]);
 });
+
+test("fraction tabs preserve the scene, support keyboard navigation, and share coefficient edits", async ({
+  page,
+}, testInfo) => {
+  const listTab = page.getByRole("tab", { name: "Coefficients", exact: true });
+  const fractionTab = page.getByRole("tab", {
+    name: "Stacked fraction",
+    exact: true,
+  });
+  await expect(listTab).toHaveAttribute("aria-selected", "true");
+  const scrub = page.getByRole("slider", { name: "Scrub trajectory" });
+  await scrub.fill("2");
+  await listTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(fractionTab).toBeFocused();
+  await expect(fractionTab).toHaveAttribute("aria-selected", "true");
+  await expect(scrub).toHaveValue("2");
+  const panel = page.getByRole("tabpanel", { name: "Stacked fraction" });
+  await expect(panel.locator(".stacked-coefficient")).toHaveText([
+    "0",
+    "2",
+    "1",
+    "1",
+    "2",
+  ]);
+  // Independently evaluate the rendered nested denominators, not the coefficient list.
+  const renderedValue = await panel
+    .locator(".stacked-quotient")
+    .first()
+    .evaluate((root) => {
+      function evaluate(node: Element): number {
+        const a = Number(node.querySelector(":scope > button")!.textContent);
+        const denominator = node.querySelector(
+          ":scope > .stacked-reciprocal > .stacked-denominator > .stacked-quotient",
+        );
+        return denominator ? a + 1 / evaluate(denominator) : a;
+      }
+      return evaluate(root);
+    });
+  expect(renderedValue).toBeCloseTo(5 / 13, 14);
+  await panel
+    .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
+    .click();
+  await expect(page.locator(".coefficient-detail")).toContainText("1/3");
+  await page.locator("#coefficient-input").fill("2");
+  await page.getByRole("button", { name: "Apply coefficient" }).click();
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("8/19");
+  await expect(panel.locator(".stacked-coefficient")).toHaveText([
+    "0",
+    "2",
+    "2",
+    "1",
+    "2",
+  ]);
+  await page
+    .locator(".fraction-panel")
+    .screenshot({
+      path: `test-results/${testInfo.project.name}-stacked-fraction.png`,
+    });
+  await fractionTab.focus();
+  await page.keyboard.press("Home");
+  await expect(listTab).toBeFocused();
+  await expect(
+    page.getByRole("tabpanel", { name: "Coefficients" }),
+  ).toBeVisible();
+  await page.keyboard.press("End");
+  await expect(fractionTab).toBeFocused();
+  await expect(
+    page.getByRole("tabpanel", { name: "Coefficients" }),
+  ).toBeHidden();
+});
+
+test("stacked fractions handle integers, alternate endings, and scrollable periodic expansions", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "Stacked fraction" }).click();
+  const panel = page.getByRole("tabpanel", { name: "Stacked fraction" });
+  await page.getByLabel("ENDPOINT α").fill("-2");
+  await page.getByRole("button", { name: "Apply endpoint" }).click();
+  await expect(panel.locator(".stacked-coefficient")).toHaveText(["-2"]);
+  await expect(panel.locator(".stacked-reciprocal")).toHaveCount(0);
+  await page.getByLabel("Alternate ending", { exact: false }).check();
+  await expect(panel.locator(".stacked-coefficient")).toHaveText(["-3", "1"]);
+  await expect(
+    panel.getByRole("button", { name: "Select coefficient a1 = 1" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "φ", exact: true }).click();
+  await expect(panel.getByLabel("continues indefinitely")).toBeVisible();
+  await expect(panel).toContainText("continues indefinitely");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+  ).toBe(false);
+  const scroller = panel.getByRole("region", {
+    name: "Nested continued fraction",
+  });
+  const scrub = page.getByRole("slider", { name: "Scrub trajectory" });
+  await scrub.fill("0");
+  await scroller.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(scrub).toHaveValue("0");
+  await scroller.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+    node.scrollLeft = node.scrollWidth;
+  });
+  await panel.locator(".stacked-coefficient").last().click();
+  await expect(panel.locator(".stacked-coefficient").last()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});

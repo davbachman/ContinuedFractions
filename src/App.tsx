@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { HalfPlane } from "./renderers/HalfPlane";
 import { Quotient } from "./renderers/Quotient";
+import { StackedFraction } from "./renderers/StackedFraction";
 import {
   type NumberSpec,
   approximate,
@@ -85,7 +86,10 @@ export default function App() {
     [eventFilter, setEventFilter] = useState<"farey" | "ford" | "seam">(
       "farey",
     ),
-    [alternateEnding, setAlternateEnding] = useState(false);
+    [alternateEnding, setAlternateEnding] = useState(false),
+    [fractionView, setFractionView] = useState<"coefficients" | "stacked">(
+      "coefficients",
+    );
   const file = useRef<HTMLInputElement>(null),
     guide = useRef<HTMLDialogElement>(null),
     endpointDragStart = useRef<Scene | null>(null);
@@ -239,7 +243,9 @@ export default function App() {
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if (
-        (e.target as HTMLElement).closest("input,select,textarea,button,dialog")
+        (e.target as HTMLElement).closest(
+          "input,select,textarea,button,dialog,.stacked-scroll",
+        )
       )
         return;
       if (e.code === "Space") {
@@ -786,40 +792,113 @@ export default function App() {
               </button>
             </div>
           </div>
+          <div
+            className="fraction-tabs"
+            role="tablist"
+            aria-label="Continued fraction view"
+          >
+            {(["coefficients", "stacked"] as const).map((view, index) => (
+              <button
+                key={view}
+                id={`fraction-tab-${view}`}
+                role="tab"
+                aria-selected={fractionView === view}
+                aria-controls={`fraction-panel-${view}`}
+                tabIndex={fractionView === view ? 0 : -1}
+                onClick={() => setFractionView(view)}
+                onKeyDown={(event) => {
+                  let next: number;
+                  if (event.key === "ArrowLeft" || event.key === "ArrowRight")
+                    next = 1 - index;
+                  else if (event.key === "Home") next = 0;
+                  else if (event.key === "End") next = 1;
+                  else return;
+                  event.preventDefault();
+                  const nextView = next === 0 ? "coefficients" : "stacked";
+                  setFractionView(nextView);
+                  document.getElementById(`fraction-tab-${nextView}`)?.focus();
+                }}
+              >
+                {view === "coefficients" ? "Coefficients" : "Stacked fraction"}
+              </button>
+            ))}
+          </div>
           <div className="fraction-body">
-            <div className="cf-expression">
-              <span className="cf-value">
-                {specLabel(scene.spec).length < 18
-                  ? specLabel(scene.spec)
-                  : "α"}{" "}
-                <span>=</span>
-              </span>
-              <span className="bracket">[</span>
-              <div className="terms">
-                {displayCF.map((a, i) => (
-                  <div className="term-wrap" key={i}>
-                    <button
-                      disabled={alternateEnding}
-                      aria-label={`Select coefficient a${i} = ${a}`}
-                      className={selectedTerm === i ? "active" : ""}
-                      onClick={() => selectTerm(Math.min(i, cf.length - 1))}
-                    >
-                      <span className="term-index">
-                        a<sub>{i}</sub>
+            <div
+              id="fraction-panel-coefficients"
+              role="tabpanel"
+              aria-labelledby="fraction-tab-coefficients"
+              hidden={fractionView !== "coefficients"}
+            >
+              <div className="cf-expression">
+                <span className="cf-value">
+                  {specLabel(scene.spec).length < 18
+                    ? specLabel(scene.spec)
+                    : "α"}{" "}
+                  <span>=</span>
+                </span>
+                <span className="bracket">[</span>
+                <div className="terms">
+                  {displayCF.map((a, i) => (
+                    <div className="term-wrap" key={i}>
+                      <button
+                        disabled={alternateEnding}
+                        aria-label={`Select coefficient a${i} = ${a}`}
+                        className={selectedTerm === i ? "active" : ""}
+                        onClick={() => selectTerm(Math.min(i, cf.length - 1))}
+                      >
+                        <span className="term-index">
+                          a<sub>{i}</sub>
+                        </span>
+                        <strong>{String(a)}</strong>
+                        <span className="term-convergent">
+                          {label(displayConvergents[i])}
+                        </span>
+                      </button>
+                      <span className="punctuation">
+                        {i === 0 ? ";" : i < displayCF.length - 1 ? "," : ""}
                       </span>
-                      <strong>{String(a)}</strong>
-                      <span className="term-convergent">
-                        {label(displayConvergents[i])}
-                      </span>
-                    </button>
-                    <span className="punctuation">
-                      {i === 0 ? ";" : i < displayCF.length - 1 ? "," : ""}
-                    </span>
-                  </div>
-                ))}
-                {!rationalInput && <span className="ellipsis">…</span>}
+                    </div>
+                  ))}
+                  {!rationalInput && <span className="ellipsis">…</span>}
+                </div>
+                <span className="bracket">]</span>
               </div>
-              <span className="bracket">]</span>
+            </div>
+            <div
+              id="fraction-panel-stacked"
+              role="tabpanel"
+              aria-labelledby="fraction-tab-stacked"
+              hidden={fractionView !== "stacked"}
+            >
+              <div
+                className="stacked-scroll"
+                role="region"
+                aria-label="Nested continued fraction"
+                tabIndex={0}
+              >
+                <div className="stacked-expression">
+                  <span className="cf-value">
+                    {specLabel(scene.spec).length < 18
+                      ? specLabel(scene.spec)
+                      : "α"}{" "}
+                    <span>=</span>
+                  </span>
+                  <StackedFraction
+                    coefficients={displayCF}
+                    periodic={!rationalInput}
+                    selectedTerm={selectedTerm}
+                    disabled={alternateEnding}
+                    onSelect={(i) => selectTerm(Math.min(i, cf.length - 1))}
+                  />
+                </div>
+              </div>
+              <p className="cf-help">
+                {rationalInput
+                  ? "Full finite expansion."
+                  : "The periodic expansion continues indefinitely (…)."}{" "}
+                Long fractions scroll within this view.
+              </p>
             </div>
             <p className="cf-help">
               {alternateEnding

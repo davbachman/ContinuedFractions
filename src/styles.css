@@ -702,6 +702,85 @@ canvas {
 .fraction-body {
   padding: 23px 24px 16px;
 }
+.fraction-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #e9ebdf;
+}
+.fraction-tabs button {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.fraction-tabs [aria-selected="true"] {
+  color: #3f5f40;
+  background: #edf0e2;
+  border-color: #c7d1b6;
+}
+.stacked-scroll {
+  overflow: auto;
+  max-height: min(420px, 60vh);
+  padding: 4px 4px 14px;
+  overscroll-behavior: contain;
+}
+.stacked-expression,
+.stacked-quotient {
+  display: inline-flex;
+  align-items: flex-start;
+  white-space: nowrap;
+  font:
+    26px/1.3 Georgia,
+    serif;
+  color: #3f5f40;
+}
+.stacked-expression > .cf-value,
+.stacked-coefficient,
+.stacked-plus,
+.stacked-continuation {
+  margin-top: 22px;
+}
+.stacked-expression > .cf-value {
+  line-height: 34px;
+}
+.stacked-coefficient {
+  flex-shrink: 0;
+  min-width: 34px;
+  height: 36px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font: inherit;
+  color: inherit;
+}
+.stacked-coefficient.active {
+  background: #edf0e2;
+  border-color: #c7d1b6;
+}
+.stacked-coefficient:disabled {
+  opacity: 0.75;
+}
+.stacked-plus {
+  padding: 0 8px;
+}
+.stacked-reciprocal {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.stacked-numerator {
+  text-align: center;
+  height: 38px;
+}
+.stacked-denominator {
+  border-top: 1px solid currentColor;
+  padding: 0 7px;
+}
+.stacked-continuation {
+  display: inline-block;
+  padding: 0 5px;
+}
 .cf-expression {
   display: flex;
   align-items: center;
