@@ -216,21 +216,6 @@ export function HalfPlane({
         });
       draw(triangulation, "#d9b65a40");
     }
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "#e7e9e1";
-    const gridStep = Math.pow(10, Math.floor(Math.log10(80 / scale)));
-    for (let x = Math.ceil(min / gridStep) * gridStep; x < max; x += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(X(x), 0);
-      ctx.lineTo(X(x), bottom);
-      ctx.stroke();
-    }
-    for (let h = gridStep; h < bottom / scale; h += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(0, Y(h));
-      ctx.lineTo(size.width, Y(h));
-      ctx.stroke();
-    }
     const edge = (l: number, r: number, color: string, width = 1) => {
       const radius = ((r - l) * scale) / 2,
         cx = X((l + r) / 2);
@@ -389,7 +374,7 @@ export function HalfPlane({
     ctx.fillStyle = "#788077";
     ctx.textAlign = "center";
     const tickStep = Math.max(
-      gridStep,
+      Math.pow(10, Math.floor(Math.log10(80 / scale))),
       Math.pow(10, Math.ceil(Math.log10(55 / scale))) / 2,
     );
     for (
