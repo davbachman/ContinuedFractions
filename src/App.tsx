@@ -1947,11 +1947,10 @@ export default function App() {
           grouped by coefficient, with the initial and terminal offsets shown
           explicitly. Selecting a coefficient highlights its run; “Go to
           selected run” seeks it. Changing α rebuilds the path; stepping the
-          path preserves α. “Explain this flip” replaces the diagram with its
-          unfolded quadrilateral. H² playback also advances the follow-target
-          path at its crossing times; flip steps seek those times. Rectangle
-          stages keep their own clock unless “Synchronize by coefficient” is
-          enabled.
+          path preserves α. The caption names the retained and replaced slopes.
+          H² playback also advances the follow-target path at its crossing
+          times; flip steps seek those times. Rectangle stages keep their own
+          clock unless “Synchronize by coefficient” is enabled.
         </p>
         <h3>Marked tangles</h3>
         <p>

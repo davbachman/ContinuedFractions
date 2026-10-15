@@ -2112,8 +2112,7 @@ footer,
   gap: 24px;
   padding: 0 20px;
 }
-.triangulation-grid h3,
-.flip-patch h3 {
+.triangulation-grid h3 {
   font:
     17px Georgia,
     serif;
@@ -2165,21 +2164,6 @@ footer,
   border-radius: 4px;
   padding: 7px 9px;
 }
-.flip-patch {
-  padding: 8px 20px;
-  border-top: 1px solid #dbe3cf;
-}
-.flip-patch > p {
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.flip-patch svg {
-  display: block;
-  height: 260px;
-  width: 100%;
-  max-width: 700px;
-  margin: auto;
-}
 .flip-history {
   display: flex;
   gap: 8px;
@@ -2199,32 +2183,8 @@ footer,
   background: #e9dfba;
   border-color: #9a8a50;
 }
-.flip-animating .old-flip-diagonal {
-  animation: old-flip 0.7s ease both;
-}
-.flip-animating .new-flip-diagonal {
-  animation: new-flip 0.7s ease both;
-}
 .flip-incident-triangles {
   filter: saturate(1.6);
-}
-@keyframes old-flip {
-  0%,
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.15;
-  }
-}
-@keyframes new-flip {
-  0%,
-  35% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
 }
 @media (max-width: 750px) {
   .triangulation-grid {
@@ -2239,17 +2199,7 @@ footer,
   .triangulation-panel button {
     min-height: 44px;
   }
-  .flip-patch {
-    padding: 8px 12px;
-  }
 }
-@media (prefers-reduced-motion: reduce) {
-  .flip-animating .old-flip-diagonal,
-  .flip-animating .new-flip-diagonal {
-    animation: none;
-  }
-}
-
 /* Two selectable representations, with shared mathematical state. */
 .comparison-shell .intro {
   padding: 20px 0 16px;
@@ -2832,15 +2782,6 @@ svg[data-rotation] * {
 }
 .flip-details p {
   overflow-wrap: anywhere;
-}
-.flip-focused .flip-patch {
-  padding: 8px 16px;
-}
-.flip-focused .flip-patch h3 {
-  margin: 0;
-}
-.flip-focused .flip-patch > p {
-  margin: 5px 0;
 }
 .flip-run-actions {
   padding: 3px 16px 8px;

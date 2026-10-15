@@ -42,7 +42,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
       exact: true,
     }),
   ).toBeHidden();
-  await expect(right.locator(".flip-patch")).toBeHidden();
+  await expect(button(right, "Explain this flip")).toHaveCount(0);
   await expect(
     left.getByText("Following α automatically", { exact: true }),
   ).toBeVisible();
@@ -97,7 +97,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
     ),
   ).toBe(true);
 });
-test("target-path navigation works from either pane; inspector and cameras preserve shared slopes and undo", async ({
+test("target-path navigation works from either pane; the square stays visible and cameras preserve shared slopes and undo", async ({
   page,
 }, info) => {
   await page.goto("/?left=farey&right=triangulation");
@@ -120,18 +120,14 @@ test("target-path navigation works from either pane; inspector and cameras prese
       exact: true,
     }),
   ).toHaveAttribute("data-slopes", "0 | ∞ | 1");
-  await button(right, "Explain this flip").click();
-  await expect(square).toBeHidden();
+  await expect(button(right, "Explain this flip")).toHaveCount(0);
   await expect(
     right.getByRole("img", { name: "Universal-cover flip quadrilateral" }),
-  ).toBeVisible();
-  await right.getByLabel("Tiled-plane inset", { exact: true }).check();
-  await button(right, "Fixed-basis patch").click();
+  ).toHaveCount(0);
   await expect(square).toHaveAttribute("data-slopes", "0 | ∞ | 1");
   await right.locator(".triangulation-panel").screenshot({
-    path: `test-results/${info.project.name}-flip-inspector.png`,
+    path: `test-results/${info.project.name}-marked-square.png`,
   });
-  await button(right, "Back to diagram").click();
   await expect(square).toBeVisible();
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })

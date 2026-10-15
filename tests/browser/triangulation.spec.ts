@@ -151,11 +151,8 @@ test("wrapped edges, model and camera changes, path navigation and persistence p
   const slopes = await torus.getAttribute("data-slopes");
   await expect(torus).toHaveAttribute("data-slopes", slopes!);
   await page.getByLabel("Puncture at vertex", { exact: true }).check();
-  await button(page, "Explain this flip").click();
-  await page.getByLabel("Tiled-plane inset", { exact: true }).check();
-  await page.getByLabel("Tiled-plane inset", { exact: true }).uncheck();
-  await button(page, "Fixed-basis patch").click();
-  await button(page, "Affine patch close-up").click();
+  await expect(button(page, "Explain this flip")).toHaveCount(0);
+  await expect(torus).toBeVisible();
   await page.setViewportSize({
     width: info.project.name === "mobile" ? 412 : 1100,
     height: 950,
@@ -164,15 +161,9 @@ test("wrapped edges, model and camera changes, path navigation and persistence p
   await button(page, "Previous flip step").click();
   await button(page, "Next flip step").click();
   await expect(torus).toHaveAttribute("data-slopes", slopes!);
-  await button(page, "Back to diagram").click();
   await page
     .locator(".triangulation-grid")
     .screenshot({ path: `test-results/${info.project.name}-marked-flips.png` });
-  await button(page, "Explain this flip").click();
-  await page.getByLabel("Tiled-plane inset", { exact: true }).check();
-  await page
-    .locator(".flip-patch")
-    .screenshot({ path: `test-results/${info.project.name}-flip-patch.png` });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
@@ -228,9 +219,8 @@ test("flip animation highlights the old incident triangles before revealing the 
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await button(page, "Next flip step").click();
-  await expect(page.locator(".flip-animating")).toHaveCount(1);
   await expect(page.locator(".flip-incident-triangles")).toHaveCount(1);
-  await expect(page.locator(".flip-animating")).toHaveCount(0, {
+  await expect(page.locator(".flip-incident-triangles")).toHaveCount(0, {
     timeout: 2500,
   });
   await expect(

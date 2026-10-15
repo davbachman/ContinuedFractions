@@ -18,9 +18,8 @@ import {
   followStatus,
   coefficientFlipRun,
   type TriangulationState,
-  type Vector,
 } from "../math/triangulation";
-import { flipColors, ratio } from "./triangulationGeometry";
+import { flipColors } from "./triangulationGeometry";
 import { useFlipPlayback } from "../useFlipPlayback";
 import { FareyDisk } from "./FareyDisk";
 import { fareyTriangleColor, FAREY_FILL_OPACITY } from "./fareyColors";
@@ -62,18 +61,14 @@ export function MarkedTriangulation(props: Props) {
     tri = path[state.cursor];
   const [selected, setSelected] = useState(2),
     [puncture, setPuncture] = useState(false),
-    [tiled, setTiled] = useState(false),
-    [affine, setAffine] = useState(true),
     [localPlaying, setLocalPlaying] = useState(false),
     [localView, setLocalView] = useState<"square" | "farey">("square"),
-    [inspectFlip, setInspectFlip] = useState(false),
     [transition, setTransition] = useState<ReturnType<
       typeof flipDetails
     > | null>(null);
   const playing = props.playback?.playing ?? localPlaying;
   const setPlaying = props.playback?.onChange ?? setLocalPlaying;
   const view = props.view ?? localView;
-  useEffect(() => setInspectFlip(false), [view]);
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const previous = useRef(tri);
   const previousSpec = useRef(spec);
@@ -173,33 +168,6 @@ export function MarkedTriangulation(props: Props) {
   const operation =
     transition ??
     flipDetails(path[operationIndex], state.steps[operationIndex]?.edge ?? 2);
-  const extent = operation.quad.reduce(
-    (m, v) =>
-      [v.x < 0n ? -v.x : v.x, v.y < 0n ? -v.y : v.y].reduce(
-        (a, b) => (a > b ? a : b),
-        m,
-      ),
-    1n,
-  );
-  const u = operation.quad[1],
-    v = operation.quad[3],
-    det = u.x * v.y - u.y * v.x;
-  const qp = (w: Vector) =>
-    affine
-      ? {
-          x: 110 + 160 * Number((w.x * v.y - w.y * v.x) / det),
-          y: 270 - 160 * Number((u.x * w.y - u.y * w.x) / det),
-        }
-      : {
-          x: 190 + 120 * ratio(w.x, extent),
-          y: 180 - 120 * ratio(w.y, extent),
-        };
-  const pts = operation.quad.map(qp),
-    left = Math.min(...pts.map((p) => p.x)),
-    right = Math.max(...pts.map((p) => p.x)),
-    top = Math.min(...pts.map((p) => p.y)),
-    bottom = Math.max(...pts.map((p) => p.y));
-  const patchView = `${left - 40} ${top - 40} ${Math.max(100, right - left + 80)} ${Math.max(100, bottom - top + 80)}`;
   const square = (p: { x: number; y: number }) => ({
     x: 45 + 260 * p.x,
     y: 305 - 260 * p.y,
@@ -284,14 +252,6 @@ export function MarkedTriangulation(props: Props) {
       )}
       <div className="tangle-controls" role="group" aria-label="Target path">
         <span className="small-tag">Following α automatically</span>
-        {view === "square" && hasOperation && (
-          <button
-            aria-pressed={inspectFlip}
-            onClick={() => setInspectFlip(!inspectFlip)}
-          >
-            {inspectFlip ? "Back to diagram" : "Explain this flip"}
-          </button>
-        )}
       </div>
       <p
         className="flip-run-caption"
@@ -315,10 +275,7 @@ export function MarkedTriangulation(props: Props) {
           {label(operation.removed)} with {label(operation.inserted)}.
         </p>
       )}
-      <div
-        className="triangulation-grid"
-        hidden={view === "square" && inspectFlip && hasOperation}
-      >
+      <div className="triangulation-grid">
         <div hidden={view !== "square"}>
           <svg
             viewBox="0 0 380 370"
@@ -483,120 +440,6 @@ export function MarkedTriangulation(props: Props) {
           )}
         </div>
       </div>
-      {view === "square" && hasOperation && (
-        <div className="flip-patch" hidden={!inspectFlip}>
-          <h3>Why this flip works</h3>
-          <p>
-            Unfold the two incident triangles. Keep the quadrilateral’s boundary
-            and exchange its diagonal.
-          </p>
-          <label>
-            <input
-              type="checkbox"
-              checked={tiled}
-              onChange={(e) => setTiled(e.target.checked)}
-            />
-            Tiled-plane inset
-          </label>
-          <div className="tangle-controls">
-            <button aria-pressed={affine} onClick={() => setAffine(true)}>
-              Affine patch close-up
-            </button>
-            <button aria-pressed={!affine} onClick={() => setAffine(false)}>
-              Fixed-basis patch
-            </button>
-          </div>
-          <p className="topology-note">
-            {affine
-              ? "Affine close-up in the two retained-edge directions; vertex labels and the tiled grid retain their original coordinates. This changes only the display, not the torus marking."
-              : "Unfolded patch in the fixed meridian–longitude coordinates; deep flips can produce very thin quadrilaterals."}
-          </p>
-          <svg
-            viewBox={patchView}
-            role="img"
-            aria-label="Universal-cover flip quadrilateral"
-            className={transition ? "flip-animating" : ""}
-            key={triangleKey(operation.before) + operation.edge + state.cursor}
-          >
-            {tiled &&
-              extent <= 12n &&
-              Array.from({ length: 49 }, (_, i) => i - 24).flatMap((i) => {
-                const n = BigInt(i);
-                return [
-                  <path
-                    key={`x${i}`}
-                    d={svgPath([qp({ x: n, y: -24n }), qp({ x: n, y: 24n })])}
-                    stroke="#d9dfd1"
-                  />,
-                  <path
-                    key={`y${i}`}
-                    d={svgPath([qp({ x: -24n, y: n }), qp({ x: 24n, y: n })])}
-                    stroke="#d9dfd1"
-                  />,
-                ];
-              })}
-            {operation.triangles.map((t, i) => (
-              <path
-                key={i}
-                d={svgPath(t.map(qp)) + "Z"}
-                fill={fareyTriangleColor(operation.before)}
-                fillOpacity={FAREY_FILL_OPACITY}
-                stroke="#60755f"
-              />
-            ))}
-            {operation.quad.map((w, i) => {
-              const retainedSlots = [0, 1, 2].filter(
-                (j) => j !== operation.edge,
-              );
-              return (
-                <path
-                  key={`edge${i}`}
-                  d={svgPath([qp(w), qp(operation.quad[(i + 1) % 4])])}
-                  stroke={flipColors[retainedSlots[i % 2]]}
-                  strokeWidth={2}
-                  fill="none"
-                />
-              );
-            })}
-            <path
-              className="old-flip-diagonal"
-              d={svgPath(operation.oldDiagonal.map(qp))}
-              stroke={flipColors[operation.edge]}
-              strokeWidth={3}
-              strokeDasharray="6 4"
-              fill="none"
-            />
-            <path
-              className="new-flip-diagonal"
-              d={svgPath(operation.newDiagonal.map(qp))}
-              stroke={flipColors[operation.edge]}
-              strokeWidth={3}
-              fill="none"
-            />
-            {operation.quad.map((v, i) => {
-              const p = qp(v);
-              return (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r={3} fill="#425b48" />
-                  <text x={p.x + 4} y={p.y - 7} fontSize={10}>
-                    ({String(v.x).length > 10 ? "large" : String(v.x)},{" "}
-                    {String(v.y).length > 10 ? "large" : String(v.y)})
-                    <title>
-                      ({String(v.x)}, {String(v.y)})
-                    </title>
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-          <p className="topology-note">
-            Dashed: old diagonal. Solid: replacement. The quadrilateral is
-            reconstructed upstairs, even when its edges wrap across several
-            copies of the square. Apparent boundary meetings need not be new
-            vertices.
-          </p>
-        </div>
-      )}
       <div
         className="flip-slope-strip"
         aria-label="Current triangulation slopes"
