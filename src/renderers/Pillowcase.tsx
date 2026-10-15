@@ -18,12 +18,15 @@ export function Pillowcase({
   onError: (message: string) => void;
 }) {
   const [rotation, setRotation] = useState(-0.7),
+    [roll, setRoll] = useState(0),
     [slope, setSlope] = useState(label(fraction));
   const rotationControls = useSurfaceRotation(
     rotation,
     setRotation,
     true,
     -0.7,
+    roll,
+    setRoll,
   );
   useEffect(() => setSlope(label(fraction)), [fraction]);
   const data = useMemo(() => meridianCurves(fraction), [fraction]);
@@ -38,13 +41,14 @@ export function Pillowcase({
                 : { x: i / 80, y: (k - 12) / 12 },
             ),
             rotation,
+            roll,
           ),
         ),
       ),
-    [rotation],
+    [rotation, roll],
   );
   const torus = (p: { x: number; y: number }) =>
-    surfaceProjection(embeddedTorus(p), rotation);
+    surfaceProjection(embeddedTorus(p), rotation, roll);
   return (
     <div className="pillowcase-panel">
       <p className="topology-note">

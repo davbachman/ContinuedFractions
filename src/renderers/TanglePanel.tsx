@@ -1,3 +1,4 @@
+import { rollCameraPoint } from "./geometry";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useEffect, useMemo, useState } from "react";
 import { type NumberSpec, specLabel } from "../math/continuedFraction";
@@ -50,7 +51,8 @@ export function TanglePanel({
   const [localMode, setMode] = useState<"tangle" | "pillowcase">("tangle"),
     [localClosed, setClosed] = useState(false),
     [three, setThree] = useState(false),
-    [rotation, setRotation] = useState(0.45),
+    [rotation, setRotation] = useState(-0.45),
+    [roll, setRoll] = useState(0),
     [zoom, setZoom] = useState(1),
     [region, setRegion] = useState(-1),
     [draft, setDraft] = useState("1");
@@ -100,17 +102,23 @@ export function TanglePanel({
     rotation,
     setRotation,
     lifted,
-    0.45,
+    -0.45,
+    roll,
+    setRoll,
   );
   const project = (p: { x: number; y: number }, z = 0) => {
     const x = p.x - diagram.width / 2,
       y = p.y - diagram.height / 2,
-      xx = x * Math.cos(rotation) + z * Math.sin(rotation),
-      depth = -x * Math.sin(rotation) + z * Math.cos(rotation);
+      xx = x * Math.cos(rotation) - z * Math.sin(rotation),
+      depth = x * Math.sin(rotation) + z * Math.cos(rotation);
+    const q = rollCameraPoint(
+      { x: xx, y: -y * 0.88 + depth * 0.4, depth: y * 0.4 + depth * 0.88 },
+      roll,
+    );
     return {
-      x: diagram.width / 2 + xx,
-      y: diagram.height / 2 + y * 0.88 - depth * 0.4,
-      depth: y * 0.4 + depth * 0.88,
+      x: diagram.width / 2 + q.x,
+      y: diagram.height / 2 - q.y,
+      depth: q.depth,
     };
   };
   const over = new Set(diagram.crossings.map((c) => c.over)),

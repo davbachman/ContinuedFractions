@@ -13,11 +13,14 @@ test("surface gestures preserve scene state, support keyboard reset and cancella
   const surface = page.getByRole("img", { name: /Schematic punctured sphere/ });
   await expect(page.getByRole("slider", { name: /Rotate/ })).toHaveCount(0);
   await surface.press("ArrowRight");
-  expect(Number(await surface.getAttribute("data-rotation"))).toBeCloseTo(-0.3);
+  expect(Number(await surface.getAttribute("data-rotation"))).toBeCloseTo(-0.5);
   await expect(time).toHaveValue("5");
+  await surface.press("ArrowDown");
+  expect(Number(await surface.getAttribute("data-roll"))).toBeCloseTo(-0.1);
   await surface.press("Home");
+  await expect(surface).toHaveAttribute("data-roll", "0");
   await expect(surface).toHaveAttribute("data-rotation", "-0.4");
-  await surface.scrollIntoViewIfNeeded();
+  await surface.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const trail = surface
     .locator('[data-surface-trail][data-surface-front="true"]')
     .first();
@@ -29,15 +32,30 @@ test("surface gestures preserve scene state, support keyboard reset and cancella
   });
   await page.mouse.move(point.x, point.y);
   await page.mouse.down();
-  await page.mouse.move(point.x + 30, point.y, { steps: 3 });
+  await page.mouse.move(point.x + 30, point.y + 30, { steps: 3 });
   await expect(surface).not.toHaveAttribute("data-rotation", "-0.4");
   await page.keyboard.press("Escape");
   await page.mouse.up();
   await expect(surface).toHaveAttribute("data-rotation", "-0.4");
   await expect(time).toHaveValue("5");
+  await expect(surface).toHaveAttribute("data-roll", "0");
   // A fresh click still seeks, even after a cancelled drag began on a curve.
   await page.mouse.click(point.x, point.y);
   await expect(time).not.toHaveValue("5");
+  const clickedTime = await time.inputValue();
+  const box = (await surface.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 35, {
+    steps: 4,
+  });
+  await page.mouse.up();
+  await expect(surface).not.toHaveAttribute("data-roll", "0");
+  await expect(surface).toHaveAttribute("data-rotation", "-0.4");
+  await expect(time).toHaveValue(clickedTime);
+  await surface.screenshot({
+    path: `test-results/${info.project.name}-rolled-orbifold.png`,
+  });
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await expect(
     page.getByRole("button", { name: "Undo number edit" }),

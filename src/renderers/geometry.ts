@@ -16,11 +16,23 @@ export function schematicPoint(p: Point): [number, number, number] {
 export function project3d(
   p: readonly number[],
   rotation: number,
+  roll = 0,
 ): Point & { depth: number } {
   const [x, y, z] = p,
     cos = Math.cos(rotation),
     sin = Math.sin(rotation),
     xx = x * cos - y * sin,
     yy = x * sin + y * cos;
-  return { x: xx, y: z * 0.88 - yy * 0.45, depth: yy * 0.88 + z * 0.45 };
+  return rollCameraPoint(
+    { x: xx, y: z * 0.88 - yy * 0.45, depth: yy * 0.88 + z * 0.45 },
+    roll,
+  );
+}
+
+// Roll forward/back about the camera's horizontal axis, before screen scaling.
+// Rotate depth with height so surfaces, seams and rear trails stay aligned.
+export function rollCameraPoint(p: Point & { depth: number }, roll: number) {
+  const c = Math.cos(roll),
+    s = Math.sin(roll);
+  return { x: p.x, y: p.y * c + p.depth * s, depth: p.depth * c - p.y * s };
 }

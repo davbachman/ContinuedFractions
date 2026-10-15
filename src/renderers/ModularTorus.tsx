@@ -1,4 +1,5 @@
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
+import { rollCameraPoint } from "./geometry";
 import type { SelectedRun } from "./selectedRun";
 import { useMemo, useState } from "react";
 import {
@@ -24,14 +25,18 @@ import {
   type SurfaceLine,
 } from "./TranslucentSurface";
 import { torusDomainColor } from "./torusDomains";
-export function surfaceProjection(p: readonly number[], rotation: number) {
+export function surfaceProjection(
+  p: readonly number[],
+  rotation: number,
+  roll = 0,
+) {
   const x = p[0] * Math.cos(rotation) - p[1] * Math.sin(rotation),
     d = p[0] * Math.sin(rotation) + p[1] * Math.cos(rotation);
-  return {
-    x: 190 + x * 73,
-    y: 190 - (p[2] * 0.85 - d * 0.52) * 95,
-    depth: d * 0.85 + p[2] * 0.52,
-  };
+  const q = rollCameraPoint(
+    { x, y: p[2] * 0.85 - d * 0.52, depth: d * 0.85 + p[2] * 0.52 },
+    roll,
+  );
+  return { x: 190 + q.x * 73, y: 190 - q.y * 95, depth: q.depth };
 }
 export const svgPath = (points: readonly Point[]) =>
   points
@@ -58,6 +63,7 @@ export function ModularTorus({
 }) {
   const [mode, setMode] = useState<"flat" | "surface">("flat"),
     [rotation, setRotation] = useState(-0.6),
+    [roll, setRoll] = useState(0),
     [edges, setEdges] = useState(true),
     [trail, setTrail] = useState(true),
     [labels, setLabels] = useState(true);
@@ -66,6 +72,8 @@ export function ModularTorus({
     setRotation,
     mode === "surface",
     -0.6,
+    roll,
+    setRoll,
   );
   const active = segments.find((s) => time >= s.start && time <= s.end),
     z = { x: alpha, y: heightAt(time) },
@@ -76,7 +84,7 @@ export function ModularTorus({
   const project = (p: Point, j: number) =>
     mode === "flat"
       ? { x: 190 + 155 * coverHex(p, j).x, y: 190 - 155 * coverHex(p, j).y }
-      : surfaceProjection(coverSurface(p, j), rotation);
+      : surfaceProjection(coverSurface(p, j), rotation, roll);
   const current = project(p, sheet),
     moved = project({ x: p.x + v.x * 1e-5, y: p.y + v.y * 1e-5 }, sheet),
     norm = Math.hypot(moved.x - current.x, moved.y - current.y) || 1;
@@ -103,6 +111,7 @@ export function ModularTorus({
                 }),
               ),
               rotation,
+              roll,
             );
           });
           out.push({
@@ -112,7 +121,7 @@ export function ModularTorus({
           });
         }
     return out.sort((a, b) => a.depth - b.depth);
-  }, [rotation]);
+  }, [rotation, roll]);
   const surfaceEdges: SurfaceLine[] = [
     ...Array.from({ length: 6 }, (_, j) => ({
       side: "T" as const,
@@ -125,6 +134,7 @@ export function ModularTorus({
             j,
           ),
           rotation,
+          roll,
         ),
       ),
     })),
@@ -137,6 +147,7 @@ export function ModularTorus({
         return surfaceProjection(
           coverSurface({ x, y: Math.sqrt(1 - x * x) }, j),
           rotation,
+          roll,
         );
       }),
     })),
@@ -148,7 +159,7 @@ export function ModularTorus({
       points.push({ ...apply(s.matrix, z), time });
     return {
       points: points.map((p) =>
-        surfaceProjection(coverSurface(p, j), rotation),
+        surfaceProjection(coverSurface(p, j), rotation, roll),
       ),
       color: "#ac4029",
       width: 2.5,
@@ -310,6 +321,7 @@ export function ModularTorus({
                     surfaceProjection(
                       coverSurface(p, coverSheet(s.matrix, lift)),
                       rotation,
+                      roll,
                     ),
                   ),
                   color: selectedRun.color,

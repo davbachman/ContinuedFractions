@@ -28,12 +28,15 @@ export function Quotient({
 }: Props) {
   const id = useId();
   const [mode, setMode] = useState<"folded" | "schematic">("folded"),
-    [rotation, setRotation] = useState(-0.4);
+    [rotation, setRotation] = useState(-0.4),
+    [roll, setRoll] = useState(0);
   const rotationControls = useSurfaceRotation(
     rotation,
     setRotation,
     mode === "schematic",
     -0.4,
+    roll,
+    setRoll,
   );
   const active = segments.find((s) => time >= s.start && time <= s.end),
     z = { x: alpha, y: heightAt(time) },
@@ -58,8 +61,14 @@ export function Quotient({
       .map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(3)},${p.y.toFixed(3)}`)
       .join(" ");
   const schematic = (p: { x: number; y: number }) => {
-    const q = project3d(schematicPoint(p), rotation);
-    return { x: 190 + q.x * 125, y: 250 - q.y * 130, depth: q.depth };
+    const [x, y, z] = schematicPoint(p);
+    // Roll around the model's center, keeping the default framing unchanged.
+    const q = project3d([x, y, z - 0.35], rotation, roll);
+    return {
+      x: 190 + q.x * 125,
+      y: 250 - (q.y + 0.35 * 0.88) * 130,
+      depth: q.depth,
+    };
   };
   const surface = useMemo(() => {
     const at = (u: number, h: number) => {
@@ -94,7 +103,7 @@ export function Quotient({
       },
     ];
     return { faces, edges };
-  }, [rotation]);
+  }, [rotation, roll]);
   function selectTracePoint(
     event: MouseEvent<SVGPathElement>,
     points: readonly { x: number; y: number; time: number }[],
