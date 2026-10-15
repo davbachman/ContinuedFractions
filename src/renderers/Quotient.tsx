@@ -277,9 +277,8 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
                     color: "#b74d29",
                     width: 2.5,
                     trail: true,
-                    onSelect: () =>
-                      points.length &&
-                      onSeek(points[Math.floor(points.length / 2)].time),
+                    onSelect: (event: MouseEvent<SVGPathElement>) =>
+                      selectTracePoint(event, points),
                   })),
                 ]}
               />

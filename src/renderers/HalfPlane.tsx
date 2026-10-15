@@ -1,3 +1,9 @@
+import { flip, type Triangulation } from "../math/triangulation";
+import {
+  planeTriangle,
+  insidePolygon,
+  flipColors,
+} from "./triangulationGeometry";
 import { useEffect, useRef, useState } from "react";
 import { ZoomIn, ZoomOut, LocateFixed, Move } from "lucide-react";
 import { type Scene } from "../state";
@@ -10,6 +16,8 @@ import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
 import { heightAt } from "../math/trajectory";
 type Props = {
   scene: Scene;
+  triangulation?: Triangulation;
+  onFlipTriangle?: (edge: number) => void;
   crossings: readonly Crossing[];
   selectedTerm: number;
   onInspect: (r: Rational) => void;
@@ -19,6 +27,8 @@ type Props = {
 };
 export function HalfPlane({
   scene,
+  triangulation,
+  onFlipTriangle,
   crossings,
   selectedTerm,
   onInspect,
@@ -31,6 +41,9 @@ export function HalfPlane({
     [zoom, setZoom] = useState(1),
     [baseCenter, setBaseCenter] = useState(() => approximate(scene.spec)),
     [anchorTime, setAnchorTime] = useState(scene.time);
+  const triangleTargets = useRef<
+    { edge: number; points: { x: number; y: number }[] }[]
+  >([]);
   const targets = useRef<
       { x: number; y: number; radius: number; r: Rational }[]
     >([]),
@@ -61,6 +74,13 @@ export function HalfPlane({
     if (!d) return;
     if (d.endpoint) onEndpointEnd(cancelled);
     else if (!cancelled && Math.abs(d.lastX - d.x) < 4) {
+      const neighbor = triangleTargets.current.find((t) =>
+        insidePolygon({ x: d.x, y: d.y }, t.points),
+      );
+      if (neighbor && onFlipTriangle) {
+        onFlipTriangle(neighbor.edge);
+        return;
+      }
       const target = targets.current
         .filter(
           (t) => Math.hypot(t.x - d.x, t.y - d.y) <= Math.max(t.radius, 8),
@@ -131,10 +151,34 @@ export function HalfPlane({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, size.width, size.height);
     targets.current = [];
+    triangleTargets.current = [];
     const X = (x: number) => size.width / 2 + (x - center) * scale,
       Y = (y: number) => bottom - y * scale,
       min = toWorld(0),
       max = toWorld(size.width);
+    if (triangulation) {
+      const draw = (tri: Triangulation, color: string) => {
+        const points = planeTriangle(tri, bottom / scale).map((p) => ({
+          x: X(p.x),
+          y: Y(p.y),
+        }));
+        if (!points.length) return points;
+        ctx.beginPath();
+        points.forEach((p, i) =>
+          i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y),
+        );
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        return points;
+      };
+      for (let i = 0; i < 3; i++)
+        triangleTargets.current.push({
+          edge: i,
+          points: draw(flip(triangulation, i), flipColors[i] + "15"),
+        });
+      draw(triangulation, "#d9b65a40");
+    }
     ctx.lineWidth = 1;
     ctx.strokeStyle = "#e7e9e1";
     const gridStep = Math.pow(10, Math.floor(Math.log10(80 / scale)));
@@ -224,6 +268,16 @@ export function HalfPlane({
         ctx.arc(X(arc.x), bottom, arc.radius * scale, -arc.high, -arc.low);
       }
       ctx.stroke();
+    }
+    if (triangulation) {
+      ctx.font = "bold 12px ui-monospace, monospace";
+      triangulation.forEach((r, i) => {
+        const x = r.q ? X(value(r)) : size.width - 32;
+        if (x < 0 || x > size.width) return;
+        ctx.fillStyle = flipColors[i];
+        ctx.textAlign = "center";
+        ctx.fillText(label(r), x, r.q ? bottom - 8 : 18);
+      });
     }
     for (const e of crossings.filter((e) => e.term === selectedTerm))
       edge(value(e.left), value(e.right), "#cf7448", 2.5);
@@ -328,6 +382,7 @@ export function HalfPlane({
     zoom,
     crossings,
     selectedTerm,
+    triangulation,
     scale,
     center,
     bottom,
@@ -338,6 +393,7 @@ export function HalfPlane({
     <div className="canvas-wrap">
       <canvas
         ref={canvas}
+        data-triangulation={triangulation?.map(label).join(" | ")}
         data-selected-term={selectedTerm}
         data-scale={scale}
         data-manual-zoom={zoom}

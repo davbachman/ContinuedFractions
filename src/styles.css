@@ -2209,3 +2209,149 @@ footer,
   height: 3px;
   border-radius: 2px;
 }
+.triangulation-panel {
+  margin-top: 22px;
+}
+.triangulation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 0 20px;
+}
+.triangulation-grid h3,
+.flip-patch h3 {
+  font:
+    17px Georgia,
+    serif;
+  margin: 14px 0;
+}
+.triangulation-grid svg {
+  display: block;
+  width: 100%;
+  max-height: 410px;
+}
+.triangulation-panel [role="button"] {
+  cursor: pointer;
+}
+.triangulation-panel [aria-disabled="true"] {
+  cursor: default;
+}
+.triangulation-panel [role="button"]:focus-visible {
+  outline: 3px solid #b4ac78;
+  outline-offset: 3px;
+}
+.triangulation-panel button {
+  min-height: 40px;
+}
+.flip-edge-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 10px 20px;
+}
+.flip-edge-controls > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 3px solid;
+  padding: 10px;
+  background: #f4f5ec;
+  align-items: center;
+}
+.flip-edge-controls strong {
+  width: 100%;
+  font:
+    24px Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+.flip-edge-controls button {
+  font-size: 11px;
+  border: 1px solid #cad4bd;
+  border-radius: 4px;
+  padding: 7px 9px;
+}
+.flip-patch {
+  padding: 8px 20px;
+  border-top: 1px solid #dbe3cf;
+}
+.flip-patch > p {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.flip-patch svg {
+  display: block;
+  height: 260px;
+  width: 100%;
+  max-width: 700px;
+  margin: auto;
+}
+.flip-history {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding: 10px 20px;
+}
+.flip-history button {
+  flex-shrink: 0;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  padding: 7px 10px;
+  border: 1px solid #cad4bd;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.flip-history [aria-current="step"] {
+  background: #e9dfba;
+  border-color: #9a8a50;
+}
+.flip-animating .old-flip-diagonal {
+  animation: old-flip 0.7s ease both;
+}
+.flip-animating .new-flip-diagonal {
+  animation: new-flip 0.7s ease both;
+}
+.flip-incident-triangles {
+  filter: saturate(1.6);
+}
+@keyframes old-flip {
+  0%,
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.15;
+  }
+}
+@keyframes new-flip {
+  0%,
+  35% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@media (max-width: 750px) {
+  .triangulation-grid {
+    grid-template-columns: 1fr;
+    padding: 0 12px;
+    gap: 0;
+  }
+  .flip-edge-controls {
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+  }
+  .triangulation-panel button {
+    min-height: 44px;
+  }
+  .flip-patch {
+    padding: 8px 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flip-animating .old-flip-diagonal,
+  .flip-animating .new-flip-diagonal {
+    animation: none;
+  }
+}

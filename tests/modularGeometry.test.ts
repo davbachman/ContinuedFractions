@@ -130,3 +130,44 @@ describe("adaptive modular-domain boundaries", () => {
     });
   });
 });
+
+import { S, multiply, inverse } from "../src/math/modular";
+it("S/T edge colors agree with the actual chart transition across every transformed half-spoke", () => {
+  const samples = [
+    ...[1.35, 0.4].flatMap((t, i) => [
+      {
+        x: Math.cos(t),
+        y: Math.sin(t),
+        nx: Math.cos(t),
+        ny: Math.sin(t),
+        side: i ? "T" : "S",
+      },
+      {
+        x: 1 - Math.cos(t),
+        y: Math.sin(t),
+        nx: -Math.cos(t),
+        ny: Math.sin(t),
+        side: i ? "T" : "S",
+      },
+    ]),
+    { x: 0.5, y: 0.65, nx: 1, ny: 0, side: "S" },
+    { x: 0.5, y: 1.5, nx: 1, ny: 0, side: "T" },
+  ];
+  for (const m of [
+    I,
+    T,
+    triangleMatrix({ left: rational(2n, 5n), right: rational(1n, 2n) }),
+  ])
+    for (const p of samples) {
+      const a = reduce(
+          apply(m, { x: p.x + 1e-6 * p.nx, y: p.y + 1e-6 * p.ny }),
+        ).matrix,
+        b = reduce(
+          apply(m, { x: p.x - 1e-6 * p.nx, y: p.y - 1e-6 * p.ny }),
+        ).matrix,
+        transition = matrixKey(multiply(a, inverse(b)));
+      expect(
+        p.side === "S" ? [matrixKey(S)] : [matrixKey(T), matrixKey(inverse(T))],
+      ).toContain(transition);
+    }
+});

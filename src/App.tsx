@@ -1,3 +1,11 @@
+import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
+import {
+  initialTriangulation,
+  currentTriangulation,
+  appendFlip,
+  targetItinerary,
+  type TriangulationState,
+} from "./math/triangulation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -89,6 +97,7 @@ export default function App() {
   const [viewer, setViewer] = useState<"hyperbolic" | "rectangle">(
     "hyperbolic",
   );
+  const [showTriangulation, setShowTriangulation] = useState(false);
   const [quotientView, setQuotientView] = useState<"orbifold" | "torus">(
     "orbifold",
   );
@@ -118,6 +127,10 @@ export default function App() {
   const file = useRef<HTMLInputElement>(null),
     guide = useRef<HTMLDialogElement>(null),
     endpointDragStart = useRef<Scene | null>(null);
+  const markedTriangle = useMemo(
+    () => currentTriangulation(scene.triangulation ?? initialTriangulation),
+    [scene.triangulation],
+  );
   const infinite = scene.spec.kind === "rational" && scene.spec.value.q === 0n;
   const math = useMemo(
       () => derive(scene.spec, scene.end),
@@ -221,6 +234,14 @@ export default function App() {
           ...h.present,
           spec: { kind: "rational", value: r },
           tangle: undefined,
+          ...(h.present.triangulation?.mode === "follow"
+            ? {
+                triangulation: targetItinerary(
+                  { kind: "rational", value: r },
+                  h.present.triangulation.horizon,
+                ),
+              }
+            : {}),
         },
       };
     });
@@ -381,6 +402,31 @@ export default function App() {
     else setPlaying(false);
     setSelectedTerm(i);
   }
+  function editTriangulation(
+    value: TriangulationState,
+    time?: number,
+    term?: number,
+  ) {
+    try {
+      const next = execute(history, { type: "triangulation", value, time });
+      setHistory(next);
+      setPlaying(false);
+      setRectanglePlaying(false);
+      setError("");
+      if (term !== undefined) setSelectedTerm(term);
+    } catch (error) {
+      setError((error as Error).message);
+    }
+  }
+  function flipFromPlane(edge: number) {
+    const state = scene.triangulation ?? initialTriangulation;
+    if (state.mode !== "manual") return;
+    try {
+      editTriangulation(appendFlip(state, edge, "farey"));
+    } catch (error) {
+      setError((error as Error).message);
+    }
+  }
   function editTangle(expression: TangleExpression) {
     try {
       const next = execute(history, { type: "tangle", expression });
@@ -394,6 +440,26 @@ export default function App() {
       setError((error as Error).message);
     }
   }
+  useEffect(() => {
+    const t = scene.triangulation;
+    if (t?.mode === "follow") setSelectedTerm(t.steps[t.cursor - 1]?.term ?? 0);
+  }, [scene.triangulation]);
+  useEffect(() => {
+    const t = scene.triangulation;
+    if (t?.mode !== "follow") return;
+    const cursor = t.steps.filter(
+      (s) => (s.time ?? Infinity) <= scene.time + 1e-8,
+    ).length;
+    if (cursor !== t.cursor)
+      setHistory((h) =>
+        h.present.triangulation !== t
+          ? h
+          : {
+              ...h,
+              present: { ...h.present, triangulation: { ...t, cursor } },
+            },
+      );
+  }, [scene.time, scene.triangulation]);
   function editCoefficient() {
     try {
       if (!/^-?\d{1,100}$/.test(coefficient))
@@ -790,6 +856,13 @@ export default function App() {
             ) : (
               <HalfPlane
                 scene={scene}
+                triangulation={showTriangulation ? markedTriangle : undefined}
+                onFlipTriangle={
+                  (scene.triangulation ?? initialTriangulation).mode ===
+                  "manual"
+                    ? flipFromPlane
+                    : undefined
+                }
                 crossings={math.farey.crossings}
                 selectedTerm={selectedTerm}
                 onInspect={setInspect}
@@ -799,6 +872,14 @@ export default function App() {
               />
             )}
             {scene.overlays.modular && <DomainEdgeLegend />}
+            {showTriangulation && (
+              <p className="topology-note">
+                Marked triangulation: {markedTriangle.map(label).join(", ")}.{" "}
+                {(scene.triangulation ?? initialTriangulation).mode === "manual"
+                  ? "Click a shaded neighboring Farey triangle to flip its third slope; the target stays unchanged."
+                  : "Following the target itinerary; use the flip controls below."}
+              </p>
+            )}
             <div className="plot-footer">
               <span>
                 <i className="legend-line" /> α = {specLabel(scene.spec)}
@@ -1332,6 +1413,29 @@ export default function App() {
             </>
           )}
         </section>
+        <MarkedTriangulation
+          externalPlaying={playing || rectanglePlaying}
+          spec={scene.spec}
+          state={scene.triangulation}
+          speed={scene.speed}
+          onChange={editTriangulation}
+          onTarget={(r) => changeNumber({ kind: "rational", value: r })}
+          onError={setError}
+          onUndo={() => {
+            setPlaying(false);
+            setRectanglePlaying(false);
+            setHistory(undo);
+          }}
+          onRedo={() => {
+            setPlaying(false);
+            setRectanglePlaying(false);
+            setHistory(redo);
+          }}
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
+          showPlane={showTriangulation}
+          onShowPlane={setShowTriangulation}
+        />
         <TanglePanel
           spec={scene.spec}
           expression={scene.tangle}

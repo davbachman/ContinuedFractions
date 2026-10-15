@@ -2,7 +2,7 @@
 
 ## Scope and exact numbers
 
-The original quotient is the modular orbifold (one cusp, cone orders 2 and 3). The expanded application also implements its schematic atlas, the six-sheet commutator torus, marked rational tangles, and the separate branched-cover torus/pillowcase. Their conventions, checked source sections, and derivations are documented in [TOPOLOGY.md](TOPOLOGY.md). Marked triangulation flips and lens-space labels are not implemented.
+The original quotient is the modular orbifold (one cusp, cone orders 2 and 3). The expanded application also implements its schematic atlas, the six-sheet commutator torus, marked rational tangles, and the separate branched-cover torus/pillowcase. Their conventions, checked source sections, and derivations are documented in [TOPOLOGY.md](TOPOLOGY.md). Marked two-triangle torus flips are now implemented with the fixed-basis conventions in that document. Lens-space labels and tetrahedron layering are not implemented.
 
 Rationals are normalized BigInt pairs with positive denominator. Infinity is the single projective value 1/0, supported by the kernel but not a finite vertical endpoint. Negative continued fractions use floor division. Finite regular expressions have positive tail coefficients and are canonicalized to a final term > 1. An alternate ending preserves value. Decimal input is an exact decimal rational, never an inferred irrational. A finite prefix either terminates or is explicitly completed with an infinite tail of ones. Presets φ=[1;overline(1)] and √2=[1;overline(2)] retain their periodic specifications.
 

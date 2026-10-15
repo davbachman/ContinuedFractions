@@ -16,7 +16,7 @@ Start at **5/13 = [0; 2, 1, 1, 2]**, or select 7/19, 355/113, φ, or √2. Enter
 - Select a coefficient to inspect its convergent, error, determinant, and actual crossing run. Edit it to recompute the scene; undo/redo restores number edits.
 - Inspect a Ford circle without changing the endpoint. Use **Use this endpoint** to apply it. Drag the α handle on the real axis to update the endpoint and every view immediately. Playback pauses during the drag, and the entire gesture is one undoable edit. Simple rationals with denominator at most 64 snap within 6 screen pixels; at deeper zoom, other positions use an explicitly rounded decimal rational.
 - Compare the folded modular domain with the rotatable **Schematic 3D** quotient. Paired seams represent the same points; the curve never draws a false chord across a seam.
-- **Download**, **Load**, or **Share scene**. Exact integers are serialized as decimal strings in versioned JSON (version 3 includes signed tangle operations; versions 1 and 2 still import). A scene is also saved in local browser storage.
+- **Download**, **Load**, or **Share scene**. Exact integers are serialized as decimal strings in versioned JSON (version 4 includes signed tangles and marked-triangulation flip history; versions 1–3 still import). A scene is also saved in local browser storage.
 - On mobile, switch visual panels without changing the underlying state. Essential actions have labeled controls and touch support.
 
 ## Rectangle dissection
@@ -53,6 +53,20 @@ The **Marked rational tangle** panel shares the exact number and undo history wi
 - Choose **Branched-cover torus / pillowcase** to see the two parallel meridians and their common separating curve on the four-marked sphere. This is a separate construction from the six-sheet hyperbolic cover. Edit **Marked slope**, apply **Dehn twist ±1**, or **Lift quarter-turn**; the verified marking sends these to the corresponding tangle operations. The torus rotates independently. Curves are drawn when |p|+q≤512; larger slopes retain exact controls and display a limit notice.
 
 View choices, diagram zoom, closures, and camera angles are session UI settings. Scene JSON and shared links preserve the exact number and signed operation word, including zero and infinity. No external diagrams or mesh assets are required.
+
+## Marked torus edge flips
+
+The **Marked torus · edge flips** panel starts with slopes **0, ∞, 1** in the fixed meridian–longitude basis. A slope p/q represents the primitive vector (q,p), up to overall sign. This editor uses the Farey combinatorial correspondence; it does not assign a homology slope to the moving ray on the six-sheet hyperbolic cover.
+
+- In **Manual flips**, click an edge in the square or its **Flip edge** button. Both copies of a boundary edge select the same class; all three classes flip. The two incident triangles highlight, and the unfolded quadrilateral animates its diagonal exchange. The operation caption lists retained, removed, and inserted slopes. Reduced-motion preferences show the result immediately.
+- The square draws wrapped edges with exact boundary splits. **Puncture at vertex** removes the single identified corner class. **Tiled-plane inset** shows the unit grid in the unfolded patch. Choose **Affine patch close-up** to enlarge a thin quadrilateral, or **Fixed-basis patch** to see its actual shape; neither changes the marked slopes.
+- Click a neighboring triangle in the accompanying Farey disk to perform the same flip. **Show triangulation in H²** highlights the triangle and its three slope labels in the existing viewer, where shaded neighboring triangles are also clickable in manual mode. The disk's camera controls only change the display. Edge-class colors persist through flips; these slope colors are separate from the modular-domain S/T side-pairing colors.
+- Manual flips leave the target α unchanged. **Use this slope as target** explicitly applies a slope to the shared continued fraction, H² endpoint, rectangle, and tangle state.
+- **Follow target** starts in the Farey triangle above [floor α, floor α+1]. **Play flips**, **Previous/Next flip step**, and the recorded-path buttons navigate its itinerary. The existing H² play/reverse/scrub controls synchronize the flip position, and coefficient highlighting uses the existing crossing-run offsets. Integer rays lie on a Farey edge: the right-hand triangle is displayed and no ambiguous automatic crossing is invented. Infinity has no finite vertical-ray itinerary.
+- A rational stops at the final generated triangle incident to its cusp, provided it lies within the display budget. This is not arrival at the ideal endpoint in finite hyperbolic time. Irrational itineraries extend with **Extend flip itinerary**, up to t=24 and **512 crossings**; incomplete rational and infinite itineraries are labeled explicitly.
+- The dotted dual-tree walk and chronological flip records preserve backtracks. Previous/next navigation retains later steps; a new manual flip branches at the current position. **Undo/Redo shared edit** uses the same history as number edits. **Reset triangulation** restores 0, ∞, 1 without changing α. Version 4 scenes and shared links preserve the exact start triple, flip source/index, optional crossing time/coefficient, mode, horizon, and cursor.
+
+Rendering is bounded without changing the mathematical state: an edge with |p|+q>160 is hidden with a notice, but its exact label and flip control remain usable. Face shading uses at most 180 candidate tiles per triangle; the optional unit grid is hidden when the patch's coordinate extent exceeds 12. The flip history holds up to 512 steps and shared undo retains the existing 50-edit budget. Very deep Farey triangles approach the display boundary; use **Center Farey triangle** to inspect them.
 
 ## Run locally
 
@@ -96,7 +110,7 @@ The exact kernel uses native BigInt. Rendering uses double precision with visibl
 
 Farey crossings, coefficient runs, Ford contacts, and modular seams are **different events**. Initial and terminal run offsets are derived in [MATHEMATICS.md](docs/MATHEMATICS.md) and tested independently. The modular quotient has one cusp and cone points of orders 2 and 3; it is not a torus. Its folded view uses logarithmic screen height. The 3D display is a tested topological atlas, not an isometric embedding or a claim about Euclidean geodesics.
 
-**Implemented:** the original number/Farey/Ford views, modular orbifold atlas, rectangle dissection, six-sheet commutator cover, marked rational tangles and numerator closures, and the separate branched-cover torus/pillowcase. Marked triangulation flips and lens-space labels remain outside this expansion. The verified conventions, derivations, and source sections are in [TOPOLOGY.md](docs/TOPOLOGY.md).
+**Implemented:** the original number/Farey/Ford views, modular orbifold atlas, rectangle dissection, six-sheet commutator cover, marked rational tangles and numerator closures, and the separate branched-cover torus/pillowcase. Marked two-triangle torus flips are also implemented. Lens-space labels and tetrahedron layering are not included. The verified conventions, derivations, and source sections are in [TOPOLOGY.md](docs/TOPOLOGY.md).
 
 ## Project map
 

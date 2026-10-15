@@ -103,3 +103,51 @@ it("imports old scenes and rejects inconsistent or oversized signed tangle words
     "Invalid tangle expression",
   );
 });
+
+import {
+  initialTriangulation,
+  appendFlip,
+  currentTriangulation,
+  triangleKey,
+  targetItinerary,
+} from "../src/math/triangulation";
+it("flip commands preserve the independent target, round-trip exact history, and share undo with number edits", () => {
+  const base = {
+    past: [],
+    present: { ...initialScene, time: 2, end: 4 },
+    future: [],
+  };
+  const value = appendFlip(initialTriangulation, 0, "torus"),
+    flipped = execute(base, { type: "triangulation", value });
+  expect(flipped.present.spec).toEqual(initialScene.spec);
+  expect(flipped.present.time).toBe(2);
+  expect(flipped.present.end).toBe(4);
+  expect(
+    triangleKey(currentTriangulation(flipped.present.triangulation!)),
+  ).toBe("2 | ∞ | 1");
+  expect(deserialize(serialize(flipped.present))).toEqual(flipped.present);
+  const edited = execute(flipped, { type: "number", spec: parseInput("3/7") });
+  expect(edited.present.triangulation).toEqual(value);
+  expect(undo(edited).present).toEqual(flipped.present);
+  expect(undo(flipped).present).toEqual(base.present);
+  expect(redo(undo(flipped))).toEqual(flipped);
+  const follow = execute(edited, {
+    type: "triangulation",
+    value: targetItinerary(parseInput("3/7")),
+  });
+  const next = execute(follow, { type: "number", spec: parseInput("13/5") });
+  expect(next.present.triangulation).toEqual(
+    targetItinerary(parseInput("13/5")),
+  );
+  expect(undo(next).present).toEqual(follow.present);
+});
+it("rejects malformed flip paths without accepting a changed marking", () => {
+  const raw = JSON.parse(
+    serialize({ ...initialScene, triangulation: initialTriangulation }),
+  );
+  raw.scene.triangulation.steps = [{ edge: 3, source: "torus" }];
+  expect(() => deserialize(JSON.stringify(raw))).toThrow("Invalid flip record");
+  raw.scene.triangulation.steps = [];
+  raw.scene.triangulation.start[2] = { p: "2", q: "1" };
+  expect(() => deserialize(JSON.stringify(raw))).toThrow("determinant-one");
+});

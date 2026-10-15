@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 export type SurfacePoint = { x: number; y: number; depth: number };
 export type SurfaceFace = { points: SurfacePoint[]; color: string };
 export type SurfaceLine = {
@@ -5,7 +6,7 @@ export type SurfaceLine = {
   color: string;
   width: number;
   side?: "T" | "S";
-  onSelect?: () => void;
+  onSelect?: (event: MouseEvent<SVGPathElement>) => void;
   trail?: boolean;
 };
 const path = (points: SurfacePoint[]) =>

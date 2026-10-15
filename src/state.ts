@@ -1,4 +1,10 @@
 import {
+  targetItinerary,
+  validateTriangulationState,
+  type TriangulationState,
+  type Triangulation,
+} from "./math/triangulation";
+import {
   type NumberSpec,
   DEFAULT,
   validateSpec,
@@ -21,6 +27,7 @@ export type Overlays = {
 export type Scene = Readonly<{
   spec: NumberSpec;
   tangle?: TangleExpression;
+  triangulation?: TriangulationState;
   time: number;
   end: number;
   speed: number;
@@ -30,7 +37,8 @@ export type Scene = Readonly<{
 export type Command =
   | { type: "number"; spec: NumberSpec }
   | { type: "load"; scene: Scene }
-  | { type: "tangle"; expression: TangleExpression };
+  | { type: "tangle"; expression: TangleExpression }
+  | { type: "triangulation"; value: TriangulationState; time?: number };
 export type History = { past: Scene[]; present: Scene; future: Scene[] };
 export const initialScene: Scene = {
   spec: DEFAULT,
@@ -49,22 +57,42 @@ export const initialScene: Scene = {
   },
 };
 export function execute(h: History, c: Command): History {
-  const next =
+  let next =
     c.type === "load"
       ? c.scene
-      : c.type === "tangle"
+      : c.type === "triangulation"
         ? {
             ...h.present,
-            spec: {
-              kind: "rational" as const,
-              value: tangleFraction(c.expression),
-            },
-            tangle: [...c.expression],
-            time: 0,
-            end: 12,
+            triangulation: c.value,
+            time: c.time ?? h.present.time,
+            end:
+              c.value.mode === "follow"
+                ? Math.max(h.present.end, c.value.horizon)
+                : h.present.end,
           }
-        : { ...h.present, spec: c.spec, tangle: undefined, time: 0, end: 12 };
+        : c.type === "tangle"
+          ? {
+              ...h.present,
+              spec: {
+                kind: "rational" as const,
+                value: tangleFraction(c.expression),
+              },
+              tangle: [...c.expression],
+              time: 0,
+              end: 12,
+            }
+          : { ...h.present, spec: c.spec, tangle: undefined, time: 0, end: 12 };
   validateSpec(next.spec);
+  if (
+    (c.type === "number" || c.type === "tangle") &&
+    next.triangulation?.mode === "follow"
+  )
+    next = {
+      ...next,
+      end: Math.max(next.end, next.triangulation.horizon),
+      triangulation: targetItinerary(next.spec, next.triangulation.horizon),
+    };
+  if (next.triangulation) validateTriangulationState(next.triangulation);
   return { past: [...h.past.slice(-49), h.present], present: next, future: [] };
 }
 export function undo(h: History): History {
@@ -84,7 +112,7 @@ export function redo(h: History): History {
   };
 }
 export function serialize(scene: Scene) {
-  return JSON.stringify({ version: 3, scene }, (_, v) =>
+  return JSON.stringify({ version: 4, scene }, (_, v) =>
     typeof v === "bigint" ? v.toString() : v,
   );
 }
@@ -92,8 +120,8 @@ export function deserialize(text: string): Scene {
   if (text.length > 128000)
     throw new Error("Scene file exceeds the 128 KB limit.");
   const data = JSON.parse(text);
-  if (![1, 2, 3].includes(data.version) || !data.scene)
-    throw new Error("Expected an Atlas scene with version 1, 2, or 3.");
+  if (![1, 2, 3, 4].includes(data.version) || !data.scene)
+    throw new Error("Expected an Atlas scene with version 1, 2, 3, or 4.");
   const raw = data.scene,
     s = raw.spec;
   const integer = (v: unknown) => {
@@ -120,7 +148,7 @@ export function deserialize(text: string): Scene {
   else throw new Error("Unknown number specification.");
   validateSpec(spec);
   let tangle: TangleExpression | undefined;
-  if (data.version === 3 && raw.tangle !== undefined) {
+  if (data.version >= 3 && raw.tangle !== undefined) {
     if (!Array.isArray(raw.tangle) || raw.tangle.length > 512)
       throw new Error("Invalid tangle expression.");
     tangle = raw.tangle.map(
@@ -140,6 +168,38 @@ export function deserialize(text: string): Scene {
       r.q !== spec.value.q
     )
       throw new Error("Tangle expression does not match the shared number.");
+  }
+  let triangulation: TriangulationState | undefined;
+  if (data.version >= 4 && raw.triangulation !== undefined) {
+    const t = raw.triangulation;
+    if (
+      !Array.isArray(t.start) ||
+      t.start.length !== 3 ||
+      !Array.isArray(t.steps)
+    )
+      throw new Error("Invalid triangulation scene.");
+    triangulation = {
+      start: t.start.map((r: { p: unknown; q: unknown }) =>
+        rational(integer(r.p), integer(r.q)),
+      ) as unknown as Triangulation,
+      steps: t.steps.map(
+        (s: {
+          edge: number;
+          source: "torus" | "farey" | "follow";
+          time?: number;
+          term?: number;
+        }) => ({
+          edge: s.edge,
+          source: s.source,
+          ...(s.time !== undefined ? { time: s.time } : {}),
+          ...(s.term !== undefined ? { term: s.term } : {}),
+        }),
+      ),
+      cursor: t.cursor,
+      mode: t.mode,
+      horizon: t.horizon,
+    };
+    validateTriangulationState(triangulation);
   }
   for (const key of ["time", "end", "speed"])
     if (typeof raw[key] !== "number" || !Number.isFinite(raw[key]))
@@ -162,6 +222,7 @@ export function deserialize(text: string): Scene {
   return {
     spec,
     ...(tangle ? { tangle } : {}),
+    ...(triangulation ? { triangulation } : {}),
     time: raw.time,
     end: raw.end,
     speed: raw.speed,
