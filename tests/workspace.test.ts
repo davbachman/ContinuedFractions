@@ -29,9 +29,11 @@ it("describes pairs symmetrically without inventing a common clock or homology m
   expect(correspondence("torus", "pillowcase").text).toContain(
     "not a homology slope",
   );
-  expect(correspondence("tangle", "closure").text).toContain(
-    "does not recover a unique fraction",
+  expect(correspondence("tangle", "pillowcase").text).toContain(
+    "parallel meridians",
   );
+  for (const removed of ["closure", "intervals", "lattice"])
+    expect(isRepresentation(removed)).toBe(false);
   expect(isRepresentation("__proto__")).toBe(false);
 });
 it("clips selected coefficient runs into separate modular charts without changing playback time", () => {

@@ -1,8 +1,6 @@
 export const representations = {
   symbolic: "Symbolic continued fraction",
   rectangle: "Rectangle dissection",
-  intervals: "Nested intervals",
-  lattice: "Integer lattice",
   matrices: "Matrix products",
   errors: "Approximation errors",
   h2: "H² · Farey and Ford",
@@ -10,7 +8,6 @@ export const representations = {
   torus: "Punctured modular torus",
   triangulation: "Marked torus · edge flips",
   tangle: "Marked rational tangle",
-  closure: "2-bridge knot / link",
   pillowcase: "Marked torus / pillowcase",
 } as const;
 export type Representation = keyof typeof representations;
@@ -18,14 +15,12 @@ export const isRepresentation = (s: unknown): s is Representation =>
   typeof s === "string" && Object.hasOwn(representations, s);
 export const isTrajectory = (s: Representation) =>
   ["h2", "orbifold", "torus"].includes(s);
-export const isPrefixView = (
-  s: Representation,
-): s is "intervals" | "lattice" | "matrices" | "errors" =>
-  ["intervals", "lattice", "matrices", "errors"].includes(s);
+export const isPrefixView = (s: Representation): s is "matrices" | "errors" =>
+  ["matrices", "errors"].includes(s);
 export const isCoefficientView = (s: Representation) =>
   s === "symbolic" || s === "rectangle" || isPrefixView(s);
 export const isTangle = (s: Representation) =>
-  ["tangle", "closure", "pillowcase"].includes(s);
+  ["tangle", "pillowcase"].includes(s);
 export const comparisonPresets: {
   label: string;
   pair: [Representation, Representation];
@@ -35,12 +30,10 @@ export const comparisonPresets: {
   { label: "Watch the quotient", pair: ["h2", "orbifold"] },
   { label: "Lift to the torus", pair: ["h2", "torus"] },
   { label: "Explore flips", pair: ["h2", "triangulation"] },
-  { label: "Build a knot / link", pair: ["symbolic", "closure"] },
+  { label: "Build a tangle", pair: ["symbolic", "tangle"] },
   { label: "Tangle and its cover", pair: ["tangle", "pillowcase"] },
-  { label: "Narrow down a number", pair: ["symbolic", "intervals"] },
-  { label: "From intervals to lattice", pair: ["intervals", "lattice"] },
-  { label: "Read the lattice basis", pair: ["lattice", "matrices"] },
-  { label: "Measure approximation", pair: ["intervals", "errors"] },
+  { label: "Read the matrix product", pair: ["symbolic", "matrices"] },
+  { label: "Measure approximation", pair: ["matrices", "errors"] },
 ];
 export function correspondence(
   a: Representation,
@@ -66,12 +59,12 @@ export function correspondence(
     if (isCoefficientView(a) && isCoefficientView(b))
       return {
         kind: "Same prefix · different representations",
-        text: "Selecting aₙ links the prefix enclosure, convergent vector (qₙ, pₙ), matrix product through A(aₙ), and convergent error. Rectangle groups use the same coefficient index. Matrix columns are (p, q); lattice coordinates are (q, p). Selection leaves α unchanged.",
+        text: "Selecting aₙ links the matrix product through A(aₙ) and its convergent error. Rectangle groups use the same coefficient index. Selection leaves α unchanged.",
       };
     if (isTrajectory(a) || isTrajectory(b))
       return {
         kind: "Convergents and Farey runs",
-        text: "The selected prefix determines a rational convergent and its coefficient’s Farey run, with the existing initial and terminal offsets. Prefix depth is not hyperbolic time. This lattice is not a homology marking on the six-sheet modular torus.",
+        text: "The selected prefix determines a rational convergent and its coefficient’s Farey run, with the existing initial and terminal offsets. Prefix depth is not hyperbolic time. A convergent is not a homology marking on the six-sheet modular torus.",
       };
     if (isTangle(a) || isTangle(b))
       return {
@@ -86,9 +79,7 @@ export function correspondence(
   if (isTangle(a) && isTangle(b))
     return {
       kind: "Marked rational construction",
-      text: has("closure")
-        ? "The marked tangle determines its numerator closure. The closed knot or link alone does not recover a unique fraction. Both panes retain the marked construction."
-        : "The tangle's separating curve lifts to parallel meridians on the marked branched-cover torus. Endpoint twists and marked Dehn twists share the verified slope convention.",
+      text: "The tangle's separating curve lifts to parallel meridians on the marked branched-cover torus. Endpoint twists and marked Dehn twists share the verified slope convention.",
     };
   if (has("symbolic") && has("rectangle"))
     return {

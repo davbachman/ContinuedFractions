@@ -8,8 +8,7 @@ for (const layout of ["comparison", "atlas"]) {
     if (layout === "comparison")
       await page
         .getByRole("combobox", { name: "Left representation", exact: true })
-        .selectOption("closure");
-    else await page.getByLabel("Numerator closure", { exact: true }).check();
+        .selectOption("tangle");
     const panel = page.locator(".tangle-panel");
     const viewport = panel.getByRole("region", {
       name: "Scrollable marked tangle diagram",

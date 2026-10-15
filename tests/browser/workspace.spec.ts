@@ -193,7 +193,7 @@ test("rectangle playback leaves hyperbolic time independent and unavailable inpu
 test("canonical tangle selection links coefficients, custom words and irrational convergents stay explicit", async ({
   page,
 }, info) => {
-  await choose(page, "Right", "closure");
+  await choose(page, "Right", "tangle");
   await left(page)
     .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
     .click();
@@ -235,7 +235,7 @@ test("canonical tangle selection links coefficients, custom words and irrational
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
   await page.locator(".comparison-grid").screenshot({
-    path: `test-results/${info.project.name}-comparison-knot.png`,
+    path: `test-results/${info.project.name}-comparison-tangle.png`,
   });
 });
 
@@ -312,4 +312,53 @@ test("Farey crossing highlights obey each pane's Farey edges toggle while seekin
   await left(page).getByLabel("Farey edges", { exact: true }).check();
   await expect.poll(() => highlightPixels(a)).toBeGreaterThan(0);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+});
+
+test("removed views disappear and old links and saved layouts retain the shared number", async ({
+  page,
+}, info) => {
+  await number(page, "13/5");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem("cf-atlas-scene") || "{}").scene?.spec
+            ?.value,
+      ),
+    )
+    .toEqual({ p: "13", q: "5" });
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "cf-atlas-comparison",
+      JSON.stringify([{ kind: "intervals" }, { kind: "lattice" }]),
+    ),
+  );
+  await page.goto("/");
+  await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(right(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  await page.goto("/?left=closure&right=intervals");
+  await expect(left(page)).toHaveAttribute("data-representation", "tangle");
+  await expect(right(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  for (const name of [
+    "Left representation",
+    "Right representation",
+    "Comparison preset",
+  ]) {
+    const options = await page
+      .getByLabel(name, { exact: true })
+      .locator("option")
+      .allTextContents();
+    expect(options.join(" ")).not.toMatch(/2-bridge|knot|interval|lattice/i);
+  }
+  await expect(
+    page.getByLabel("Numerator closure", { exact: true }),
+  ).toHaveCount(0);
+  await number(page, "8/3");
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  await page.locator(".comparison-grid").screenshot({
+    path: `test-results/${info.project.name}-simplified-workspace.png`,
+  });
 });

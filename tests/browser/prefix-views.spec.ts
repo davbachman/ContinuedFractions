@@ -16,34 +16,16 @@ const prefix = (page: Page, index: number, side = "Left") =>
     .getByRole("slider", { name: "Selected prefix", exact: true })
     .fill(String(index));
 test.beforeEach(async ({ page }) => {
-  await page.goto("/?left=intervals&right=lattice");
+  await page.goto("/?left=matrices&right=errors");
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
 
-test("nested intervals and lattice share exact prefix selection, editing, and undo", async ({
+test("matrix and error selections share coefficient editing and undo", async ({
   page,
-}, info) => {
-  await prefix(page, 4);
-  await expect(pane(page).getByTestId("interval-details")).toContainText(
-    "[5/13, 7/18]",
-  );
-  await expect(pane(page).getByTestId("interval-details")).toContainText(
-    "1/234",
-  );
-  await expect(
-    pane(page, "Right").getByTestId("lattice-details"),
-  ).toContainText("v4 = (13, 5)");
-  await pane(page)
-    .getByRole("button", { name: "Select interval a2", exact: true })
-    .click();
+}) => {
+  await prefix(page, 1);
   await expect(
     pane(page, "Right").getByRole("slider", { name: "Selected prefix" }),
-  ).toHaveValue("2");
-  await pane(page, "Right")
-    .getByRole("button", { name: "Select lattice vector a1", exact: true })
-    .click();
-  await expect(
-    pane(page).getByRole("slider", { name: "Selected prefix" }),
   ).toHaveValue("1");
   await page.locator(".strip-edit summary").click();
   await page.getByLabel("Shared coefficient value").fill("3");
@@ -51,20 +33,15 @@ test("nested intervals and lattice share exact prefix selection, editing, and un
     .locator(".strip-edit")
     .getByRole("button", { name: "Apply coefficient" })
     .click();
+  await expect(pane(page).getByTestId("matrix-details")).toContainText(
+    "(1, 3)",
+  );
   await expect(page.getByLabel("ENDPOINT α")).not.toHaveValue("5/13");
-  await expect(
-    pane(page, "Right").getByTestId("lattice-details"),
-  ).toContainText("v1 = (3, 1)");
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
-  await expect(
-    pane(page, "Right").getByTestId("lattice-details"),
-  ).toContainText("v1 = (2, 1)");
-  await prefix(page, 4);
-  await page.locator(".strip-edit summary").click();
-  await page.locator(".comparison-grid").screenshot({
-    path: `test-results/${info.project.name}-intervals-lattice.png`,
-  });
+  await expect(pane(page).getByTestId("matrix-details")).toContainText(
+    "(1, 2)",
+  );
 });
 
 test("matrix columns and errors track selections, exact zero is outside the logarithmic plot", async ({
@@ -149,17 +126,9 @@ test("deep irrational prefixes remain nonzero and can be explicitly applied and 
   const firstError = await pane(page, "Right")
     .getByTestId("error-details")
     .textContent();
-  await pane(page).getByLabel("Magnify each parent interval").uncheck();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
-  await choose(page, "lattice");
-  await pane(page)
-    .getByRole("button", { name: "Convergent basis close-up", exact: true })
-    .click();
-  await expect(pane(page).getByTestId("lattice-details")).toContainText(
-    "area = 1",
-  );
   await page.locator(".comparison-grid").screenshot({
-    path: `test-results/${info.project.name}-deep-lattice-errors.png`,
+    path: `test-results/${info.project.name}-deep-matrices-errors.png`,
   });
   await pane(page)
     .getByRole("button", { name: "Use convergent as target", exact: true })
@@ -177,12 +146,12 @@ test("deep irrational prefixes remain nonzero and can be explicitly applied and 
   expect(errors).toEqual([]);
 });
 
-test("all four views handle integers, negatives, zero, infinity, and independent duplicate cameras", async ({
+test("matrix and error views handle integers, negatives, zero, infinity, and independent metrics", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  for (const kind of ["intervals", "lattice", "matrices", "errors"]) {
+  for (const kind of ["matrices", "errors"]) {
     await choose(page, kind);
     await choose(page, kind, "Right");
     for (const value of ["0", "-13/5", "3", "1/2", "sqrt2", "infinity"]) {
@@ -208,24 +177,27 @@ test("all four views handle integers, negatives, zero, infinity, and independent
     }
   }
   await number(page, "5/13");
-  await choose(page, "lattice");
-  await choose(page, "lattice", "Right");
+  await choose(page, "errors");
+  await choose(page, "errors", "Right");
   await pane(page)
-    .getByRole("button", { name: "Convergent basis close-up", exact: true })
+    .getByRole("button", { name: "q² × error", exact: true })
     .click();
-  await expect(pane(page).locator(".lattice-chart")).toHaveAttribute(
-    "data-camera",
-    "basis",
-  );
-  await expect(pane(page, "Right").locator(".lattice-chart")).toHaveAttribute(
-    "data-camera",
-    "fixed",
-  );
+  await expect(
+    pane(page).getByRole("button", { name: "q² × error", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    pane(page, "Right").getByRole("button", {
+      name: "q² × error",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Swap sides ⇄" }).click();
-  await expect(pane(page, "Right").locator(".lattice-chart")).toHaveAttribute(
-    "data-camera",
-    "basis",
-  );
+  await expect(
+    pane(page, "Right").getByRole("button", {
+      name: "q² × error",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
   await prefix(page, 0);
   await pane(page).focus();
   await page.keyboard.press("ArrowRight");
@@ -252,7 +224,7 @@ test("prefix selection links Farey runs without changing time and persists view 
     page.getByRole("status", { name: "Connection between views" }),
   ).toContainText("Prefix depth is not hyperbolic time");
   await page.reload();
-  await expect(pane(page)).toHaveAttribute("data-representation", "intervals");
+  await expect(pane(page)).toHaveAttribute("data-representation", "matrices");
   await expect(pane(page, "Right")).toHaveAttribute(
     "data-representation",
     "orbifold",
@@ -265,7 +237,7 @@ test("large coefficients keep exact data without invalid SVG geometry or page ov
 }) => {
   await number(page, `1/${"1" + "0".repeat(60)}`);
   await prefix(page, 1);
-  for (const kind of ["intervals", "lattice", "matrices", "errors"]) {
+  for (const kind of ["matrices", "errors"]) {
     await choose(page, kind);
     await expect(pane(page).locator(".prefix-selection > strong")).toHaveText(
       `1/${"1" + "0".repeat(60)}`,
@@ -287,11 +259,4 @@ test("large coefficients keep exact data without invalid SVG geometry or page ov
         ),
     ).toBe(true);
   }
-  await choose(page, "lattice");
-  await pane(page)
-    .getByRole("button", { name: "Convergent basis close-up", exact: true })
-    .click();
-  await expect(pane(page).getByTestId("lattice-details")).toContainText(
-    "area = 1",
-  );
 });

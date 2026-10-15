@@ -9,8 +9,6 @@ import {
   tangleFraction,
   mirrorExpression,
   endpointNames,
-  closureComponents,
-  closureName,
   canonicalTwistCoefficients,
 } from "../math/tangles";
 import { tangleDiagram } from "../math/tangleDiagram";
@@ -19,7 +17,7 @@ import { tangleHelices } from "./tangleHelices";
 import { Pillowcase } from "./Pillowcase";
 import { svgPath } from "./ModularTorus";
 type Props = {
-  view?: "tangle" | "closure" | "pillowcase";
+  view?: "tangle" | "pillowcase";
   linkCoefficients?: boolean;
   spec: NumberSpec;
   expression?: TangleExpression;
@@ -52,7 +50,6 @@ export function TanglePanel({
   const curves = useMemo(() => tangleCurves(diagram), [diagram]);
   const fraction = useMemo(() => tangleFraction(ops), [ops]);
   const [localMode, setMode] = useState<"tangle" | "pillowcase">("tangle"),
-    [localClosed, setClosed] = useState(false),
     [three, setThree] = useState(false),
     [rotation, setRotation] = useState(-0.45),
     [roll, setRoll] = useState(0),
@@ -64,7 +61,6 @@ export function TanglePanel({
       ? "pillowcase"
       : "tangle"
     : localMode;
-  const closed = view ? view === "closure" : localClosed;
   const scrollRef = useRef<HTMLDivElement>(null);
   const zoomAnchor = useRef({ x: 0.5, y: 0.5 });
   const changeZoom = (value: number) => {
@@ -166,31 +162,6 @@ export function TanglePanel({
         )
         .sort((a, b) => a.depth - b.depth)
     : [];
-  // Include the closure in the same depth sort as the lifted strands.
-  const closures = [0, 1].map((i) =>
-    Array.from({ length: 61 }, (_, k) => {
-      const t = k / 60,
-        y = i ? diagram.height : 0,
-        offset = i ? 50 : -50;
-      return {
-        x: diagram.width * (3 * t * t - 2 * t * t * t),
-        y: y + 3 * offset * t * (1 - t),
-      };
-    }),
-  );
-  const liftedPieces = [
-    ...pieces,
-    ...(lifted && closed
-      ? closures.flatMap((points) =>
-          points.slice(1).flatMap((p, i) => {
-            if (i % 4 === 3) return []; // A dashed closure, with depth-tested segments.
-            const a = project(points[i]),
-              b = project(p);
-            return [{ points: [a, b], depth: (a.depth + b.depth) / 2, id: -1 }];
-          }),
-        )
-      : []),
-  ].sort((a, b) => a.depth - b.depth);
   const projectedBounds = lifted
     ? [
         ...pieces.flatMap((piece) => piece.points),
@@ -214,11 +185,9 @@ export function TanglePanel({
         <div>
           <span className="panel-number">04</span>
           <h2>
-            {view === "closure"
-              ? "2-bridge knot / link"
-              : view === "pillowcase"
-                ? "Marked torus / pillowcase"
-                : "Marked rational tangle"}
+            {view === "pillowcase"
+              ? "Marked torus / pillowcase"
+              : "Marked rational tangle"}
           </h2>
         </div>
         <strong className="tangle-fraction" data-testid="tangle-fraction">
@@ -293,16 +262,6 @@ export function TanglePanel({
             </button>
           </div>
           <div className="topology-options">
-            {!view && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={closed}
-                  onChange={(e) => setClosed(e.target.checked)}
-                />
-                Numerator closure
-              </label>
-            )}
             <button aria-pressed={!three} onClick={() => setThree(false)}>
               2D diagram
             </button>
@@ -366,38 +325,20 @@ export function TanglePanel({
                   strokeDasharray="5 5"
                 />
               )}
-              {closed &&
-                !lifted &&
-                closures.map((points, i) => (
-                  <path
-                    key={i}
-                    className="closure-arc"
-                    d={svgPath(points)}
-                    fill="none"
-                    stroke="#8b6291"
-                    strokeWidth={3}
-                    strokeDasharray="8 3"
-                  />
-                ))}
               {lifted ? (
-                liftedPieces.map((piece, i) => (
+                pieces.map((piece, i) => (
                   <path
                     key={i}
                     d={svgPath(piece.points)}
                     fill="none"
-                    stroke={piece.id < 0 ? "#8b6291" : color(piece.id)}
+                    stroke={color(piece.id)}
                     strokeWidth={
-                      piece.id >= 0 &&
                       diagram.edges[piece.id].region === activeRegion
                         ? 4.5
                         : 3.5
                     }
                     strokeLinecap="round"
-                    onClick={
-                      piece.id < 0
-                        ? undefined
-                        : () => chooseRegion(diagram.edges[piece.id].region)
-                    }
+                    onClick={() => chooseRegion(diagram.edges[piece.id].region)}
                   />
                 ))
               ) : (
@@ -492,12 +433,8 @@ export function TanglePanel({
             </svg>
           </div>
           {lifted && <p className="rotation-hint">{rotationHint}</p>}
-          <p className="topology-note" data-testid="closure-classification">
-            {closed
-              ? `${closureName(fraction)} · ${closureComponents(fraction) === 1 ? "knot (one component)" : "two-component link"}. Purple dashed arcs are the numerator closure.`
-              : "Open marked tangle · endpoints NW, NE, SW, SE are fixed."}{" "}
-            {closed &&
-              "A closed knot/link does not determine a unique fraction."}
+          <p className="topology-note">
+            Open marked tangle · endpoints NW, NE, SW, SE are fixed.
           </p>
           <p className="topology-note">
             +1 twists the right endpoint pair; its NW→SE branch passes over.

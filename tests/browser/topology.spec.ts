@@ -117,26 +117,18 @@ test("signed tangle edits, inverse operations, infinity, and undo synchronize sh
   expect(errors).toEqual([]);
 });
 
-test("closure diagrams, 3D rotation, marked slopes and Dehn twists", async ({
+test("tangle diagrams, 3D rotation, marked slopes and Dehn twists", async ({
   page,
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.getByLabel("Numerator closure", { exact: true }).check();
-  for (const [value, name] of [
-    ["0", "unlink"],
-    ["infinity", "unknot"],
-    ["2", "Hopf"],
-    ["3", "right-handed trefoil"],
-    ["-3", "left-handed trefoil"],
-    ["5/2", "figure-eight"],
-  ]) {
-    await number(page, value);
-    await expect(page.getByTestId("closure-classification")).toContainText(
-      new RegExp(name, "i"),
-    );
-    await expect(page.locator(".closure-arc")).toHaveCount(2);
-  }
+  await number(page, "5/2");
+  await expect(
+    page.getByRole("img", { name: "Over-under rational tangle diagram" }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Numerator closure", { exact: true }),
+  ).toHaveCount(0);
   await page
     .locator(".tangle-panel")
     .screenshot({ path: `test-results/${info.project.name}-tangle.png` });

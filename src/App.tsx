@@ -1856,13 +1856,12 @@ export default function App() {
         </p>
         <h3>Inspect a prefix</h3>
         <p>
-          Nested intervals, integer lattices, matrix products, and approximation
-          errors share the selected prefix. Step or select a diagram point to
-          compare its exact bounds, basis, product, and error. The lattice basis
-          close-up changes coordinates only. Irrational error bounds remain
-          nonzero at deep prefixes; a rational zero is outside the log plot.
-          “Use convergent as target” explicitly changes the number and can be
-          undone. Left/Right steps a focused prefix pane.
+          Matrix products and approximation errors share the selected prefix.
+          Step or select a matrix factor or error point to compare the exact
+          product and convergent error. Irrational error bounds remain nonzero
+          at deep prefixes; a rational zero is outside the log plot. “Use
+          convergent as target” explicitly changes the number and can be undone.
+          Left/Right steps a focused prefix pane.
         </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>
@@ -1923,7 +1922,7 @@ export default function App() {
           Add signed right endpoint twists, rotate, or edit a twist-region
           count. A quarter-turn sends x to −1/x. The signed construction is
           retained separately from the regular continued fraction, and both
-          editors share undo. Numerator closure adds dashed outer arcs. For an
+          editors share undo. In 3D, twist regions form double helices. For an
           irrational, choose a labeled convergent; editing makes the number
           rational. Infinity is supported as a tangle with vertical arcs.
         </p>

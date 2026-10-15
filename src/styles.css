@@ -2980,14 +2980,6 @@ footer,
   stroke: #304e3f;
   stroke-width: 3px;
 }
-.prefix-svg-label {
-  font:
-    17px Georgia,
-    serif;
-}
-.chart-note {
-  padding: 0 18px;
-}
 .prefix-facts {
   padding: 8px 18px 16px;
   overflow-wrap: anywhere;

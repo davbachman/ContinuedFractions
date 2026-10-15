@@ -88,7 +88,15 @@ function initialPanes(): Pane[] {
           : 0;
     return {
       id: i ? "b" : "a",
-      kind: isRepresentation(raw) ? raw : fallback,
+      kind: isRepresentation(raw)
+        ? raw
+        : raw === "closure"
+          ? "tangle"
+          : raw === "intervals"
+            ? "symbolic"
+            : raw === "lattice"
+              ? "matrices"
+              : fallback,
       lift: Number.isInteger(lift) && lift >= 0 && lift < 6 ? lift : 0,
     };
   });
@@ -711,12 +719,10 @@ function ComparisonPane({
             onShowPlane={setShowTriangulation}
           />
         )}
-        {(["tangle", "closure", "pillowcase"] as string[]).includes(
-          pane.kind,
-        ) && (
+        {(["tangle", "pillowcase"] as string[]).includes(pane.kind) && (
           <TanglePanel
             key={pane.kind}
-            view={pane.kind as "tangle" | "closure" | "pillowcase"}
+            view={pane.kind as "tangle" | "pillowcase"}
             linkCoefficients
             spec={p.scene.spec}
             expression={p.scene.tangle}
