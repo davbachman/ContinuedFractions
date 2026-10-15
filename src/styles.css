@@ -2136,34 +2136,6 @@ footer,
 .triangulation-panel button {
   min-height: 40px;
 }
-.flip-edge-controls {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  padding: 10px 20px;
-}
-.flip-edge-controls > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  border-top: 3px solid;
-  padding: 10px;
-  background: #f4f5ec;
-  align-items: center;
-}
-.flip-edge-controls strong {
-  width: 100%;
-  font:
-    24px Georgia,
-    serif;
-  overflow-wrap: anywhere;
-}
-.flip-edge-controls button {
-  font-size: 11px;
-  border: 1px solid #cad4bd;
-  border-radius: 4px;
-  padding: 7px 9px;
-}
 .flip-history {
   display: flex;
   gap: 8px;
@@ -2191,10 +2163,6 @@ footer,
     grid-template-columns: 1fr;
     padding: 0 12px;
     gap: 0;
-  }
-  .flip-edge-controls {
-    grid-template-columns: 1fr;
-    padding: 10px 12px;
   }
   .triangulation-panel button {
     min-height: 44px;
@@ -2388,17 +2356,6 @@ footer,
 .pane-body .pillowcase-grid,
 .pane-body .triangulation-grid {
   grid-template-columns: minmax(0, 1fr);
-}
-.pane-body .flip-edge-controls {
-  gap: 6px;
-  padding: 10px;
-}
-.pane-body .flip-edge-controls > div {
-  padding: 7px;
-}
-.pane-body .flip-edge-controls button {
-  width: 100%;
-  overflow-wrap: anywhere;
 }
 .pane-body .topology-options {
   gap: 8px;
@@ -2653,16 +2610,6 @@ footer,
   .pane-body .plot-controls {
     gap: 2px;
   }
-  .pane-body .flip-edge-controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .pane-body .flip-edge-controls > div {
-    display: flex;
-    flex-wrap: wrap;
-  }
-  .pane-body .flip-edge-controls button {
-    width: auto;
-  }
 }
 .comparison-shell .site-header {
   height: 66px;
@@ -2792,9 +2739,6 @@ svg[data-rotation] * {
   width: 15px;
   height: 15px;
   padding: 0;
-}
-.flip-details .flip-edge-controls {
-  padding: 8px 0;
 }
 .flip-details .flip-history {
   padding: 8px 0;

@@ -797,15 +797,21 @@ function ComparisonPane({
                     {name}
                   </label>
                 ))}
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={triangleVisible}
-                    disabled={["triangulation", "farey"].includes(other.kind)}
-                    onChange={(e) => setShowTriangulation(e.target.checked)}
-                  />
-                  Marked triangulation
-                </label>
+                {["triangulation", "farey"].includes(other.kind) ? (
+                  <span className="pane-note">
+                    Current triangulation is shown automatically beside a flip
+                    view.
+                  </span>
+                ) : (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={triangleVisible}
+                      onChange={(e) => setShowTriangulation(e.target.checked)}
+                    />
+                    Marked triangulation
+                  </label>
+                )}
               </details>
             </div>
             {infinite ? (
@@ -919,8 +925,6 @@ function ComparisonPane({
             time={p.scene.time}
             externalPlaying={p.triangulation.externalPlaying}
             view={pane.kind === "farey" ? "farey" : "square"}
-            showPlane={triangleVisible}
-            onShowPlane={setShowTriangulation}
           />
         )}
         {(["tangle", "pillowcase"] as string[]).includes(pane.kind) && (

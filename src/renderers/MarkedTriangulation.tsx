@@ -48,8 +48,6 @@ type Props = {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  showPlane: boolean;
-  onShowPlane: (b: boolean) => void;
 };
 const short = (r: Rational) =>
   label(r).length > 20
@@ -199,6 +197,11 @@ export function MarkedTriangulation(props: Props) {
     return copies;
   });
   const activeStatus = followStatus(spec, state);
+  const completePath =
+    spec.kind === "rational" &&
+    path[path.length - 1].some(
+      (r) => r.p === spec.value.p && r.q === spec.value.q,
+    );
   const coefficients =
     spec.kind === "rational" && !spec.value.q ? [] : terms(spec, 96);
   const term = props.coefficient ?? state.steps[state.cursor - 1]?.term ?? 0;
@@ -346,7 +349,7 @@ export function MarkedTriangulation(props: Props) {
         coefficients.length > 0 && (
           <p className="topology-note">
             {!coefficientPosition
-              ? "This coefficient is beyond the generated flip path. Extend the itinerary in the display options."
+              ? "This coefficient is beyond the generated flip path. Extend the itinerary in Flip history."
               : term === 0
                 ? "a₀ sets the starting bracket. Go to a₀ returns to the start."
                 : run.expected === 0n
@@ -492,6 +495,22 @@ export function MarkedTriangulation(props: Props) {
             identified. Face color matches the current Farey triangle; edge
             colors match its vertex labels.
           </p>
+          {view === "square" && (
+            <div className="tangle-controls flip-coefficient-controls">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={puncture}
+                  onChange={(e) => setPuncture(e.target.checked)}
+                />
+                Show a hole at the shared corner
+              </label>
+              <span className="topology-note">
+                All four corners are one identified point on the torus. This
+                marks that point as a puncture.
+              </span>
+            </div>
+          )}
           {wrapped.some((w) => w.limited) && (
             <p className="topology-limit" role="status">
               Wrap display limit: edges with |p|+q &gt; 160 are hidden. Exact
@@ -528,6 +547,7 @@ export function MarkedTriangulation(props: Props) {
             key={i}
             style={{ borderBottomColor: flipColors[i], color: flipColors[i] }}
             aria-label={`Highlight edge ${short(r)}`}
+            data-testid={`triangulation-slope-${i}`}
             aria-pressed={selected === i}
             onClick={() => setSelected(i)}
           >
@@ -535,50 +555,16 @@ export function MarkedTriangulation(props: Props) {
           </button>
         ))}
       </div>
+      <div className="tangle-controls">
+        <button
+          aria-label={`Use slope ${label(tri[selected])} as target`}
+          onClick={() => onTarget(tri[selected])}
+        >
+          Use {short(tri[selected])} as α
+        </button>
+      </div>
       <details className="flip-details">
-        <summary>Edge actions, history & display options</summary>
-        <div className="flip-edge-controls">
-          {tri.map((r, i) => (
-            <div key={i} style={{ borderColor: flipColors[i] }}>
-              <strong
-                style={{ color: flipColors[i] }}
-                data-testid={`triangulation-slope-${i}`}
-              >
-                {label(r)}
-              </strong>
-              <button
-                aria-label={`Use slope ${label(r)} as target`}
-                onClick={() => onTarget(r)}
-              >
-                Use this slope as target
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div className="tangle-controls">
-          <label>
-            <input
-              type="checkbox"
-              checked={props.showPlane}
-              onChange={(e) => props.onShowPlane(e.target.checked)}
-            />
-            Show triangulation in H²
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={puncture}
-              onChange={(e) => setPuncture(e.target.checked)}
-            />
-            Puncture at vertex
-          </label>
-        </div>
-        <p className="topology-note">
-          Solid lines show completed steps; dashed lines show the path ahead.
-          The disk camera changes coordinates only; the marking and slope labels
-          stay fixed.
-        </p>
+        <summary>Flip history</summary>
         <div className="tangle-controls">
           <button
             disabled={!props.canUndo}
@@ -598,7 +584,7 @@ export function MarkedTriangulation(props: Props) {
           >
             Redo shared edit
           </button>
-          {state.mode === "follow" && (
+          {state.mode === "follow" && !completePath && (
             <button
               disabled={state.horizon >= 24 || state.steps.length >= 512}
               onClick={() => {

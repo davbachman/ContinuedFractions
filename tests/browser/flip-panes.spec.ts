@@ -56,11 +56,9 @@ test("visible restart and coefficient following synchronize both flip panes with
   await coefficient(3, 1).click();
   await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
-  await page
-    .locator(".comparison-grid")
-    .screenshot({
-      path: `test-results/${info.project.name}-flip-controls.png`,
-    });
+  await page.locator(".comparison-grid").screenshot({
+    path: `test-results/${info.project.name}-flip-controls.png`,
+  });
 });
 
 test("coefficient following handles empty runs, unavailable depth, and H² time", async ({
@@ -222,6 +220,27 @@ test("target-path navigation works from either pane; the square stays visible an
     exact: true,
     includeHidden: true,
   });
+  await expect(
+    left.getByLabel("Show a hole at the shared corner", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    left.getByLabel("Show triangulation in H²", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    left.getByRole("button", { name: /^Use slope .* as target$/ }),
+  ).toHaveCount(1);
+  await button(left, "Highlight edge 0").click();
+  await expect(button(left, "Use slope 0 as target")).toBeVisible();
+  await expect(square).toHaveAttribute("data-slopes", "0 | ∞ | 1");
+  await right
+    .getByLabel("Show a hole at the shared corner", { exact: true })
+    .check();
+  await expect(square.locator('circle[r="7"]')).toHaveCount(4);
+  await expect(square).toHaveAttribute("data-slopes", "0 | ∞ | 1");
+  await right
+    .getByLabel("Show a hole at the shared corner", { exact: true })
+    .uncheck();
+  await expect(square.locator('circle[r="7"]')).toHaveCount(0);
   await button(
     left,
     "Next path step via Farey triangle replacing ∞ with 1/2",
@@ -254,9 +273,13 @@ test("target-path navigation works from either pane; the square stays visible an
   await button(right, "Next flip step").focus();
   await page.keyboard.press("Enter");
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
+  await left.getByText("Flip history", { exact: true }).click();
+  await expect(button(left, "Extend flip itinerary")).toHaveCount(0);
   await left
-    .getByText("Edge actions, history & display options", { exact: true })
-    .click();
+    .locator(".triangulation-panel")
+    .screenshot({
+      path: `test-results/${info.project.name}-farey-history.png`,
+    });
   await button(left, "Center Farey triangle").click();
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
@@ -268,6 +291,17 @@ test("H² playback and seeking drive follow-target flips in both directions", as
   await page.goto("/?left=h2&right=farey");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
+  await left.getByText("More layers", { exact: true }).click();
+  await expect(left).toContainText(
+    "Current triangulation is shown automatically beside a flip view.",
+  );
+  await expect(
+    left.getByLabel("Marked triangulation", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    left.getByRole("img", { name: /Upper half-plane/ }),
+  ).toHaveAttribute("data-triangulation", "0 | ∞ | 1");
+  await left.getByText("More layers", { exact: true }).click();
   await button(right, "Next flip step").click();
   const clock = left.getByRole("slider", { name: "Scrub trajectory" });
   expect(Number(await clock.inputValue())).toBeGreaterThan(0);

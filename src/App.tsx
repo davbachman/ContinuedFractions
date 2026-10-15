@@ -896,8 +896,6 @@ export default function App() {
               },
               canUndo: history.past.length > 0,
               canRedo: history.future.length > 0,
-              showPlane: showTriangulation,
-              onShowPlane: setShowTriangulation,
             }}
           />
         ) : (
@@ -1019,6 +1017,14 @@ export default function App() {
                       {overlayNames[key]}
                     </label>
                   ))}
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showTriangulation}
+                      onChange={(e) => setShowTriangulation(e.target.checked)}
+                    />
+                    Marked triangulation
+                  </label>
                   <details className="more-overlays">
                     <summary>More</summary>
                     <div>
@@ -1667,8 +1673,6 @@ export default function App() {
               }}
               canUndo={history.past.length > 0}
               canRedo={history.future.length > 0}
-              showPlane={showTriangulation}
-              onShowPlane={setShowTriangulation}
             />
             <CFBraid
               spec={scene.spec}

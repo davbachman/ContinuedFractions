@@ -6,9 +6,7 @@ const button = (page: any, name: string) =>
 test.beforeEach(async ({ page }) => {
   await page.goto("/?layout=atlas");
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page
-    .getByText("Edge actions, history & display options", { exact: true })
-    .click();
+  await page.getByText("Flip history", { exact: true }).click();
 });
 test("only α’s path is interactive, including boundary copies, keyboard navigation and undo", async ({
   page,
@@ -56,6 +54,7 @@ test("only α’s path is interactive, including boundary copies, keyboard navig
   ).click();
   await button(page, "Marked square").click();
   await expect(torus).toHaveAttribute("data-slopes", "0 | ∞ | 1");
+  await button(page, "Highlight edge 1").click();
   await button(page, "Use slope 1 as target").click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("1");
   await expect(torus).toHaveAttribute("data-slopes", "1 | ∞ | 2");
@@ -68,8 +67,12 @@ test("only α’s path is interactive, including boundary copies, keyboard navig
 test("H² shares the target path automatically and cannot branch by clicking a neighbor", async ({
   page,
 }) => {
-  await page.getByLabel("Show triangulation in H²", { exact: true }).check();
+  await page.getByLabel("Marked triangulation", { exact: true }).check();
   const canvas = page.getByRole("img", { name: /Upper half-plane/ });
+  await expect(canvas).toHaveAttribute("data-triangulation", "0 | ∞ | 1");
+  await page.getByLabel("Marked triangulation", { exact: true }).uncheck();
+  await expect(canvas).not.toHaveAttribute("data-triangulation");
+  await page.getByLabel("Marked triangulation", { exact: true }).check();
   await canvas.scrollIntoViewIfNeeded();
   const box = (await canvas.boundingBox())!,
     scale = Number(await canvas.getAttribute("data-scale")),
@@ -150,7 +153,9 @@ test("wrapped edges, model and camera changes, path navigation and persistence p
   for (let i = 0; i < 4; i++) await button(page, "Next flip step").click();
   const slopes = await torus.getAttribute("data-slopes");
   await expect(torus).toHaveAttribute("data-slopes", slopes!);
-  await page.getByLabel("Puncture at vertex", { exact: true }).check();
+  await page
+    .getByLabel("Show a hole at the shared corner", { exact: true })
+    .check();
   await expect(button(page, "Explain this flip")).toHaveCount(0);
   await expect(torus).toBeVisible();
   await page.setViewportSize({
