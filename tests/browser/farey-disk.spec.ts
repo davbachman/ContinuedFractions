@@ -220,3 +220,51 @@ test("triangle fills stay fixed across crossings and agree in H², the disk, and
     path: `test-results/${info.project.name}-fixed-farey-square.png`,
   });
 });
+
+test("traveled trail ends at the moving point and retraces under either camera", async ({
+  page,
+}, info) => {
+  const svg = disk(page),
+    right = pane(page, "Right");
+  const scrub = pane(page, "Left").getByRole("slider", {
+    name: "Scrub trajectory",
+  });
+  const trail = svg.locator("[data-disk-trail]");
+  await expect(trail).toHaveCount(0);
+  for (const follow of [true, false]) {
+    await right
+      .getByLabel("Keep moving point centered", { exact: true })
+      .setChecked(follow);
+    await scrub.fill("2");
+    const atTwo = await trail.getAttribute("d");
+    const beforeLength = await trail.evaluate((n) =>
+      (n as SVGPathElement).getTotalLength(),
+    );
+    await scrub.fill("4");
+    await expect(trail).not.toHaveAttribute("d", atTwo!);
+    expect(
+      await trail.evaluate((n) => (n as SVGPathElement).getTotalLength()),
+    ).toBeGreaterThan(beforeLength);
+    const end = await trail.evaluate((n) => {
+      const path = n as SVGPathElement,
+        p = path.getPointAtLength(path.getTotalLength());
+      return { x: 190 + 145 * p.x, y: 185 + 145 * p.y };
+    });
+    const point = svg.locator("[data-moving-disk-point]");
+    expect(end.x).toBeCloseTo(Number(await point.getAttribute("cx")), 3);
+    expect(end.y).toBeCloseTo(Number(await point.getAttribute("cy")), 3);
+    await scrub.fill("2");
+    await expect(trail).toHaveAttribute("d", atTwo!);
+  }
+  await svg.screenshot({
+    path: `test-results/${info.project.name}-disk-trail.png`,
+  });
+  await right.getByText("More layers", { exact: true }).click();
+  await right.getByLabel("Trajectory", { exact: true }).uncheck();
+  await expect(trail).toHaveCount(0);
+  await right.getByLabel("Trajectory", { exact: true }).check();
+  await expect(trail).toHaveCount(1);
+  await scrub.fill("0");
+  await expect(trail).toHaveCount(0);
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+});

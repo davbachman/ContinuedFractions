@@ -132,6 +132,9 @@ export function FareyDisk({
   );
   const endpoint = projection.vertex(target);
   const point = moving ? projection.point(moving) : null;
+  const trailStart = moving
+    ? projection.point({ x: target, y: heightAt(0) })
+    : null;
   const freeze = () => {
     setFixed(camera);
     setSeed(tri);
@@ -479,6 +482,21 @@ export function FareyDisk({
             strokeWidth={1}
             strokeDasharray="3 4"
             opacity={0.65}
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="none"
+          />
+        )}
+        {trailStart && point && time > 0 && overlays.trajectory && (
+          <path
+            data-disk-trail="true"
+            d={
+              `M${trailStart.x} ${trailStart.y}` +
+              diskGeodesic(trailStart, point)
+            }
+            transform={transform}
+            fill="none"
+            stroke="#c7744d"
+            strokeWidth={2}
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"
           />
