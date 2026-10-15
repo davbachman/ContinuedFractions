@@ -5,7 +5,7 @@ import { rational } from "../../src/math/rational";
 const button = (page: any, name: string) =>
   page.getByRole("button", { name, exact: true });
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
 test("all edge classes and Farey neighbors flip bidirectionally without replacing the target", async ({

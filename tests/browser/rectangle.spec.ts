@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
 });
 
 test("view switching preserves the number, selected coefficient and independent H² time", async ({

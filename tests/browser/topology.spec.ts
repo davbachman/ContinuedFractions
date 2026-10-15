@@ -9,7 +9,7 @@ async function number(page: Page, value: string) {
 const button = (page: Page, name: string) =>
   page.getByRole("button", { name, exact: true });
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
 });
 
 test("six-sheet cover follows forward and reverse time and survives view changes", async ({

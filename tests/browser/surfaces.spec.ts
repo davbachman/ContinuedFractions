@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 test("surface gestures preserve scene state, support keyboard reset and cancellation, and keep trail clicks", async ({
   page,
 }, info) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
   const time = page.getByRole("slider", { name: "Scrub trajectory" });
   await time.fill("5");
   if (info.project.name === "mobile")
@@ -46,7 +46,7 @@ test("surface gestures preserve scene state, support keyboard reset and cancella
 test("domain colors agree across the half-plane and filled translucent quotient surfaces", async ({
   page,
 }, info) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
   await page.getByRole("checkbox", { name: "Modular domains" }).check();
   await page.getByRole("checkbox", { name: "Ford circles" }).uncheck();
   await page.getByRole("slider", { name: "Scrub trajectory" }).fill("5");

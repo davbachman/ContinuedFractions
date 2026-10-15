@@ -1,0 +1,277 @@
+import { test, expect, type Page } from "@playwright/test";
+import { representations } from "../../src/workspace";
+const left = (page: Page) =>
+  page.getByRole("region", { name: "Left representation", exact: true });
+const right = (page: Page) =>
+  page.getByRole("region", { name: "Right representation", exact: true });
+const choose = (page: Page, side: string, kind: string) =>
+  page
+    .getByRole("combobox", { name: `${side} representation`, exact: true })
+    .selectOption(kind);
+const number = async (page: Page, value: string) => {
+  await page.getByLabel("ENDPOINT α").fill(value);
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
+};
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+});
+
+test("defaults to two views, synchronizes coefficient edits and undo, and fits desktop/mobile", async ({
+  page,
+}, info) => {
+  await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
+  await expect(
+    page.getByRole("status", { name: "Connection between views" }),
+  ).toContainText("Coefficients ↔ square groups");
+  await left(page)
+    .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
+    .click();
+  await expect(
+    right(page).getByText("Euclidean stage a2", { exact: false }),
+  ).toBeVisible();
+  await left(page).getByLabel("Edit a2", { exact: true }).fill("3");
+  await left(page)
+    .getByRole("button", { name: "Apply coefficient", exact: true })
+    .click();
+  await expect(page.getByLabel("ENDPOINT α")).not.toHaveValue("5/13");
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await expect(left(page).getByLabel("Edit a2", { exact: true })).toHaveValue(
+    "1",
+  );
+  const a = (await left(page).boundingBox())!,
+    b = (await right(page).boundingBox())!;
+  if (info.project.name === "mobile")
+    expect(b.y).toBeGreaterThan(a.y + a.height - 1);
+  else expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/${info.project.name}-comparison-default.png`,
+    fullPage: true,
+  });
+});
+
+test("every representation works on either side, including duplicate models with unique SVG IDs", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const kind of Object.keys(representations)) {
+    await choose(page, "Left", kind);
+    await choose(page, "Right", kind);
+    await expect(left(page)).toHaveAttribute("data-representation", kind);
+    await expect(right(page)).toHaveAttribute("data-representation", kind);
+    await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+    expect(
+      await page.locator("[id]").evaluateAll((nodes) => {
+        const ids = nodes.map((n) => n.id);
+        return ids.length === new Set(ids).size;
+      }),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+  }
+  expect(errors).toEqual([]);
+});
+test("coefficient inspection highlights folded and 3D quotient runs without seeking, and focused panes support playback keys", async ({
+  page,
+}, info) => {
+  await choose(page, "Right", "torus");
+  await left(page)
+    .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
+    .click();
+  await expect(
+    right(page).locator('[data-selected-run="2"]').first(),
+  ).toBeVisible();
+  await expect(
+    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+  ).toHaveValue("0");
+  await right(page)
+    .getByRole("button", { name: "Torus 3D", exact: true })
+    .click();
+  await expect(
+    right(page).locator('[data-selected-run="2"]').first(),
+  ).toBeAttached();
+  await choose(page, "Right", "orbifold");
+  await expect(
+    right(page).locator('[data-selected-run="2"]').first(),
+  ).toBeVisible();
+  await right(page)
+    .getByRole("button", { name: "Schematic 3D", exact: true })
+    .click();
+  await expect(
+    right(page).locator('[data-selected-run="2"]').first(),
+  ).toBeAttached();
+  await right(page).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+  ).not.toHaveValue("0");
+  await page
+    .locator(".comparison-grid")
+    .screenshot({
+      path: `test-results/${info.project.name}-comparison-selected-run.png`,
+    });
+});
+
+test("two H² cameras and layers are independent, swap with their panes, and share trajectory time", async ({
+  page,
+}, info) => {
+  await choose(page, "Left", "h2");
+  await choose(page, "Right", "h2");
+  const first = left(page).getByRole("img", { name: /Upper half-plane/ }),
+    second = right(page).getByRole("img", { name: /Upper half-plane/ });
+  const original = await second.getAttribute("data-manual-zoom");
+  await left(page)
+    .getByRole("button", { name: "Zoom in", exact: true })
+    .click();
+  await expect(first).not.toHaveAttribute("data-manual-zoom", original!);
+  await expect(second).toHaveAttribute("data-manual-zoom", original!);
+  await left(page).getByLabel("Ford circles", { exact: true }).uncheck();
+  await expect(
+    right(page).getByLabel("Ford circles", { exact: true }),
+  ).toBeChecked();
+  await left(page)
+    .getByRole("slider", { name: "Scrub trajectory" })
+    .fill("1.2");
+  await expect(
+    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+  ).toHaveValue("1.2");
+  const zoom = await first.getAttribute("data-manual-zoom");
+  await page.getByRole("button", { name: "Swap sides ⇄" }).click();
+  await expect(second).toHaveAttribute("data-manual-zoom", zoom!);
+  await expect(
+    right(page).getByLabel("Ford circles", { exact: true }),
+  ).not.toBeChecked();
+  await choose(page, "Right", "torus");
+  await right(page).getByLabel("Cover lift", { exact: true }).selectOption("3");
+  await expect(
+    left(page).getByRole("img", { name: /Upper half-plane/ }),
+  ).toHaveAttribute("data-torus-lift", "3");
+  await right(page)
+    .getByRole("button", { name: "Torus 3D", exact: true })
+    .click();
+  await page.locator(".comparison-grid").screenshot({
+    path: `test-results/${info.project.name}-comparison-torus.png`,
+  });
+});
+
+test("rectangle playback leaves hyperbolic time independent and unavailable inputs retain the number", async ({
+  page,
+}) => {
+  await choose(page, "Left", "h2");
+  await left(page).getByRole("slider", { name: "Scrub trajectory" }).fill("2");
+  await right(page)
+    .getByRole("button", { name: "Restart dissection", exact: true })
+    .click();
+  await right(page)
+    .getByRole("button", { name: "Next stage", exact: true })
+    .click();
+  await expect(
+    left(page).getByRole("slider", { name: "Scrub trajectory" }),
+  ).toHaveValue("2");
+  for (const value of ["0", "-1", "infinity"]) {
+    await number(page, value);
+    await expect(right(page).locator(".view-unavailable")).toBeVisible();
+    await expect(page.getByLabel("ENDPOINT α")).toHaveValue(
+      value === "infinity" ? "∞" : value,
+    );
+  }
+  await choose(page, "Left", "symbolic");
+  await expect(left(page).getByText(/∞ has no finite regular/)).toBeVisible();
+});
+
+test("canonical tangle selection links coefficients, custom words and irrational convergents stay explicit", async ({
+  page,
+}, info) => {
+  await choose(page, "Right", "closure");
+  await left(page)
+    .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
+    .click();
+  await expect(
+    right(page).getByRole("button", {
+      name: "Select twist region 5",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await right(page)
+    .getByRole("button", { name: "Select twist region 1", exact: true })
+    .click();
+  await expect(
+    left(page).getByRole("button", {
+      name: "Select coefficient a4 = 2",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await right(page)
+    .getByRole("button", { name: "Add +1 endpoint twist", exact: true })
+    .click();
+  await expect(
+    right(page).getByText(/Custom signed construction/),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(right(page).getByText(/Canonical construction/)).toBeVisible();
+  await page.getByRole("button", { name: "φ", exact: true }).click();
+  await right(page)
+    .getByLabel("Tangle convergent", { exact: true })
+    .selectOption("4");
+  await expect(
+    right(page).getByText(/Approximation: convergent/),
+  ).toContainText("8/5");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
+  await right(page)
+    .getByRole("button", { name: "Add +1 endpoint twist", exact: true })
+    .click();
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
+  await page.locator(".comparison-grid").screenshot({
+    path: `test-results/${info.project.name}-comparison-knot.png`,
+  });
+});
+
+test("Farey flips preserve the target, shared undo works, and layouts survive reload and atlas switching", async ({
+  page,
+}) => {
+  await page.getByLabel("Comparison preset", { exact: true }).selectOption("4");
+  await right(page)
+    .getByRole("button", { name: "Flip edge 1", exact: true })
+    .click();
+  await expect(
+    left(page).getByRole("img", { name: /Upper half-plane/ }),
+  ).toHaveAttribute("data-triangulation", "0 | ∞ | -1");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(
+    left(page).getByRole("img", { name: /Upper half-plane/ }),
+  ).toHaveAttribute("data-triangulation", "0 | ∞ | 1");
+  await page.reload();
+  await expect(left(page)).toHaveAttribute("data-representation", "h2");
+  await expect(right(page)).toHaveAttribute(
+    "data-representation",
+    "triangulation",
+  );
+  await page.getByRole("button", { name: "Full atlas", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "The upper half-plane", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Compare two views", exact: true })
+    .click();
+  await expect(right(page)).toHaveAttribute(
+    "data-representation",
+    "triangulation",
+  );
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+});

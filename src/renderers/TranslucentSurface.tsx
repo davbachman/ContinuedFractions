@@ -8,6 +8,7 @@ export type SurfaceLine = {
   side?: "T" | "S";
   onSelect?: (event: MouseEvent<SVGPathElement>) => void;
   trail?: boolean;
+  selectedRun?: number;
 };
 const path = (points: SurfacePoint[]) =>
   points
@@ -110,6 +111,7 @@ export function TranslucentSurface({
           key={f.key}
           data-domain-side={f.line.side}
           data-surface-trail={f.line.trail || undefined}
+          data-selected-run={f.line.selectedRun}
           data-surface-front={foreground}
           d={path(f.points)}
           fill="none"

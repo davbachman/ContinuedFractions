@@ -50,6 +50,35 @@ export function mirrorExpression(ops: TangleExpression): TangleOperation[] {
     op.kind === "twist" ? { ...op, count: -op.count } : op,
   );
 }
+/** Only the canonical construction has a direct coefficient-to-region map. */
+export function canonicalTwistCoefficients(
+  ops: TangleExpression,
+  r: Rational,
+): Map<number, number> | null {
+  if (!r.q) return null;
+  const canonical = expressionFor(r);
+  if (
+    ops.length !== canonical.length ||
+    ops.some((op, i) => {
+      const expected = canonical[i];
+      return (
+        op.kind !== expected.kind ||
+        (op.kind === "twist" && expected.kind === "twist"
+          ? op.count !== expected.count
+          : op.kind === "rotate" &&
+            expected.kind === "rotate" &&
+            op.turns !== expected.turns)
+      );
+    })
+  )
+    return null;
+  const count = toCF(r).length;
+  return new Map(
+    canonical.flatMap((op, i) =>
+      op.kind === "twist" ? [[i, count - 1 - i / 2]] : [],
+    ),
+  );
+}
 export function rotateEndpoints<T>(e: readonly T[], turns: 1 | -1): T[] {
   return (turns === 1 ? [1, 3, 0, 2] : [2, 0, 3, 1]).map((i) => e[i]);
 }

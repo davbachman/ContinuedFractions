@@ -2353,3 +2353,553 @@ footer,
     animation: none;
   }
 }
+
+/* Two selectable representations, with shared mathematical state. */
+.comparison-shell .intro {
+  padding: 20px 0 16px;
+  margin: 0;
+}
+.comparison-shell .intro h1 {
+  font-size: clamp(28px, 3vw, 42px);
+  margin: 0 0 6px;
+}
+.comparison-shell .intro p {
+  margin: 0;
+}
+.comparison-shell .intro .eyebrow,
+.comparison-shell .intro-note {
+  display: none;
+}
+.comparison-shell .site-header {
+  min-height: 66px;
+}
+.comparison-shell .input-options {
+  margin-bottom: 12px;
+}
+.comparison-presets {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 14px 0 10px;
+}
+.comparison-presets label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+}
+.comparison-presets button,
+.comparison-presets select,
+.workspace-actions button,
+.workspace-actions select,
+.workspace-details button,
+.strip-edit button {
+  border: 1px solid #cbd5c0;
+  background: #fbfcf7;
+  border-radius: 6px;
+  padding: 8px 11px;
+  min-height: 38px;
+}
+.connection-caption {
+  background: #eaf0e5;
+  border-left: 3px solid #66876d;
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  line-height: 1.5;
+}
+.connection-caption strong {
+  font-size: 14px;
+}
+.connection-caption p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  max-width: 1000px;
+}
+.comparison-strip {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+  margin: 12px 0;
+}
+.comparison-strip > strong {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    15px Georgia,
+    serif;
+}
+.comparison-coefficients {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 3px 0 6px;
+}
+.comparison-coefficients button {
+  flex-shrink: 0;
+  border: 1px solid #d8dfd0;
+  border-bottom: 3px solid;
+  border-radius: 5px;
+  padding: 7px 9px;
+  min-width: 44px;
+  min-height: 42px;
+  font-size: 14px;
+}
+.comparison-coefficients button small {
+  font-size: 9px;
+  display: block;
+  opacity: 0.75;
+}
+.comparison-coefficients [aria-pressed="true"],
+.workspace-terms [aria-pressed="true"] {
+  background: #e5ecdd;
+  outline: 1px solid #54755d;
+}
+.strip-edit {
+  position: relative;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.strip-edit summary {
+  cursor: pointer;
+  padding: 12px 4px;
+}
+.strip-edit form {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  z-index: 15;
+  width: 220px;
+  background: #fffef8;
+  padding: 16px;
+  border: 1px solid #cbd5c0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #18382b18;
+}
+.strip-edit input {
+  width: 100%;
+  margin: 8px 0;
+  padding: 8px;
+}
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 18px;
+}
+.comparison-pane {
+  min-width: 0;
+  overflow: hidden;
+}
+.comparison-pane:focus-visible {
+  outline: 2px solid #66876d;
+  outline-offset: 3px;
+}
+.pane-heading {
+  padding: 13px 18px;
+  border-bottom: 1px solid #dce3d5;
+  background: #f4f6ee;
+}
+.pane-heading label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pane-heading span {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #6c7f6b;
+  white-space: nowrap;
+}
+.pane-heading select {
+  min-width: 0;
+  flex: 1;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid #cbd5c0;
+  border-radius: 5px;
+  background: #fffef9;
+  font-size: 14px;
+}
+.pane-body {
+  height: min(72vh, 760px);
+  min-height: 540px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+.pane-body > .panel {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+}
+.pane-body .panel-number {
+  display: none;
+}
+.pane-body .panel-heading {
+  padding: 12px 18px;
+}
+.pane-body .panel-heading h2 {
+  font-size: 19px;
+}
+.pane-body .quotient-plot {
+  height: auto;
+  max-width: 440px;
+  margin: auto;
+}
+.pane-body .quotient-plot > svg {
+  width: 100%;
+  max-height: 400px;
+}
+.pane-body .topology-svg {
+  max-height: 370px;
+}
+.pane-body .canvas-wrap {
+  height: 380px;
+}
+.pane-body .rectangle-canvas {
+  max-height: 340px;
+}
+.pane-body .rectangle-overview {
+  padding: 8px 16px;
+}
+.pane-body .rectangle-overview svg {
+  max-height: 115px;
+}
+.pane-body .rectangle-camera {
+  padding: 12px 16px;
+}
+.pane-body .pillowcase-grid,
+.pane-body .triangulation-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pane-body .flip-edge-controls {
+  gap: 6px;
+  padding: 10px;
+}
+.pane-body .flip-edge-controls > div {
+  padding: 7px;
+}
+.pane-body .flip-edge-controls button {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+.pane-body .topology-options {
+  gap: 8px;
+}
+.pane-overlays {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 12px 16px;
+  font-size: 11px;
+}
+.pane-overlays label,
+.workspace-actions label {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.pane-overlays details {
+  width: 100%;
+}
+.pane-overlays details label {
+  margin: 10px 12px 0 0;
+}
+.pane-transport {
+  padding: 14px 16px;
+  border-top: 1px solid #dce3d5;
+  font-size: 11px;
+}
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.workspace-actions .primary-action {
+  background: #405f49;
+  color: #fff;
+  border-color: #405f49;
+}
+.pane-scrubber {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+}
+.pane-scrubber input {
+  width: 100%;
+}
+.pane-note,
+.comparison-footnote {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #63775f;
+  padding: 0 16px;
+}
+.comparison-footnote {
+  padding: 0;
+  margin: 12px 0;
+}
+.pane-inspection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f0eddc;
+  font-size: 12px;
+}
+.pane-inspection button {
+  padding: 7px;
+  border: 1px solid #cbd5c0;
+  border-radius: 4px;
+}
+.workspace-details {
+  padding: 14px 16px;
+  border-top: 1px solid #e1e6da;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.workspace-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.workspace-details label {
+  display: block;
+  margin-top: 10px;
+}
+.workspace-details .dissection-explanation {
+  padding: 0;
+}
+.workspace-details .dissection-explanation h3 {
+  margin-top: 16px;
+}
+.pane-events {
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+.pane-events button {
+  text-align: left;
+}
+.symbolic-view .fraction-tabs {
+  padding: 12px 16px;
+}
+.symbolic-value {
+  padding: 0 18px;
+  font:
+    21px Georgia,
+    serif;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.symbolic-value .small-tag {
+  display: block;
+}
+.symbolic-view .stacked-scroll {
+  margin: 20px 0;
+  padding: 12px 20px 24px;
+  max-height: 310px;
+  overflow: auto;
+}
+.symbolic-view .cf-help {
+  padding: 0 18px;
+  line-height: 1.6;
+}
+.workspace-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px;
+}
+.workspace-terms button {
+  display: grid;
+  min-width: 58px;
+  gap: 6px;
+  border: 1px solid #d8dfd0;
+  border-bottom: 3px solid;
+  border-radius: 6px;
+  padding: 10px;
+}
+.workspace-terms strong {
+  font:
+    24px Georgia,
+    serif;
+}
+.workspace-terms small {
+  font-size: 10px;
+}
+.symbolic-selection {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px;
+  background: #f6f7f0;
+  margin: 12px 0;
+}
+.symbolic-selection strong {
+  font:
+    23px Georgia,
+    serif;
+  display: block;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+.symbolic-selection form {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+.symbolic-selection .input-group {
+  display: flex;
+  margin-top: 7px;
+  width: 100%;
+}
+.symbolic-selection input {
+  min-width: 0;
+  width: 100%;
+}
+.symbolic-selection button {
+  min-width: 115px;
+}
+.symbolic-view > .workspace-actions {
+  padding: 0 18px 18px;
+}
+.comparison-shell footer {
+  margin-top: 25px;
+}
+@media (max-width: 760px) {
+  .comparison-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .pane-body {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
+  }
+  .comparison-shell {
+    padding-bottom: 0;
+  }
+  .comparison-shell .intro {
+    padding: 15px 0;
+  }
+  .comparison-shell .site-header nav {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px 12px;
+  }
+  .comparison-shell .brand span {
+    font-size: 14px;
+  }
+  .comparison-shell .brand svg {
+    width: 28px;
+  }
+  .comparison-shell .site-header {
+    gap: 10px;
+  }
+  .comparison-presets select {
+    max-width: 100%;
+  }
+  .comparison-presets label {
+    flex: 1;
+    min-width: 0;
+  }
+  .comparison-strip {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .comparison-strip > strong {
+    max-width: calc(100% - 100px);
+  }
+  .comparison-coefficients {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .strip-edit {
+    margin-left: auto;
+  }
+  .comparison-pane button,
+  .comparison-pane select {
+    min-height: 44px;
+  }
+  .pane-heading {
+    padding: 12px;
+  }
+  .pane-heading select {
+    font-size: 13px;
+  }
+  .pane-body .canvas-wrap {
+    height: 340px;
+  }
+  .pane-body .plot-hint {
+    max-width: 185px;
+    font-size: 9px;
+  }
+  .pane-body .plot-controls {
+    gap: 2px;
+  }
+  .pane-body .flip-edge-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pane-body .flip-edge-controls > div {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .pane-body .flip-edge-controls button {
+    width: auto;
+  }
+}
+.comparison-shell .site-header {
+  height: 66px;
+}
+.comparison-shell .intro {
+  padding: 12px 0;
+}
+.comparison-shell .number-bar {
+  margin-top: 6px;
+}
+.comparison-shell .input-options {
+  margin: 8px 0;
+  padding: 0;
+  min-height: 0;
+}
+.comparison-presets {
+  margin-top: 12px;
+}
+.symbolic-value .small-tag {
+  display: inline-block;
+  margin-left: 8px;
+}
+@media (max-width: 760px) {
+  .site-header nav .layout-switch {
+    font-size: 10px;
+    min-height: 36px;
+  }
+  .comparison-shell .site-header {
+    height: auto;
+    min-height: 70px;
+  }
+  .comparison-shell .brand {
+    max-width: 54%;
+  }
+}

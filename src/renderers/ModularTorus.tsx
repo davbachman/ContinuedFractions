@@ -1,4 +1,5 @@
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
+import type { SelectedRun } from "./selectedRun";
 import { useMemo, useState } from "react";
 import {
   apply,
@@ -44,6 +45,7 @@ export function ModularTorus({
   onSeek,
   lift,
   onLiftChange,
+  selectedRun,
 }: {
   alpha: number;
   time: number;
@@ -52,6 +54,7 @@ export function ModularTorus({
   onSeek: (t: number) => void;
   lift: number;
   onLiftChange: (lift: number) => void;
+  selectedRun?: SelectedRun;
 }) {
   const [mode, setMode] = useState<"flat" | "surface">("flat"),
     [rotation, setRotation] = useState(-0.6),
@@ -302,6 +305,18 @@ export function ModularTorus({
               lines={[
                 ...(edges ? surfaceEdges : []),
                 ...(trail ? surfaceTrail : []),
+                ...(selectedRun?.segments.map((s) => ({
+                  points: s.points.map((p) =>
+                    surfaceProjection(
+                      coverSurface(p, coverSheet(s.matrix, lift)),
+                      rotation,
+                    ),
+                  ),
+                  color: selectedRun.color,
+                  width: 4,
+                  selectedRun: selectedRun.term,
+                  onSelect: () => onSeek((s.start + s.end) / 2),
+                })) ?? []),
               ]}
             />
             <text x={190} y={25} textAnchor="middle" className="svg-muted">
@@ -347,6 +362,20 @@ export function ModularTorus({
               </path>
             );
           })}
+        {mode === "flat" &&
+          selectedRun?.segments.map((s, i) => (
+            <path
+              key={`selected-${i}`}
+              data-selected-run={selectedRun.term}
+              d={svgPath(
+                s.points.map((p) => project(p, coverSheet(s.matrix, lift))),
+              )}
+              fill="none"
+              stroke={selectedRun.color}
+              strokeWidth={4}
+              onClick={() => onSeek((s.start + s.end) / 2)}
+            />
+          ))}
         <line
           x1={current.x}
           y1={current.y}

@@ -4,7 +4,7 @@ import { torusDomainColor } from "../../src/renderers/torusDomains";
 test("H² domain fills match both torus models and the selected cover lift", async ({
   page,
 }, info) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
   const plane = page.getByRole("img", { name: /Upper half-plane/ });
   const pixel = () =>
     plane.evaluate((node) => {

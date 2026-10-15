@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useId } from "react";
 import { type NumberSpec, specLabel } from "../math/continuedFraction";
 import { label, value, type Rational } from "../math/rational";
 import {
@@ -44,6 +44,7 @@ const short = (r: Rational) =>
     ? label(r).slice(0, 8) + "…" + label(r).slice(-7)
     : label(r);
 export function MarkedTriangulation(props: Props) {
+  const id = useId();
   const { spec, speed, onChange, onTarget, onError } = props,
     state = props.state ?? initialTriangulation;
   const path = useMemo(
@@ -287,11 +288,11 @@ export function MarkedTriangulation(props: Props) {
             data-slopes={triangleKey(tri)}
           >
             <defs>
-              <clipPath id="marked-square-clip">
+              <clipPath id={`${id}-marked-square-clip`}>
                 <rect x={45} y={45} width={260} height={260} />
               </clipPath>
               <marker
-                id="basis-arrow"
+                id={`${id}-basis-arrow`}
                 markerWidth={7}
                 markerHeight={7}
                 refX={6}
@@ -310,7 +311,7 @@ export function MarkedTriangulation(props: Props) {
               stroke="#70816c"
             />
             <g
-              clipPath="url(#marked-square-clip)"
+              clipPath={`url(#${id}-marked-square-clip)`}
               className={transition ? "flip-incident-triangles" : ""}
             >
               {faceCopies.map((f, i) => (
@@ -383,7 +384,7 @@ export function MarkedTriangulation(props: Props) {
             <path
               d="M45 332H155 M22 305V195"
               stroke="#425b48"
-              markerEnd="url(#basis-arrow)"
+              markerEnd={`url(#${id}-basis-arrow)`}
             />
             <text x={170} y={337} className="svg-muted">
               meridian (1,0) → 0

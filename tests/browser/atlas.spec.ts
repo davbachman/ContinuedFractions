@@ -1,7 +1,7 @@
 import { dragSurface } from "./rotation";
 import { test, expect } from "@playwright/test";
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?layout=atlas");
 });
 test("loads exact default, plays, steps, edits and undoes", async ({
   page,

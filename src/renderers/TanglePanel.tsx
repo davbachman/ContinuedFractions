@@ -10,11 +10,14 @@ import {
   endpointNames,
   closureComponents,
   closureName,
+  canonicalTwistCoefficients,
 } from "../math/tangles";
 import { tangleDiagram } from "../math/tangleDiagram";
 import { Pillowcase } from "./Pillowcase";
 import { svgPath } from "./ModularTorus";
 type Props = {
+  view?: "tangle" | "closure" | "pillowcase";
+  linkCoefficients?: boolean;
   spec: NumberSpec;
   expression?: TangleExpression;
   convergents: readonly Rational[];
@@ -31,6 +34,8 @@ export function TanglePanel({
   onSelect,
   onChange,
   onError,
+  view,
+  linkCoefficients = false,
 }: Props) {
   const target = spec.kind === "rational" ? spec.value : convergents[selected];
   const ops = useMemo(
@@ -42,17 +47,38 @@ export function TanglePanel({
   );
   const diagram = useMemo(() => tangleDiagram(ops), [ops]);
   const fraction = useMemo(() => tangleFraction(ops), [ops]);
-  const [mode, setMode] = useState<"tangle" | "pillowcase">("tangle"),
-    [closed, setClosed] = useState(false),
+  const [localMode, setMode] = useState<"tangle" | "pillowcase">("tangle"),
+    [localClosed, setClosed] = useState(false),
     [three, setThree] = useState(false),
     [rotation, setRotation] = useState(0.45),
     [zoom, setZoom] = useState(1),
     [region, setRegion] = useState(-1),
     [draft, setDraft] = useState("1");
+  const mode = view
+    ? view === "pillowcase"
+      ? "pillowcase"
+      : "tangle"
+    : localMode;
+  const closed = view ? view === "closure" : localClosed;
+  const coefficientMap = useMemo(
+    () =>
+      linkCoefficients && spec.kind === "rational"
+        ? canonicalTwistCoefficients(ops, target)
+        : null,
+    [linkCoefficients, spec, ops, target],
+  );
+  const linkedRegion = coefficientMap
+    ? [...coefficientMap].find(([, index]) => index === selected)?.[0]
+    : undefined;
+  const chooseRegion = (index: number) => {
+    setRegion(index);
+    const coefficient = coefficientMap?.get(index);
+    if (coefficient !== undefined) onSelect(coefficient);
+  };
   const twistRegions = ops.flatMap((op, i) => (op.kind === "twist" ? [i] : [])),
-    activeRegion = twistRegions.includes(region)
-      ? region
-      : (twistRegions.at(-1) ?? -1),
+    activeRegion =
+      linkedRegion ??
+      (twistRegions.includes(region) ? region : (twistRegions.at(-1) ?? -1)),
     active = ops[activeRegion];
   useEffect(() => {
     setDraft(active?.kind === "twist" ? String(active.count) : "0");
@@ -155,30 +181,45 @@ export function TanglePanel({
       <div className="panel-heading">
         <div>
           <span className="panel-number">04</span>
-          <h2>Marked rational tangle</h2>
+          <h2>
+            {view === "closure"
+              ? "2-bridge knot / link"
+              : view === "pillowcase"
+                ? "Marked torus / pillowcase"
+                : "Marked rational tangle"}
+          </h2>
         </div>
         <strong className="tangle-fraction" data-testid="tangle-fraction">
           {label(fraction)}
         </strong>
       </div>
-      <div
-        className="topology-options"
-        role="group"
-        aria-label="Tangle and branched cover"
-      >
-        <button
-          aria-pressed={mode === "tangle"}
-          onClick={() => setMode("tangle")}
+      {!view && (
+        <div
+          className="topology-options"
+          role="group"
+          aria-label="Tangle and branched cover"
         >
-          Rational tangle
-        </button>
-        <button
-          aria-pressed={mode === "pillowcase"}
-          onClick={() => setMode("pillowcase")}
-        >
-          Branched-cover torus / pillowcase
-        </button>
-      </div>
+          <button
+            aria-pressed={mode === "tangle"}
+            onClick={() => setMode("tangle")}
+          >
+            Rational tangle
+          </button>
+          <button
+            aria-pressed={mode === "pillowcase"}
+            onClick={() => setMode("pillowcase")}
+          >
+            Branched-cover torus / pillowcase
+          </button>
+        </div>
+      )}
+      {linkCoefficients && spec.kind === "rational" && (
+        <p className="pane-note">
+          {coefficientMap
+            ? `Canonical construction · selected coefficient a${selected} highlights its signed twist region.`
+            : "Custom signed construction · the rational value is linked; its operation regions are independent of the regular continued-fraction coefficients."}
+        </p>
+      )}
       {spec.kind === "periodic" && (
         <div className="tangle-approximation" role="status">
           Approximation: convergent <strong>{label(target)}</strong> of{" "}
@@ -220,14 +261,16 @@ export function TanglePanel({
             </button>
           </div>
           <div className="topology-options">
-            <label>
-              <input
-                type="checkbox"
-                checked={closed}
-                onChange={(e) => setClosed(e.target.checked)}
-              />
-              Numerator closure
-            </label>
+            {!view && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={closed}
+                  onChange={(e) => setClosed(e.target.checked)}
+                />
+                Numerator closure
+              </label>
+            )}
             <button aria-pressed={!three} onClick={() => setThree(false)}>
               2D diagram
             </button>
@@ -325,7 +368,7 @@ export function TanglePanel({
                       stroke={color(i)}
                       strokeWidth={edge.region === activeRegion ? 4.5 : 3.2}
                       strokeLinecap="round"
-                      onClick={() => setRegion(edge.region)}
+                      onClick={() => chooseRegion(edge.region)}
                     />
                   ))}
                   {diagram.crossings.map((c, i) => {
@@ -342,7 +385,7 @@ export function TanglePanel({
                       <g
                         key={i}
                         data-region={c.region}
-                        onClick={() => setRegion(c.region)}
+                        onClick={() => chooseRegion(c.region)}
                       >
                         <path
                           d={svgPath(points)}
@@ -366,7 +409,7 @@ export function TanglePanel({
                       x = (Math.min(...xs) + Math.max(...xs)) / 2,
                       y = (Math.min(...ys) + Math.max(...ys)) / 2;
                     return (
-                      <g key={i} onClick={() => setRegion(box.region)}>
+                      <g key={i} onClick={() => chooseRegion(box.region)}>
                         <path
                           d={svgPath(points) + "Z"}
                           fill="#e6eada"
@@ -443,7 +486,7 @@ export function TanglePanel({
                   key={i}
                   aria-label={`Select twist region ${i + 1}`}
                   aria-pressed={activeRegion === i}
-                  onClick={() => setRegion(i)}
+                  onClick={() => chooseRegion(i)}
                 >
                   H({String(op.count)})
                 </button>

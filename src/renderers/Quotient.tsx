@@ -1,5 +1,6 @@
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
-import { useMemo, useState, type MouseEvent } from "react";
+import type { SelectedRun } from "./selectedRun";
+import { useMemo, useState, useId, type MouseEvent } from "react";
 import { type Segment, apply, tangent, reduce } from "../math/modular";
 import { heightAt } from "../math/trajectory";
 import { DomainEdgeLegend, domainEdgeColor } from "./domainEdges";
@@ -10,13 +11,22 @@ import {
 } from "./TranslucentSurface";
 import { schematicPoint, project3d } from "./geometry";
 type Props = {
+  selectedRun?: SelectedRun;
   alpha: number;
   time: number;
   segments: readonly Segment[];
   onSeek: (t: number) => void;
   limited: boolean;
 };
-export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
+export function Quotient({
+  alpha,
+  time,
+  segments,
+  onSeek,
+  limited,
+  selectedRun,
+}: Props) {
+  const id = useId();
   const [mode, setMode] = useState<"folded" | "schematic">("folded"),
     [rotation, setRotation] = useState(-0.4);
   const rotationControls = useSurfaceRotation(
@@ -146,11 +156,17 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
           }
         >
           <defs>
-            <linearGradient id="domain-fill" x1="0" y1="1" x2="0" y2="0">
+            <linearGradient
+              id={`${id}-domain-fill`}
+              x1="0"
+              y1="1"
+              x2="0"
+              y2="0"
+            >
               <stop offset="0" stopColor="#e3e9d7" />
               <stop offset="1" stopColor="#edf0e5" stopOpacity="0.1" />
             </linearGradient>
-            <clipPath id="quotient-clip">
+            <clipPath id={`${id}-quotient-clip`}>
               <rect width="380" height="355" />
             </clipPath>
           </defs>
@@ -158,7 +174,7 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
             <>
               <path
                 d={`M72.5 20 L72.5 328 ${path(circle).replace(/^M/, "L")} L307.5 20 Z`}
-                fill="url(#domain-fill)"
+                fill={`url(#${id}-domain-fill)`}
               />
               <path
                 d="M72.5 20V328 M307.5 20V328"
@@ -228,7 +244,18 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
                   </g>
                 );
               })}
-              <g clipPath="url(#quotient-clip)">
+              <g clipPath={`url(#${id}-quotient-clip)`}>
+                {selectedRun?.segments.map((s, i) => (
+                  <path
+                    key={`selected-${i}`}
+                    data-selected-run={selectedRun.term}
+                    d={path(s.points.map(project))}
+                    fill="none"
+                    stroke={selectedRun.color}
+                    strokeWidth={4}
+                    onClick={(event) => selectTracePoint(event, s.points)}
+                  />
+                ))}
                 {drawable.map(({ seg, points }, i) => (
                   <path
                     key={i}
@@ -280,6 +307,14 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
                 faces={surface.faces}
                 lines={[
                   ...surface.edges,
+                  ...(selectedRun?.segments.map((s) => ({
+                    points: s.points.map(schematic),
+                    color: selectedRun.color,
+                    width: 4,
+                    selectedRun: selectedRun.term,
+                    onSelect: (event: MouseEvent<SVGPathElement>) =>
+                      selectTracePoint(event, s.points),
+                  })) ?? []),
                   ...drawable.map(({ points }) => ({
                     points: points.map(schematic),
                     color: "#b74d29",
