@@ -43,7 +43,6 @@ import type { TriangulationState } from "./math/triangulation";
 
 export type WorkspaceProps = {
   numberEditor: ReactNode;
-  numberOptions: ReactNode;
   inputError: ReactNode;
   scene: Scene;
   coefficients: bigint[];
@@ -161,6 +160,15 @@ export function Workspace(props: WorkspaceProps) {
     else props.onSelect(i);
   };
   const [coefficientDraft, setCoefficientDraft] = useState("");
+  const coefficientInput = useRef<HTMLInputElement>(null);
+  const focusCoefficient = useRef(false);
+  useEffect(() => {
+    if (focusCoefficient.current) {
+      coefficientInput.current?.focus();
+      coefficientInput.current?.select();
+      focusCoefficient.current = false;
+    }
+  }, [props.selected]);
   useEffect(
     () => setCoefficientDraft(String(props.coefficients[props.selected] ?? 0n)),
     [props.coefficients, props.selected],
@@ -304,17 +312,72 @@ export function Workspace(props: WorkspaceProps) {
       >
         {props.numberEditor}
         <div className="comparison-coefficients">
-          {props.coefficients.map((a, i) => (
-            <button
-              key={i}
-              aria-pressed={props.selected === i}
-              aria-label={`Highlight coefficient a${i} = ${a}`}
-              style={{ borderBottomColor: stageColor(i) }}
-              onClick={() => selectCoefficient(i)}
-            >
-              <small>a{i}</small> {String(a)}
-            </button>
-          ))}
+          {props.coefficients.map((a, i) =>
+            props.selected === i ? (
+              <form
+                key={i}
+                className="coefficient-inline-editor"
+                style={{ borderBottomColor: stageColor(i) }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (coefficientDraft !== String(a)) {
+                    runs.disable();
+                    props.onEditCoefficient(coefficientDraft);
+                  }
+                }}
+              >
+                <label>
+                  <small>a{i}</small>
+                  <input
+                    ref={coefficientInput}
+                    data-coefficient={i}
+                    aria-label={`Edit coefficient a${i}`}
+                    title="Enter to apply; Escape to cancel"
+                    inputMode={i === 0 ? "text" : "numeric"}
+                    enterKeyHint="done"
+                    autoComplete="off"
+                    spellCheck={false}
+                    style={{
+                      width: `${Math.min(16, Math.max(2, coefficientDraft.length))}ch`,
+                    }}
+                    value={coefficientDraft}
+                    onFocus={(e) => {
+                      setFlipPlaying(false);
+                      props.onPause();
+                      if (runs.playing) runs.toggle();
+                      e.currentTarget.select();
+                    }}
+                    onClick={() => selectCoefficient(i)}
+                    onChange={(e) => setCoefficientDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setCoefficientDraft(String(a));
+                        props.onError("");
+                        e.currentTarget.select();
+                      }
+                    }}
+                    onBlur={() => setCoefficientDraft(String(a))}
+                  />
+                </label>
+              </form>
+            ) : (
+              <button
+                key={i}
+                data-coefficient={i}
+                aria-pressed={false}
+                aria-label={`Highlight coefficient a${i} = ${a}`}
+                style={{ borderBottomColor: stageColor(i) }}
+                onClick={() => {
+                  focusCoefficient.current = true;
+                  setCoefficientDraft(String(a));
+                  selectCoefficient(i);
+                }}
+              >
+                <small>a{i}</small> {String(a)}
+              </button>
+            ),
+          )}
           {props.scene.spec.kind === "periodic" && (
             <button
               onClick={props.onExtendTerms}
@@ -326,30 +389,7 @@ export function Workspace(props: WorkspaceProps) {
           )}
           {infinite && <span>No finite regular expansion</span>}
         </div>
-        {!infinite && (
-          <details className="strip-edit">
-            <summary>Edit a{props.selected}</summary>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                props.onEditCoefficient(coefficientDraft);
-              }}
-            >
-              <label>
-                Coefficient a{props.selected}
-                <input
-                  aria-label="Shared coefficient value"
-                  inputMode="numeric"
-                  value={coefficientDraft}
-                  onChange={(e) => setCoefficientDraft(e.target.value)}
-                />
-              </label>
-              <button>Apply coefficient</button>
-            </form>
-          </details>
-        )}
       </div>
-      <div className="comparison-number-tools">{props.numberOptions}</div>
       {props.inputError}
       <div className="comparison-grid">
         {panes.map((pane, i) => (
@@ -420,10 +460,6 @@ export function Workspace(props: WorkspaceProps) {
           />
         ))}
       </div>
-      <p className="comparison-footnote">
-        Select a coefficient to highlight a relationship. Playback controls name
-        the process they advance. Camera changes never edit the shared number.
-      </p>
     </section>
   );
 }

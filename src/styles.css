@@ -231,27 +231,6 @@ h1 em {
   padding: 6px 12px;
   margin-left: 8px;
 }
-.input-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 1px 18px;
-  color: #8a8e82;
-  font-size: 10px;
-  gap: 12px;
-}
-.input-options label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.input-options select {
-  font-size: 10px;
-  border: 0;
-  padding: 0;
-  min-height: 24px;
-  color: #76826d;
-}
 .panel {
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1207,10 +1186,6 @@ footer a {
   .history-tools {
     margin-left: 0;
   }
-  .input-options {
-    flex-wrap: wrap;
-    gap: 0;
-  }
   .view-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1386,15 +1361,6 @@ footer a {
   }
   .history-tools button {
     min-width: 35px;
-  }
-  .input-options {
-    font-size: 8px;
-    padding: 8px 0 13px;
-    gap: 3px;
-    line-height: 1.7;
-  }
-  .input-options label {
-    font-size: 9px;
   }
   .panel-heading {
     padding: 14px 12px;
@@ -1694,7 +1660,6 @@ footer a {
 .events-list code,
 .events-note,
 .motion-note,
-.input-options,
 .plot-footer,
 .quotient-caption,
 .fraction-foot,
@@ -2163,13 +2128,9 @@ footer,
 .comparison-shell .site-header {
   min-height: 66px;
 }
-.comparison-shell .input-options {
-  margin-bottom: 12px;
-}
 .workspace-actions button,
 .workspace-actions select,
-.workspace-details button,
-.strip-edit button {
+.workspace-details button {
   border: 1px solid #cbd5c0;
   background: #fbfcf7;
   border-radius: 6px;
@@ -2192,51 +2153,30 @@ footer,
   overflow-x: auto;
   padding: 3px 0 6px;
 }
-.comparison-coefficients button {
+.comparison-coefficients button,
+.coefficient-inline-editor {
   flex-shrink: 0;
   border: 1px solid #d8dfd0;
   border-bottom: 3px solid;
   border-radius: 5px;
   padding: 7px 9px;
   min-width: 44px;
-  min-height: 42px;
-  font-size: 14px;
+  min-height: 44px;
+  font-size: 16px;
 }
-.comparison-coefficients button small {
+.comparison-coefficients button {
+  flex-direction: column;
+  gap: 0;
+}
+.comparison-coefficients small {
   font-size: 9px;
   display: block;
   opacity: 0.75;
 }
-.comparison-coefficients [aria-pressed="true"],
+.coefficient-inline-editor,
 .workspace-terms [aria-pressed="true"] {
   background: #e5ecdd;
   outline: 1px solid #54755d;
-}
-.strip-edit {
-  position: relative;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.strip-edit summary {
-  cursor: pointer;
-  padding: 12px 4px;
-}
-.strip-edit form {
-  position: absolute;
-  right: 0;
-  top: 42px;
-  z-index: 15;
-  width: 220px;
-  background: #fffef8;
-  padding: 16px;
-  border: 1px solid #cbd5c0;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px #18382b18;
-}
-.strip-edit input {
-  width: 100%;
-  margin: 8px 0;
-  padding: 8px;
 }
 .comparison-grid {
   display: grid;
@@ -2380,16 +2320,11 @@ footer,
 .pane-scrubber input {
   width: 100%;
 }
-.pane-note,
-.comparison-footnote {
+.pane-note {
   font-size: 11px;
   line-height: 1.7;
   color: #63775f;
   padding: 0 16px;
-}
-.comparison-footnote {
-  padding: 0;
-  margin: 12px 0;
 }
 .pane-inspection {
   display: flex;
@@ -2562,9 +2497,6 @@ footer,
     order: 3;
     flex-basis: 100%;
   }
-  .strip-edit {
-    margin-left: auto;
-  }
   .comparison-pane button,
   .comparison-pane select {
     min-height: 44px;
@@ -2591,11 +2523,6 @@ footer,
 }
 .comparison-shell .intro {
   padding: 12px 0;
-}
-.comparison-shell .input-options {
-  margin: 8px 0;
-  padding: 0;
-  min-height: 0;
 }
 .symbolic-value .small-tag {
   display: inline-block;
@@ -2988,7 +2915,6 @@ svg[data-rotation] * {
   min-width: 40px;
   height: 42px;
 }
-.comparison-number-tools,
 .atlas-number-controls {
   display: flex;
   align-items: flex-start;
@@ -2996,41 +2922,14 @@ svg[data-rotation] * {
   gap: 8px 16px;
   margin: 8px 0 14px;
 }
-.alpha-options {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  color: #62745e;
-}
-.alpha-options summary {
-  cursor: pointer;
-  width: fit-content;
-  padding: 10px 0;
-}
-.alpha-options .input-options {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 8px 16px;
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0;
-  padding: 0 0 10px;
-}
 @media (max-width: 760px) {
   .alpha-editor {
     flex-shrink: 1;
   }
   .alpha-editor .input-group,
   .alpha-editor .input-group button,
-  .comparison-number-tools button,
-  .atlas-number-controls button,
-  .alpha-options select,
-  .alpha-options summary {
+  .atlas-number-controls button {
     min-height: 44px;
-  }
-  .alpha-options summary {
-    display: flex;
-    align-items: center;
   }
 }
 
@@ -3126,4 +3025,29 @@ svg[data-rotation] * {
   .pane-body > .interactive-disk {
     height: auto;
   }
+}
+
+.coefficient-inline-editor {
+  margin: 0;
+  text-align: center;
+}
+.coefficient-inline-editor label {
+  display: block;
+}
+.coefficient-inline-editor input {
+  display: block;
+  min-width: 2ch;
+  max-width: 16ch;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #78906d;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+.coefficient-inline-editor:focus-within {
+  outline: 2px solid #54755d;
 }

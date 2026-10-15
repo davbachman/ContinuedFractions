@@ -13,11 +13,8 @@ test("visible restart and coefficient following synchronize both flip panes with
   await page.goto("/?left=farey&right=triangulation");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
-  const coefficient = (i: number, value: number) =>
-    page.getByRole("button", {
-      name: `Highlight coefficient a${i} = ${value}`,
-      exact: true,
-    });
+  const coefficient = (i: number, _value: number) =>
+    page.locator(`.comparison-coefficients [data-coefficient="${i}"]`);
   await coefficient(3, 1).click();
   await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await expect(button(left, "Go to selected coefficient")).toContainText(
@@ -36,7 +33,7 @@ test("visible restart and coefficient following synchronize both flip panes with
   await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
   await button(right, "Restart flips").click();
   await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await expect(coefficient(0, 0)).toHaveAttribute("aria-pressed", "true");
+  await expect(coefficient(0, 0)).toHaveValue("0");
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
@@ -74,17 +71,12 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
   await right
     .getByLabel("Follow selected coefficient", { exact: true })
     .check();
-  await page
-    .getByRole("button", { name: "Highlight coefficient a1 = 1", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="1"]').click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 1");
   await expect(right).toContainText("a1 has no flips");
   await expect(
-    page.getByRole("button", {
-      name: "Highlight coefficient a1 = 1",
-      exact: true,
-    }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.locator('.comparison-coefficients [data-coefficient="1"]'),
+  ).toHaveValue("1");
   expect(
     Number(
       await left.getByRole("slider", { name: "Scrub trajectory" }).inputValue(),
@@ -98,9 +90,7 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Highlight coefficient a3 = 2", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
   await expect(button(right, "Go to selected coefficient")).toBeDisabled();
   await expect(right).toContainText("beyond the generated flip path");
   await expect(right.getByTestId("flip-status")).toContainText("Step 0");
@@ -173,9 +163,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
   await expect(right.getByTestId("flip-run-caption")).toContainText(
     "a1 = 2 · L run · 1 of 1",
   );
-  await page
-    .getByRole("button", { name: "Highlight coefficient a3 = 1", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
   await expect(left.locator('[data-selected-run="3"]')).toHaveCount(1);
   await expect(left.getByTestId("flip-status")).toContainText("Step 2");
   await button(left, "Go to selected coefficient").click();
@@ -350,14 +338,9 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
   await expect(farey).toHaveAttribute("data-slopes", "2 | ∞ | 3");
   await button(right, "Next crossing").click();
   const advanced = await farey.getAttribute("data-slopes");
-  await page
-    .getByRole("button", { name: "Highlight coefficient a0 = 2", exact: true })
-    .click();
-  await page.locator(".strip-edit summary").click();
-  await page.getByLabel("Shared coefficient value", { exact: true }).fill("4");
-  await page
-    .getByRole("button", { name: "Apply coefficient", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="0"]').click();
+  await page.getByLabel("Edit coefficient a0", { exact: true }).fill("4");
+  await page.getByLabel("Edit coefficient a0", { exact: true }).press("Enter");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("23/5");
   await expect(farey).toHaveAttribute("data-slopes", "4 | ∞ | 5");
   await expect(farey).toHaveAttribute("data-flip-cursor", "0");

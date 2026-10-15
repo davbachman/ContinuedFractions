@@ -57,9 +57,7 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     "data-stage",
     String(pausedStage - 1),
   );
-  await page
-    .getByRole("button", { name: "Highlight coefficient a4 = 2", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="4"]').click();
   await clock(page).fill("1");
   await expect(disk).toHaveAttribute("data-flip-cursor", "5");
   await expect(page.getByTestId("linked-run-status")).toContainText(
@@ -138,10 +136,7 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
     await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
     await link(page).check();
     await page
-      .getByRole("button", {
-        name: "Highlight coefficient a2 = 1",
-        exact: true,
-      })
+      .locator('.comparison-coefficients [data-coefficient="2"]')
       .click();
     await expect(diagram(page)).toHaveAttribute("data-stage", "2");
     await pane(page, "Right").focus();
@@ -150,10 +145,7 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
     if (view !== "h2" && view !== "farey") {
       const right = pane(page, "Right");
       await page
-        .getByRole("button", {
-          name: "Highlight coefficient a2 = 1",
-          exact: true,
-        })
+        .locator('.comparison-coefficients [data-coefficient="2"]')
         .click();
       if (view === "torus")
         await right

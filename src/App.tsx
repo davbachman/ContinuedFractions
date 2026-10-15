@@ -110,7 +110,6 @@ export default function App() {
     "full",
   );
   const [input, setInput] = useState(specLabel(scene.spec)),
-    [completion, setCompletion] = useState<"finite" | "ones">("finite"),
     [error, setError] = useState(boot.error ?? ""),
     [playing, setPlaying] = useState(false),
     [reverse, setReverse] = useState(false),
@@ -274,7 +273,7 @@ export default function App() {
   }
   function submitInput() {
     try {
-      changeNumber(parseInput(input, completion));
+      changeNumber(parseInput(input));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -634,7 +633,6 @@ export default function App() {
               setError("");
             }
           }}
-          aria-describedby="number-help"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           spellCheck={false}
@@ -703,28 +701,6 @@ export default function App() {
       />
     </div>
   );
-  const numberOptions = (
-    <details className="alpha-options">
-      <summary>Input options</summary>
-      <div className="input-options">
-        <span id="number-help">
-          Enter a fraction, decimal, [a₀; a₁, …], phi, or sqrt2. Decimals are
-          exact rationals.
-        </span>
-        <label>
-          CF prefix completion{" "}
-          <select
-            aria-label="Continued-fraction prefix completion"
-            value={completion}
-            onChange={(e) => setCompletion(e.target.value as "finite" | "ones")}
-          >
-            <option value="finite">Terminate (rational)</option>
-            <option value="ones">Infinite tail of 1s</option>
-          </select>
-        </label>
-      </div>
-    </details>
-  );
   const inputError = error && (
     <div className="error" role="alert">
       {error}
@@ -789,14 +765,12 @@ export default function App() {
         {!comparison && (
           <>
             <div className="atlas-number-controls">{numberEditor}</div>
-            {numberOptions}
             {inputError}
           </>
         )}
         {comparison ? (
           <Workspace
             numberEditor={numberEditor}
-            numberOptions={numberOptions}
             inputError={inputError}
             scene={scene}
             coefficients={cf}
@@ -1959,11 +1933,12 @@ export default function App() {
         <h3>Exact data, finite pictures</h3>
         <p>
           Integers use BigInt; φ and √2 retain exact periodic definitions.
-          Finite prefixes either terminate or explicitly continue with ones.
-          Rendering uses floating point, |α| ≤ 10,000 and t ≤ 24. Detail stops
-          at pixel, depth, and event budgets. The Ford timeline covers q ≤ 32
-          plus computed convergents. Very deep points can leave the fixed
-          camera; use Auto zoom for a slow descent while the view magnifies.
+          Bracketed coefficient lists terminate; φ and √2 remain exact
+          irrationals. Rendering uses floating point, |α| ≤ 10,000 and t ≤ 24.
+          Detail stops at pixel, depth, and event budgets. The Ford timeline
+          covers q ≤ 32 plus computed convergents. Very deep points can leave
+          the fixed camera; use Auto zoom for a slow descent while the view
+          magnifies.
         </p>
         <h3>The quotient</h3>
         <p>

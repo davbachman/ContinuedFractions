@@ -290,9 +290,7 @@ test("Farey crossing highlights obey each pane's Farey edges toggle while seekin
     });
   const scrub = left(page).getByRole("slider", { name: "Scrub trajectory" });
   await scrub.fill("2");
-  await page
-    .getByRole("button", { name: "Highlight coefficient a2 = 1", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="2"]').click();
   await expect.poll(() => highlightPixels(a)).toBeGreaterThan(0);
   await left(page).getByLabel("Farey edges", { exact: true }).uncheck();
   await expect.poll(() => highlightPixels(a)).toBe(0);
@@ -301,9 +299,7 @@ test("Farey crossing highlights obey each pane's Farey edges toggle while seekin
     await scrub.fill(time);
     await expect.poll(() => highlightPixels(a)).toBe(0);
   }
-  await page
-    .getByRole("button", { name: "Highlight coefficient a2 = 1", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="2"]').click();
   await left(page).getByLabel("Farey edges", { exact: true }).check();
   await expect.poll(() => highlightPixels(a)).toBeGreaterThan(0);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
@@ -418,14 +414,11 @@ test("inline alpha editing replaces the top controls and preserves exact edits a
   await alpha.press("Escape");
   await expect(alpha).toHaveValue("13/5");
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await page.getByText("Input options", { exact: true }).click();
-  await page
-    .getByLabel("Continued-fraction prefix completion")
-    .selectOption("ones");
-  await alpha.fill("[1]");
+  await expect(page.getByText("Input options", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".comparison-footnote")).toHaveCount(0);
+  await alpha.fill("[1; 2]");
   await alpha.press("Enter");
-  await expect(alpha).toHaveValue("φ");
-  await page.getByText("Input options", { exact: true }).click();
+  await expect(alpha).toHaveValue("3/2");
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(alpha).toHaveValue("13/5");
   await page.screenshot({
@@ -437,4 +430,76 @@ test("inline alpha editing replaces the top controls and preserves exact edits a
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
+});
+
+test("selected strip coefficients edit inline, validate, cancel, and share undo", async ({
+  page,
+}, info) => {
+  const strip = page.locator(".comparison-strip");
+  await expect(strip.locator(".strip-edit")).toHaveCount(0);
+  await strip
+    .getByRole("button", { name: "Highlight coefficient a2 = 1", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
+  const edit = strip.getByRole("textbox", {
+    name: "Edit coefficient a2",
+    exact: true,
+  });
+  await expect(edit).toBeFocused();
+  await page.keyboard.type("3");
+  await expect(edit).toHaveValue("3");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await edit.press("Enter");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("11/25");
+  await expect(right(page).locator(".rectangle-overview")).toContainText(
+    "α = 11/25",
+  );
+  await edit.fill("0");
+  await edit.press("Enter");
+  await expect(page.getByRole("alert")).toContainText("positive integer");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("11/25");
+  await edit.press("Escape");
+  await expect(edit).toHaveValue("3");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await edit.fill("7");
+  await page.getByLabel("ENDPOINT α").focus();
+  await expect(edit).toHaveValue("3");
+  await page
+    .getByRole("button", { name: "Undo number edit", exact: true })
+    .click();
+  await expect(edit).toHaveValue("1");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await page
+    .getByRole("button", { name: "Redo number edit", exact: true })
+    .click();
+  await expect(edit).toHaveValue("3");
+  await number(page, "phi");
+  await strip.locator('[data-coefficient="2"]').click();
+  await edit.fill("3");
+  await edit.press("Enter");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue(
+    "[1, 1, 3; overline(1)]",
+  );
+  await page
+    .getByRole("button", { name: "Undo number edit", exact: true })
+    .click();
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
+  await number(page, "13/5");
+  await strip.locator('[data-coefficient="0"]').click();
+  await strip.getByLabel("Edit coefficient a0", { exact: true }).fill("-2");
+  await strip.getByLabel("Edit coefficient a0", { exact: true }).press("Enter");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("-7/5");
+  await page
+    .getByRole("button", { name: "Undo number edit", exact: true })
+    .click();
+  await strip.screenshot({
+    path: `test-results/${info.project.name}-inline-coefficients.png`,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await number(page, "infinity");
+  await expect(strip.locator(".coefficient-inline-editor")).toHaveCount(0);
 });
