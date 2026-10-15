@@ -1,3 +1,4 @@
+import { coefficientInterval } from "../math/coefficientTimeline";
 import { apply, type Segment } from "../math/modular";
 import type { Crossing } from "../math/farey";
 import { heightAt } from "../math/trajectory";
@@ -9,16 +10,11 @@ export function coefficientTrace(
   alpha: number,
   end: number,
 ): Segment[] {
-  if (!term) return [];
-  const first = crossings.find(
-    (e) => e.term === term && e.direction !== "initial",
-  );
-  if (!first) return [];
-  const last =
-    crossings.find((e) => e.time > first.time && e.term !== term)?.time ?? end;
+  const interval = coefficientInterval(crossings, term, end);
+  if (!interval) return [];
   return segments.flatMap((s) => {
-    const start = Math.max(s.start, first.time),
-      stop = Math.min(s.end, last);
+    const start = Math.max(s.start, interval.start),
+      stop = Math.min(s.end, interval.end);
     // A Farey crossing can coincide with a modular seam up to roundoff.
     // Omit sub-pixel, zero-length chart slivers from the inspection overlay.
     if (stop - start < 1e-10) return [];

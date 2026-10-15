@@ -157,7 +157,7 @@ test("surface partners mark the same modular copy and genuine seams in both time
   ).toBeVisible();
   await expect(
     pane(page, "Right").locator('[data-run-label="2"]'),
-  ).toContainText("selected run");
+  ).toContainText("selected interval");
   await page
     .getByRole("combobox", { name: "Left representation", exact: true })
     .selectOption("tangle");

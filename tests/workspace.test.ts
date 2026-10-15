@@ -24,15 +24,15 @@ it("rejects removed and invalid representations", () => {
 });
 it("clips selected coefficient runs into separate modular charts without changing playback time", () => {
   const math = derive(parseInput("5/13"), 12);
-  expect(
-    coefficientTrace(
-      math.quotient.segments,
-      math.farey.crossings,
-      0,
-      5 / 13,
-      12,
-    ),
-  ).toEqual([]);
+  const initial = coefficientTrace(
+    math.quotient.segments,
+    math.farey.crossings,
+    0,
+    5 / 13,
+    12,
+  );
+  expect(initial[0].start).toBe(0);
+  expect(initial.at(-1)!.end).toBeCloseTo(math.farey.crossings[0].time, 9);
   const parts = coefficientTrace(
     math.quotient.segments,
     math.farey.crossings,

@@ -1,3 +1,4 @@
+import { coefficientInterval } from "./math/coefficientTimeline";
 import {
   useEffect,
   useRef,
@@ -570,7 +571,11 @@ function TrajectoryControls({ shared: p }: { shared: WorkspaceProps }) {
   const events = p.math.events.filter((e) =>
     filter === "ford" ? e.kind.startsWith("ford") : e.kind === filter,
   );
-  const run = p.math.farey.crossings.find((e) => e.term === p.selected);
+  const run = coefficientInterval(
+    p.math.farey.crossings,
+    p.selected,
+    p.scene.end,
+  );
   return (
     <div className="pane-transport">
       <div className="workspace-actions">
@@ -636,7 +641,7 @@ function TrajectoryControls({ shared: p }: { shared: WorkspaceProps }) {
               ))}
             </select>
           </label>
-          <button disabled={!run} onClick={() => run && p.onSeek(run.time)}>
+          <button disabled={!run} onClick={() => run && p.onSeek(run.start)}>
             Seek selected run
           </button>
         </div>

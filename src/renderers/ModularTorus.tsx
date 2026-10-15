@@ -457,11 +457,11 @@ export function ModularTorus({
             paintOrder="stroke"
             data-run-label={selectedRun.term}
           >
-            {selectedRun.segments.length
-              ? `a${selectedRun.term} · selected run`
-              : selectedRun.term === 0
-                ? "a₀ · starting bracket"
-                : `a${selectedRun.term} · no displayed crossings`}
+            {selectedRun.term === 0
+              ? "a₀ · starting bracket"
+              : selectedRun.segments.length
+                ? `a${selectedRun.term} · selected interval`
+                : `a${selectedRun.term} · outside display`}
           </text>
         )}
       </svg>

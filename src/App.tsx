@@ -1,4 +1,8 @@
 import {
+  coefficientAtTime,
+  coefficientInterval,
+} from "./math/coefficientTimeline";
+import {
   convergentError,
   scientificRational,
   targetBounds,
@@ -280,11 +284,9 @@ export default function App() {
   }
   function seek(time: number) {
     setPlaying(false);
-    const active = [...math.farey.crossings]
-      .reverse()
-      .find((e) => e.time <= time + 1e-8);
-    if (active) setSelectedTerm(active.term);
-    patch({ time: Math.max(0, Math.min(scene.end, time)) });
+    const nextTime = Math.max(0, Math.min(scene.end, time));
+    setSelectedTerm(coefficientAtTime(math.farey.crossings, nextTime));
+    patch({ time: nextTime });
   }
   function step(direction: number, kind: "farey" | "term" = "farey") {
     if (kind === "term") {
@@ -298,10 +300,7 @@ export default function App() {
       direction > 0
         ? events.find((e) => e.time > scene.time + 1e-7)
         : [...events].reverse().find((e) => e.time < scene.time - 1e-7);
-    if (event) {
-      seek(event.time);
-      setSelectedTerm(event.term);
-    }
+    if (event) seek(event.time);
   }
   useEffect(() => {
     setInput(specLabel(scene.spec));
@@ -310,10 +309,8 @@ export default function App() {
     setCoefficient(String(cf[Math.min(selectedTerm, cf.length - 1)]));
   }, [cf, selectedTerm]);
   useEffect(() => {
-    const active = [...math.farey.crossings]
-      .reverse()
-      .find((e) => e.time <= scene.time + 1e-8);
-    if (playing && active) setSelectedTerm(active.term);
+    if (playing)
+      setSelectedTerm(coefficientAtTime(math.farey.crossings, scene.time));
   }, [scene.time, playing, math]);
   useEffect(() => {
     const id = setTimeout(() => {
@@ -429,8 +426,8 @@ export default function App() {
       setSelectedTerm(i);
       return;
     }
-    const first = math.farey.crossings.find((e) => e.term === i);
-    if (first) seek(first.time);
+    const interval = coefficientInterval(math.farey.crossings, i, scene.end);
+    if (interval) seek(interval.start);
     else setPlaying(false);
     setSelectedTerm(i);
   }
@@ -517,8 +514,8 @@ export default function App() {
     // should replace that selection with the crossing's run.
     if (previous.spec !== scene.spec || previous.cursor === t?.cursor) return;
     if (t?.mode === "follow" && t !== explicitRunSelection.current)
-      setSelectedTerm(t.steps[t.cursor - 1]?.term ?? 0);
-  }, [scene.triangulation, scene.spec]);
+      setSelectedTerm(coefficientAtTime(math.farey.crossings, scene.time));
+  }, [scene.triangulation, scene.spec, scene.time, math.farey.crossings]);
   useEffect(() => {
     const t = scene.triangulation;
     if (t?.mode !== "follow") return;
@@ -1713,7 +1710,6 @@ export default function App() {
                         }
                         onClick={() => {
                           seek(e.time);
-                          if (e.kind === "farey") setSelectedTerm(e.term);
                         }}
                       >
                         <span className={`event-dot ${e.kind}`}>
