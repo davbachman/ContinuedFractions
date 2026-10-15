@@ -2903,3 +2903,219 @@ footer,
     max-width: 54%;
   }
 }
+
+/* Prefix-based comparisons: exact values stay in readable, wrapping text;
+   diagrams convert to floating coordinates only at their last projection. */
+.prefix-explorer {
+  color: #344c3c;
+  font-size: 13px;
+  line-height: 1.65;
+  min-width: 0;
+}
+.prefix-navigation {
+  padding: 14px 18px;
+  background: #f6f7f0;
+  border-bottom: 1px solid #dfe5d6;
+}
+.prefix-navigation > label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+  margin-top: 14px;
+}
+.prefix-navigation input[type="range"] {
+  flex: 1;
+  min-width: 70px;
+  accent-color: #548875;
+}
+.prefix-navigation p {
+  margin: 8px 0 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.prefix-intro {
+  padding: 18px 18px 4px;
+}
+.prefix-intro h3 {
+  font:
+    23px/1.25 Georgia,
+    serif;
+  font-weight: 400;
+  margin: 0 0 10px;
+  color: #304631;
+}
+.prefix-intro p {
+  margin: 8px 0 12px;
+}
+.prefix-intro label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+.prefix-note {
+  font-size: 11px;
+  color: #67785f;
+  line-height: 1.7;
+}
+.prefix-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fcfcf6;
+  touch-action: pan-y;
+}
+.prefix-chart text {
+  fill: #43583b;
+  font-family: inherit;
+}
+.prefix-chart [role="button"] {
+  cursor: pointer;
+  outline: none;
+}
+.prefix-chart [role="button"]:focus-visible > rect,
+.prefix-chart [role="button"]:focus-visible > circle {
+  stroke: #304e3f;
+  stroke-width: 3px;
+}
+.prefix-svg-label {
+  font:
+    17px Georgia,
+    serif;
+}
+.chart-note {
+  padding: 0 18px;
+}
+.prefix-facts {
+  padding: 8px 18px 16px;
+  overflow-wrap: anywhere;
+}
+.prefix-facts p {
+  margin: 8px 0;
+}
+.exact-expression {
+  font:
+    20px/1.5 Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+.prefix-facts details {
+  border-top: 1px solid #dfe5d6;
+  padding-top: 12px;
+  margin-top: 16px;
+}
+.prefix-facts summary {
+  cursor: pointer;
+  min-height: 30px;
+}
+.prefix-selection {
+  padding: 18px;
+  background: #eff2e6;
+  border-top: 1px solid #dce3d0;
+  overflow-wrap: anywhere;
+}
+.prefix-selection > strong {
+  font:
+    28px/1.4 Georgia,
+    serif;
+  display: block;
+  margin: 6px 0 12px;
+}
+.prefix-selection > p {
+  font-size: 11px;
+  margin-bottom: 0;
+}
+.prefix-selection > button,
+.prefix-point-list > button {
+  border: 1px solid #ccd6bf;
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: #fafbf6;
+}
+.prefix-explorer button[aria-pressed="true"] {
+  background: #e6edda;
+  box-shadow: inset 0 0 0 1px #708965;
+}
+.prefix-point-list {
+  display: flex;
+  gap: 8px;
+  padding: 4px 18px 18px;
+  overflow: auto;
+}
+.prefix-point-list > button {
+  flex: 0 0 auto;
+  border-bottom: 3px solid;
+  font-size: 11px;
+}
+.matrix-factors {
+  display: flex;
+  gap: 12px;
+  padding: 12px 18px;
+  overflow: auto;
+  max-height: 230px;
+}
+.matrix-factors > button {
+  flex: 0 0 auto;
+  border: 1px solid #dce3d0;
+  border-bottom: 3px solid;
+  border-radius: 6px;
+  padding: 10px;
+}
+.matrix-factors small {
+  display: block;
+  margin-bottom: 10px;
+}
+.exact-matrix {
+  display: inline-grid;
+  grid-template-columns: repeat(2, auto);
+  align-items: center;
+  gap: 4px 16px;
+  padding: 3px 10px;
+  border-left: 2px solid #617856;
+  border-right: 2px solid #617856;
+  border-radius: 5px;
+  text-align: center;
+  font:
+    20px/1.5 Georgia,
+    serif;
+  white-space: nowrap;
+}
+.matrix-equation {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: auto;
+  padding: 12px 0 20px;
+}
+.matrix-equation > * {
+  flex: 0 0 auto;
+}
+.matrix-equation > span:not(.exact-matrix) {
+  font-size: 25px;
+}
+@media (max-width: 760px) {
+  .prefix-navigation,
+  .prefix-intro,
+  .prefix-facts,
+  .prefix-selection {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .prefix-navigation .workspace-actions {
+    gap: 5px;
+  }
+  .prefix-navigation .workspace-actions button {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .prefix-intro h3 {
+    font-size: 21px;
+  }
+  .prefix-intro label {
+    min-height: 44px;
+  }
+  .prefix-chart {
+    min-height: 230px;
+  }
+}

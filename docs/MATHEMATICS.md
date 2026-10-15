@@ -71,3 +71,30 @@ The kernel stores coordinates and dimensions as integer linear forms `mα + b`. 
 The renderer evaluates symbolic differences before converting to screen coordinates. A 128-term exact convergent supplies only a projection for periodic values; counts and termination never depend on that approximation. Follow-remainder coordinates are normalized relative to the working rectangle so that deep stages do not lose their position through subtraction of nearby floating-point numbers. Rendering budgets and the 96-stage periodic display cap do not assert mathematical termination.
 
 Rectangle stage indices are canonical continued-fraction coefficient indices. The existing Farey coding map selects the corresponding run in H²; rectangle playback neither advances hyperbolic time nor associates a stage with a Ford contact.
+
+
+## Prefix enclosures, integer lattice, matrix products, and errors
+
+For each regular prefix `[a₀; …, aₙ]`, let `cₙ = pₙ/qₙ` with seeds `p₋₂=0, p₋₁=1, q₋₂=1, q₋₁=0`. The new views use the existing exact convergents and the shared canonical coefficient index. Define
+
+`A(a) = [[a,1],[1,0]]`,
+
+`Mₙ = A(a₀) … A(aₙ) = [[pₙ,pₙ₋₁],[qₙ,qₙ₋₁]]`.
+
+Multiplication appends on the **right**, so both rows obey the convergent recurrence. `det Mₙ = (−1)^(n+1)`. We reuse integer matrix multiplication and determinants only; the H² action/inverse helpers assume determinant +1 and are not applied to these determinant −1 factors.
+
+For a real complete tail `t ≥ 1`, the prefix acts as
+
+`fₙ(t) = (pₙt + pₙ₋₁)/(qₙt + qₙ₋₁)`.
+
+The limits at `t=1` and `t→∞` are the mediant with the previous convergent and the current convergent. Sorting them gives the closed prefix enclosure. Its width is exactly `1/[qₙ(qₙ+qₙ₋₁)]`. These closed intervals are nested; their interiors contain the selected infinite periodic expansion. We deliberately call them enclosures rather than claiming both rational endpoints have that canonical finite prefix. Rational alternate endings identify boundary points. At rational termination, α equals one endpoint; the prefix enclosure still has positive width.
+
+Lattice vectors are `vₙ=(qₙ,pₙ)`, with `v₋₂=(1,0)`, `v₋₁=(0,1)`. They satisfy `vₙ=aₙvₙ₋₁+vₙ₋₂` and `det(vₙ₋₁,vₙ)=(−1)^(n+1)`, hence the adjacent cell has area one. The basis close-up expresses `w` as
+
+`(det(w,vₙ)/d, det(vₙ₋₁,w)/d)`, where `d=det(vₙ₋₁,vₙ)=±1`.
+
+This is an exact integer change of coordinates. Its displayed unit square is an affine view, not a claim about Euclidean angles or a homology map on the six-sheet modular torus. The fixed-axis view uses equal scale on q and p. The target line’s projection uses a deep enclosing rational only for display.
+
+For rational α, signed errors `α−pₙ/qₙ` are exact rational differences, with a zero numerator iff the convergent is α. For periodic α, compute an enclosure from at least 16 terms beyond **all** displayed prefixes (also beyond the nonperiodic prefix), by exact matrix recurrence. Subtract each displayed convergent from both enclosure endpoints before taking absolute values and multiplying by `qₙ²` if requested. This gives certified nonzero rational error bounds even beyond double-precision resolution. Periodic tails supply these internal extra terms without extending the editable/displayed state. The plotted lower bound approximates the error; the exact bounds are inspectable. No approximate zero decides termination.
+
+Coordinate ratios use leading integer digits after exact rational arithmetic; logarithms use integer digit lengths. This avoids overflow from converting huge numerator/denominator pairs separately, and cancellation from subtracting nearly equal doubles. Rational zero is represented on a separate row outside the log axis. Polyline segments connect discrete convergents only. Render budgets and local cameras never change α, exact vectors, or the shared history.

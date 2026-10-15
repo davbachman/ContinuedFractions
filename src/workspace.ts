@@ -1,6 +1,10 @@
 export const representations = {
   symbolic: "Symbolic continued fraction",
   rectangle: "Rectangle dissection",
+  intervals: "Nested intervals",
+  lattice: "Integer lattice",
+  matrices: "Matrix products",
+  errors: "Approximation errors",
   h2: "H² · Farey and Ford",
   orbifold: "Modular surface",
   torus: "Punctured modular torus",
@@ -14,6 +18,12 @@ export const isRepresentation = (s: unknown): s is Representation =>
   typeof s === "string" && Object.hasOwn(representations, s);
 export const isTrajectory = (s: Representation) =>
   ["h2", "orbifold", "torus"].includes(s);
+export const isPrefixView = (
+  s: Representation,
+): s is "intervals" | "lattice" | "matrices" | "errors" =>
+  ["intervals", "lattice", "matrices", "errors"].includes(s);
+export const isCoefficientView = (s: Representation) =>
+  s === "symbolic" || s === "rectangle" || isPrefixView(s);
 export const isTangle = (s: Representation) =>
   ["tangle", "closure", "pillowcase"].includes(s);
 export const comparisonPresets: {
@@ -27,6 +37,10 @@ export const comparisonPresets: {
   { label: "Explore flips", pair: ["h2", "triangulation"] },
   { label: "Build a knot / link", pair: ["symbolic", "closure"] },
   { label: "Tangle and its cover", pair: ["tangle", "pillowcase"] },
+  { label: "Narrow down a number", pair: ["symbolic", "intervals"] },
+  { label: "From intervals to lattice", pair: ["intervals", "lattice"] },
+  { label: "Read the lattice basis", pair: ["lattice", "matrices"] },
+  { label: "Measure approximation", pair: ["intervals", "errors"] },
 ];
 export function correspondence(
   a: Representation,
@@ -48,6 +62,27 @@ export function correspondence(
       kind: "Same mathematical state",
       text: "Compare two displays of the same state with independent camera and display settings.",
     };
+  if (isPrefixView(a) || isPrefixView(b)) {
+    if (isCoefficientView(a) && isCoefficientView(b))
+      return {
+        kind: "Same prefix · different representations",
+        text: "Selecting aₙ links the prefix enclosure, convergent vector (qₙ, pₙ), matrix product through A(aₙ), and convergent error. Rectangle groups use the same coefficient index. Matrix columns are (p, q); lattice coordinates are (q, p). Selection leaves α unchanged.",
+      };
+    if (isTrajectory(a) || isTrajectory(b))
+      return {
+        kind: "Convergents and Farey runs",
+        text: "The selected prefix determines a rational convergent and its coefficient’s Farey run, with the existing initial and terminal offsets. Prefix depth is not hyperbolic time. This lattice is not a homology marking on the six-sheet modular torus.",
+      };
+    if (isTangle(a) || isTangle(b))
+      return {
+        kind: "Shared value · explicit approximation",
+        text: "Prefixes describe the selected exact number. A finite tangle represents a rational; for an irrational it uses its own explicitly selected convergent. These selections are independent. Use convergent as target explicitly makes all views rational.",
+      };
+    return {
+      kind: "Target approximation · independent triangulation",
+      text: "The prefix describes the target α and its convergents. The marked triangulation has its own exact slope triple and flip history; selecting a prefix does not flip it or replace its marking.",
+    };
+  }
   if (isTangle(a) && isTangle(b))
     return {
       kind: "Marked rational construction",

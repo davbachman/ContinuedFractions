@@ -4,6 +4,8 @@ import {
   correspondence,
   isRepresentation,
   isTrajectory,
+  isPrefixView,
+  isCoefficientView,
   representations,
   type Representation,
 } from "./workspace";
@@ -24,6 +26,7 @@ import {
   RectangleDissection,
   DissectionExplanation,
 } from "./renderers/RectangleDissection";
+import { PrefixExplorer } from "./renderers/PrefixExplorer";
 import { SymbolicView } from "./renderers/SymbolicView";
 import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
 import { TanglePanel } from "./renderers/TanglePanel";
@@ -183,6 +186,7 @@ export function Workspace(props: WorkspaceProps) {
             <button
               onClick={props.onExtendTerms}
               aria-label="Generate more coefficients"
+              disabled={props.coefficients.length >= 96}
             >
               …
             </button>
@@ -373,7 +377,7 @@ function ComparisonPane({
   const triangleVisible = showTriangulation || other.kind === "triangulation";
   const triState = p.scene.triangulation ?? initialTriangulation;
   const stage = p.rectangle.stages[p.selected];
-  const linkRun = other.kind === "symbolic" || other.kind === "rectangle";
+  const linkRun = isCoefficientView(other.kind);
   const selectedRun =
     linkRun && !infinite
       ? {
@@ -393,7 +397,7 @@ function ComparisonPane({
   const onKey = (e: React.KeyboardEvent) => {
     if (
       (e.target as Element).closest(
-        'button,input,select,textarea,[role="button"],.stacked-scroll,.tangle-scroll',
+        'button,input,select,textarea,[role="button"],.stacked-scroll,.tangle-scroll,.matrix-equation',
       )
     )
       return;
@@ -403,6 +407,18 @@ function ComparisonPane({
       e.stopPropagation();
       if (e.code === "Space") p.onToggleTrajectory();
       else p.onStepTrajectory(e.code === "ArrowRight" ? 1 : -1);
+    } else if (isPrefixView(pane.kind) && !infinite && e.code !== "Space") {
+      e.preventDefault();
+      e.stopPropagation();
+      p.onSelect(
+        Math.max(
+          0,
+          Math.min(
+            p.coefficients.length - 1,
+            p.selected + (e.code === "ArrowRight" ? 1 : -1),
+          ),
+        ),
+      );
     } else if (pane.kind === "rectangle" && !p.rectangle.unavailable) {
       e.preventDefault();
       e.stopPropagation();
@@ -446,6 +462,18 @@ function ComparisonPane({
             onEdit={p.onEditCoefficient}
             crossings={p.math.farey.crossings}
             onExtend={p.onExtendTerms}
+          />
+        )}
+        {isPrefixView(pane.kind) && (
+          <PrefixExplorer
+            key={pane.kind}
+            kind={pane.kind}
+            spec={p.scene.spec}
+            coefficients={p.coefficients}
+            selected={p.selected}
+            onSelect={p.onSelect}
+            onExtend={p.onExtendTerms}
+            onNumber={p.onNumber}
           />
         )}
         {pane.kind === "rectangle" && (

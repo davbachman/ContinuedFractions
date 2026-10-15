@@ -3,10 +3,14 @@ import {
   alternate,
   convergents,
   cylinder,
-  difference,
   specLabel,
   type NumberSpec,
 } from "../math/continuedFraction";
+import {
+  convergentError,
+  targetBounds,
+  scientificRational,
+} from "../math/approximations";
 import { label } from "../math/rational";
 import { StackedFraction } from "./StackedFraction";
 import { stageColor } from "./dissectionColors";
@@ -42,6 +46,13 @@ export function SymbolicView({
   const cs = useMemo(
     () => (coefficients.length ? convergents(coefficients) : []),
     [coefficients],
+  );
+  const error = useMemo(
+    () =>
+      cs[selected]
+        ? convergentError(spec, cs[selected], targetBounds(spec, cs.length))
+        : null,
+    [spec, cs, selected],
   );
   if (spec.kind === "rational" && !spec.value.q)
     return (
@@ -193,14 +204,21 @@ export function SymbolicView({
           Next coefficient
         </button>
         {spec.kind === "periodic" && (
-          <button onClick={onExtend}>Generate more terms</button>
+          <button onClick={onExtend} disabled={coefficients.length >= 96}>
+            Generate more terms
+          </button>
         )}
       </div>
       <details className="workspace-details">
         <summary>Approximation and Farey coding</summary>
         <p>
-          α − p/q ≈ {r ? difference(spec, r).toExponential(5) : "—"}.
-          Consecutive determinant:{" "}
+          α − p/q{" "}
+          {error?.zero
+            ? "= 0"
+            : error
+              ? `≈ ${scientificRational(error.signed[0])}`
+              : "—"}
+          . Consecutive determinant:{" "}
           {selected && r
             ? String(r.p * cs[selected - 1].q - r.q * cs[selected - 1].p)
             : "—"}

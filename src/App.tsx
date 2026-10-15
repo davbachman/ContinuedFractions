@@ -1,3 +1,8 @@
+import {
+  convergentError,
+  scientificRational,
+  targetBounds,
+} from "./math/approximations";
 import { Workspace } from "./Workspace";
 import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
 import {
@@ -56,7 +61,6 @@ import {
   alternate,
   cylinder,
   validateSpec,
-  difference,
 } from "./math/continuedFraction";
 import { label, type Rational, rational, value } from "./math/rational";
 import { derive, heightAt } from "./math/trajectory";
@@ -523,6 +527,17 @@ export default function App() {
       setNotice("Scene saved in the address bar. Copy the URL to share it.");
     }
   }
+  const selectedError = useMemo(
+    () =>
+      infinite
+        ? null
+        : convergentError(
+            scene.spec,
+            current,
+            targetBounds(scene.spec, cf.length),
+          ),
+    [infinite, scene.spec, current, cf.length],
+  );
   const events = math.events.filter((e) =>
       eventFilter === "ford"
         ? e.kind.startsWith("ford")
@@ -531,7 +546,6 @@ export default function App() {
     crossingsForTerm = math.farey.crossings.filter(
       (e) => e.term === selectedTerm && e.direction !== "initial",
     ),
-    selectedError = infinite ? NaN : difference(scene.spec, current),
     [lower, upper] = infinite
       ? [current, current]
       : cylinder(cf.slice(0, Math.min(cf.length, selectedTerm + 1))),
@@ -759,7 +773,9 @@ export default function App() {
             }}
             onEditCoefficient={editCoefficient}
             onExtendTerms={() =>
-              setRectangleDepth((d) => Math.min(MAX_DISSECTION_STAGES, d + 8))
+              setRectangleDepth((d) =>
+                Math.min(MAX_DISSECTION_STAGES, Math.max(d, cf.length) + 8),
+              )
             }
             onNumber={(r) => changeNumber({ kind: "rational", value: r })}
             onTangle={editTangle}
@@ -1509,7 +1525,9 @@ export default function App() {
                         α − p/q{" "}
                         {rationalInput && selectedTerm === cf.length - 1
                           ? "= 0"
-                          : `≈ ${selectedError.toExponential(4)}`}
+                          : selectedError
+                            ? `≈ ${scientificRational(selectedError.signed[0])}`
+                            : "unavailable"}
                       </small>
                     </div>
                     <div>
@@ -1835,6 +1853,16 @@ export default function App() {
           to coefficients; custom signed constructions retain their own
           operations. A finite tangle for an irrational uses a labeled
           convergent. “Full atlas” restores the original layout.
+        </p>
+        <h3>Inspect a prefix</h3>
+        <p>
+          Nested intervals, integer lattices, matrix products, and approximation
+          errors share the selected prefix. Step or select a diagram point to
+          compare its exact bounds, basis, product, and error. The lattice basis
+          close-up changes coordinates only. Irrational error bounds remain
+          nonzero at deep prefixes; a rational zero is outside the log plot.
+          “Use convergent as target” explicitly changes the number and can be
+          undone. Left/Right steps a focused prefix pane.
         </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>
