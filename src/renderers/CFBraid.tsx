@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fromCF, specLabel, type NumberSpec } from "../math/continuedFraction";
 import { label, type Rational } from "../math/rational";
 import { cfBraidDiagram, BRAID_X } from "../math/cfBraid";
@@ -39,32 +39,10 @@ export function CFBraid({
   const closure = useMemo(() => diagramClosure(diagram), [diagram]);
   const [draft, setDraft] = useState(String(coefficients[selected] ?? 0n));
   const [fitWhole, setFitWhole] = useState(true);
-  const viewport = useRef<HTMLDivElement>(null);
   useEffect(
     () => setDraft(String(coefficients[selected] ?? 0n)),
     [coefficients, selected],
   );
-  useEffect(() => {
-    if (fitWhole) {
-      viewport.current?.scrollTo({ top: 0, behavior: "instant" });
-      return;
-    }
-    const scroller = viewport.current;
-    const group = scroller?.querySelector(
-      `[data-braid-coefficient="${selected}"]`,
-    );
-    const svg = scroller?.querySelector("svg");
-    if (!scroller || !group || !svg) return;
-    const box = group.getBoundingClientRect(),
-      frame = scroller.getBoundingClientRect();
-    if (box.top < frame.top || box.bottom > frame.bottom)
-      scroller.scrollTo({
-        top: scroller.scrollTop + box.top - frame.top - 22,
-        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "instant"
-          : "smooth",
-      });
-  }, [selected, diagram, fitWhole]);
   const curve = (index: number) => {
     const e = diagram.edges[index],
       a = diagram.nodes[e.from],
@@ -169,10 +147,10 @@ export function CFBraid({
       </div>
       {!fitWhole && (
         <p className="braid-instruction">
-          Scroll inside the diagram to inspect the twists and bottom closure.
+          Scroll down to inspect the twists and bottom closure.
         </p>
       )}
-      <div className="braid-scroll" data-fit={fitWhole} ref={viewport}>
+      <div className="braid-scroll" data-fit={fitWhole}>
         <svg
           viewBox={`0 0 ${diagram.width} ${diagram.height}`}
           style={{ aspectRatio: `${diagram.width} / ${diagram.height}` }}

@@ -227,12 +227,88 @@ test("whole-knot framing includes both closures and detail can reach the bottom"
   await right.locator(".braid-scroll").screenshot({
     path: `test-results/${info.project.name}-braid-fit.png`,
   });
-  await right.getByRole("button", { name: "Inspect twists", exact: true }).click();
+  await right
+    .getByRole("button", { name: "Inspect twists", exact: true })
+    .click();
   const bottomCap = braid(page).locator("[data-plat-cap]").last();
   await bottomCap.scrollIntoViewIfNeeded();
   await expect(bottomCap).toBeInViewport();
-  await right.getByRole("button", { name: "Fit whole knot", exact: true }).click();
+  await right
+    .getByRole("button", { name: "Fit whole knot", exact: true })
+    .click();
   await expect(right.locator(".braid-scroll")).toHaveJSProperty("scrollTop", 0);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("355/113");
   await expect(braid(page)).toHaveAttribute("data-fraction", "355/113");
+});
+
+test("scroll gestures in Inspect twists reveal the entire bottom closure", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({
+    width: info.project.name === "mobile" ? 390 : 1280,
+    height: 720,
+  });
+  await number(page, "355/113");
+  const right = pane(page, "Right");
+  await right
+    .getByRole("button", { name: "Inspect twists", exact: true })
+    .click();
+  const bottomCaps = braid(page).locator("[data-plat-cap]");
+  const touch =
+    info.project.name === "mobile"
+      ? await page.context().newCDPSession(page)
+      : null;
+  const bottomVisible = () =>
+    bottomCaps.evaluateAll((caps) =>
+      caps.slice(-2).every((cap) => {
+        const r = cap.getBoundingClientRect();
+        const x = (r.left + r.right) / 2;
+        const clip = cap.closest(".pane-body")!.getBoundingClientRect();
+        const mobile = innerWidth <= 760;
+        return (
+          r.top >= 0 &&
+          r.bottom < innerHeight - 4 &&
+          (mobile || (r.top >= clip.top && r.bottom < clip.bottom - 4)) &&
+          x > 0 &&
+          x < innerWidth
+        );
+      }),
+    );
+  for (let step = 0; step < 12 && !(await bottomVisible()); step++) {
+    const point = await right.locator(".braid-scroll").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        x: (r.left + r.right) / 2,
+        y: Math.min(innerHeight - 70, Math.max(100, r.top + 80)),
+      };
+    });
+    if (touch) {
+      const { x } = point;
+      const y = Math.max(300, point.y);
+      await touch.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x, y }],
+      });
+      for (let move = 1; move <= 6; move++) {
+        await touch.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x, y: y - move * 30 }],
+        });
+        await page.waitForTimeout(30);
+      }
+      await touch.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+    } else {
+      await page.mouse.move(point.x, point.y);
+      await page.mouse.wheel(0, 180);
+    }
+    await page.waitForTimeout(150);
+  }
+  expect(await bottomVisible()).toBe(true);
+  await page.screenshot({
+    path: `test-results/${info.project.name}-braid-detail-bottom.png`,
+  });
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("355/113");
 });

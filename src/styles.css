@@ -3151,11 +3151,11 @@ svg[data-rotation] * {
   font-family: Georgia, serif;
 }
 .braid-scroll {
-  max-height: 510px;
-  overflow: auto;
   background: #fbfbf6;
-  overscroll-behavior: contain;
-  overflow-anchor: none;
+}
+/* Let pane/page scrolling reach both closures without a nested scroll trap. */
+.comparison-pane[data-representation="braid"] .pane-body {
+  overscroll-behavior-y: auto;
 }
 .braid-scroll svg {
   display: block;
@@ -3230,9 +3230,6 @@ svg[data-rotation] * {
   .cf-braid-panel .panel-heading {
     flex-wrap: wrap;
     gap: 8px;
-  }
-  .braid-scroll {
-    max-height: 520px;
   }
   .braid-controls button,
   .braid-edit button {
