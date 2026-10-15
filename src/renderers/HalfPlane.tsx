@@ -12,10 +12,12 @@ import { visibleFarey, type Crossing } from "../math/farey";
 import { rational, label, value, type Rational, snap } from "../math/rational";
 import { domainEdgeColor } from "./domainEdges";
 import { visibleModularArcs } from "./modularGeometry";
+import { torusDomainColor, visibleTorusDomains } from "./torusDomains";
 import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
 import { heightAt } from "../math/trajectory";
 type Props = {
   scene: Scene;
+  torusLift?: number;
   triangulation?: Triangulation;
   onFlipTriangle?: (edge: number) => void;
   crossings: readonly Crossing[];
@@ -27,6 +29,7 @@ type Props = {
 };
 export function HalfPlane({
   scene,
+  torusLift,
   triangulation,
   onFlipTriangle,
   crossings,
@@ -156,6 +159,40 @@ export function HalfPlane({
       Y = (y: number) => bottom - y * scale,
       min = toWorld(0),
       max = toWorld(size.width);
+    const geometry = visibleFarey(min, max, scale);
+    const tiles =
+      torusLift === undefined
+        ? []
+        : visibleTorusDomains(geometry, min, max, scale, bottom, torusLift);
+    node.dataset.torusDomainCount = String(tiles.length);
+    node.dataset.torusLift = torusLift === undefined ? "" : String(torusLift);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, size.width, bottom);
+    ctx.clip();
+    ctx.globalAlpha = 0.18;
+    for (const tile of tiles) {
+      ctx.beginPath();
+      tile.boundaries.forEach((boundary, i) => {
+        if (boundary.kind === "line") {
+          if (i === 0) ctx.moveTo(X(boundary.from.x), Y(boundary.from.y));
+          else ctx.lineTo(X(boundary.from.x), Y(boundary.from.y));
+          ctx.lineTo(X(boundary.to.x), Y(boundary.to.y));
+        } else {
+          const { x, radius, from, to } = boundary;
+          if (i === 0)
+            ctx.moveTo(
+              X(x + radius * Math.cos(from)),
+              Y(radius * Math.sin(from)),
+            );
+          ctx.arc(X(x), bottom, radius * scale, -from, -to, to > from);
+        }
+      });
+      ctx.closePath();
+      ctx.fillStyle = torusDomainColor(tile.sheet);
+      ctx.fill();
+    }
+    ctx.restore();
     if (triangulation) {
       const draw = (tri: Triangulation, color: string) => {
         const points = planeTriangle(tri, bottom / scale).map((p) => ({
@@ -203,7 +240,6 @@ export function HalfPlane({
       ctx.lineWidth = width;
       ctx.stroke();
     };
-    const geometry = visibleFarey(min, max, scale);
     if (scene.overlays.ford) {
       const rationals = new Map<string, Rational>();
       geometry.forEach((e) => {
@@ -383,6 +419,7 @@ export function HalfPlane({
     crossings,
     selectedTerm,
     triangulation,
+    torusLift,
     scale,
     center,
     bottom,

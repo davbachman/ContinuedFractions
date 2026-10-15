@@ -22,7 +22,7 @@ import {
   type SurfacePoint,
   type SurfaceLine,
 } from "./TranslucentSurface";
-import { stageColor } from "./dissectionColors";
+import { torusDomainColor } from "./torusDomains";
 export function surfaceProjection(p: readonly number[], rotation: number) {
   const x = p[0] * Math.cos(rotation) - p[1] * Math.sin(rotation),
     d = p[0] * Math.sin(rotation) + p[1] * Math.cos(rotation);
@@ -42,16 +42,19 @@ export function ModularTorus({
   segments,
   limited,
   onSeek,
+  lift,
+  onLiftChange,
 }: {
   alpha: number;
   time: number;
   segments: readonly Segment[];
   limited: boolean;
   onSeek: (t: number) => void;
+  lift: number;
+  onLiftChange: (lift: number) => void;
 }) {
   const [mode, setMode] = useState<"flat" | "surface">("flat"),
     [rotation, setRotation] = useState(-0.6),
-    [lift, setLift] = useState(0),
     [edges, setEdges] = useState(true),
     [trail, setTrail] = useState(true),
     [labels, setLabels] = useState(true);
@@ -200,7 +203,7 @@ export function ModularTorus({
           <select
             aria-label="Cover lift"
             value={lift}
-            onChange={(e) => setLift(Number(e.target.value))}
+            onChange={(e) => onLiftChange(Number(e.target.value))}
           >
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <option key={i} value={i}>
@@ -234,7 +237,7 @@ export function ModularTorus({
                 <path
                   key={j}
                   d={`M190 190 L${190 + 155 * a.x} ${190 - 155 * a.y} L${190 + 155 * b.x} ${190 - 155 * b.y} Z`}
-                  fill={stageColor(j)}
+                  fill={torusDomainColor(j)}
                   fillOpacity={0.32}
                   stroke="none"
                 />
@@ -294,7 +297,7 @@ export function ModularTorus({
             <TranslucentSurface
               faces={mesh.map((cell) => ({
                 points: cell.points,
-                color: stageColor(cell.j),
+                color: torusDomainColor(cell.j),
               }))}
               lines={[
                 ...(edges ? surfaceEdges : []),

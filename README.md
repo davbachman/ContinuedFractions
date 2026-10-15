@@ -54,6 +54,8 @@ The **Marked rational tangle** panel shares the exact number and undo history wi
 
 View choices, diagram zoom, closures, and camera angles are session UI settings. Scene JSON and shared links preserve the exact number and signed operation word, including zero and infinity. No external diagrams or mesh assets are required.
 
+When **Punctured torus** is selected, the H² viewer lightly fills modular-domain copies with the matching six sheet colors in both the flat hexagon and 3D surface modes. Changing **Cover lift** updates the plane colors to match the selected lift; switching back to **Modular orbifold** removes these fills. The **Modular domains** checkbox independently controls domain edges.
+
 ## Marked torus edge flips
 
 The **Marked torus · edge flips** panel starts with slopes **0, ∞, 1** in the fixed meridian–longitude basis. A slope p/q represents the primitive vector (q,p), up to overall sign. This editor uses the Farey combinatorial correspondence; it does not assign a homology slope to the moving ray on the six-sheet hyperbolic cover.

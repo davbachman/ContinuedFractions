@@ -98,6 +98,7 @@ export default function App() {
     "hyperbolic",
   );
   const [showTriangulation, setShowTriangulation] = useState(false);
+  const [torusLift, setTorusLift] = useState(0);
   const [quotientView, setQuotientView] = useState<"orbifold" | "torus">(
     "orbifold",
   );
@@ -856,6 +857,7 @@ export default function App() {
             ) : (
               <HalfPlane
                 scene={scene}
+                torusLift={quotientView === "torus" ? torusLift : undefined}
                 triangulation={showTriangulation ? markedTriangle : undefined}
                 onFlipTriangle={
                   (scene.triangulation ?? initialTriangulation).mode ===
@@ -872,6 +874,12 @@ export default function App() {
               />
             )}
             {scene.overlays.modular && <DomainEdgeLegend />}
+            {quotientView === "torus" && (
+              <p className="topology-note">
+                Light domain fills match the six sheets of the punctured torus ·
+                cover lift {torusLift}.
+              </p>
+            )}
             {showTriangulation && (
               <p className="topology-note">
                 Marked triangulation: {markedTriangle.map(label).join(", ")}.{" "}
@@ -930,6 +938,8 @@ export default function App() {
               </p>
             ) : quotientView === "torus" ? (
               <ModularTorus
+                lift={torusLift}
+                onLiftChange={setTorusLift}
                 alpha={alpha}
                 time={scene.time}
                 segments={math.quotient.segments}
