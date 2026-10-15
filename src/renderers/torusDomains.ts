@@ -64,6 +64,10 @@ export const domainSectors = [
 const sectorSheets = domainSectors.map(({ sample }) =>
   coverSheet(reduce(sample).matrix),
 );
+export const domainSectorSheets = (matrix: Matrix, lift = 0) => {
+  const chi = abelianization(matrix);
+  return sectorSheets.map((sheet) => mod6(lift + chi + sheet));
+};
 export type DomainBoundary =
   | { kind: "line"; from: Point; to: Point }
   | { kind: "arc"; x: number; radius: number; from: number; to: number };
@@ -74,7 +78,7 @@ export function modularDomainTiles(
   top: number,
   lift = 0,
 ): DomainTile[] {
-  const chi = abelianization(matrix);
+  const sheets = domainSectorSheets(matrix, lift);
   const transformed = (v: Vertex): Point => {
     if ("x" in v) return apply(matrix, v);
     const r = idealImage(matrix, v);
@@ -84,7 +88,7 @@ export function modularDomainTiles(
     const vertices = [center, sector.midpoint, sector.cusp].map(transformed);
     return {
       // R maps the sample to F, so the transformed reduction is R M^-1.
-      sheet: mod6(lift + chi + sectorSheets[i]),
+      sheet: sheets[i],
       boundaries: sector.supports.map((support, j): DomainBoundary => {
         const a = idealImage(matrix, support[0]),
           b = idealImage(matrix, support[1]);

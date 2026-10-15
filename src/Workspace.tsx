@@ -32,6 +32,7 @@ import { TanglePanel } from "./renderers/TanglePanel";
 import { stageColor } from "./renderers/dissectionColors";
 import { DomainEdgeLegend } from "./renderers/domainEdges";
 import { coefficientTrace } from "./renderers/selectedRun";
+import { useFlipPlayback } from "./useFlipPlayback";
 import { useRunPlayback } from "./useRunPlayback";
 import type { TriangulationState } from "./math/triangulation";
 
@@ -135,22 +136,14 @@ export function Workspace(props: WorkspaceProps) {
   useEffect(() => {
     if (props.triangulation.externalPlaying) setFlipPlaying(false);
   }, [props.triangulation.externalPlaying]);
-  useEffect(() => {
-    if (!flipPlaying) return;
-    if (flipState.cursor >= flipState.steps.length) {
-      setFlipPlaying(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      const step = flipState.steps[flipState.cursor];
-      props.triangulation.onChange(
-        { ...flipState, cursor: flipState.cursor + 1 },
-        flipState.mode === "follow" ? step.time : undefined,
-        flipState.mode === "follow" ? step.term : undefined,
-      );
-    }, 1400 / props.scene.speed);
-    return () => clearTimeout(timer);
-  }, [flipPlaying, flipState, props.scene.speed, props.triangulation.onChange]);
+  useFlipPlayback(
+    flipPlaying,
+    flipState,
+    props.scene.time,
+    props.scene.speed,
+    props.onRunFrame,
+    () => setFlipPlaying(false),
+  );
   const [activePane, setActivePane] = useState<string | null>(null);
   const [coefficientDraft, setCoefficientDraft] = useState("");
   useEffect(
@@ -808,7 +801,13 @@ function ComparisonPane({
             ) : (
               <HalfPlane
                 scene={localScene}
-                torusLift={other.kind === "torus" ? other.lift : undefined}
+                torusLift={
+                  other.kind === "torus"
+                    ? other.lift
+                    : other.kind === "farey"
+                      ? 0
+                      : undefined
+                }
                 triangulation={
                   triangleVisible ? currentTriangulation(triState) : undefined
                 }
@@ -821,10 +820,13 @@ function ComparisonPane({
               />
             )}
             {overlays.modular && <DomainEdgeLegend />}
-            {other.kind === "torus" && (
+            {(other.kind === "torus" || other.kind === "farey") && (
               <p className="pane-note">
-                Light fills match the punctured modular torus · lift{" "}
-                {other.lift}.
+                Domain fills match{" "}
+                {other.kind === "torus"
+                  ? "the punctured modular torus"
+                  : "the Farey disk"}{" "}
+                · lift {other.kind === "torus" ? other.lift : 0}.
               </p>
             )}
             {inspect && (
@@ -901,6 +903,8 @@ function ComparisonPane({
         {(pane.kind === "triangulation" || pane.kind === "farey") && (
           <MarkedTriangulation
             {...p.triangulation}
+            time={p.scene.time}
+            domainLift={other.kind === "torus" ? other.lift : 0}
             externalPlaying={p.triangulation.externalPlaying}
             view={pane.kind === "farey" ? "farey" : "square"}
             showPlane={triangleVisible}

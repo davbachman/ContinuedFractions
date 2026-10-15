@@ -69,8 +69,14 @@ test("paired Farey and square panes share following, coefficient runs and playba
   await button(left, "Go to selected run").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 4");
   await button(right, "Previous flip step").click();
+  // Freeze the animation clock while scrolling between stacked mobile panes.
+  // Advance it explicitly so terminal playback cannot race the Pause click.
+  const playbackStart = new Date("2026-01-01T00:00:00Z");
+  await page.clock.install({ time: playbackStart });
+  await page.clock.pauseAt(playbackStart);
   await button(left, "Play flips").click();
   await expect(button(right, "Pause flips")).toBeVisible();
+  await page.clock.runFor(1500);
   await expect(right.getByTestId("flip-status")).toContainText("Step 4", {
     timeout: 4000,
   });

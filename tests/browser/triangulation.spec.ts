@@ -154,7 +154,6 @@ test("wrapped edges, model and camera changes, path navigation and persistence p
   await button(page, "Explain this flip").click();
   await page.getByLabel("Tiled-plane inset", { exact: true }).check();
   await page.getByLabel("Tiled-plane inset", { exact: true }).uncheck();
-  await button(page, "Center Farey triangle").click();
   await button(page, "Fixed-basis patch").click();
   await button(page, "Affine patch close-up").click();
   await page.setViewportSize({
@@ -208,7 +207,9 @@ test("large exact α discloses wrap limits without inventing a flip or changing 
   await expect(page.locator(".triangulation-panel")).toContainText(
     "Wrap display limit",
   );
+  await button(page, "Farey triangles").click();
   await button(page, "Center Farey triangle").click();
+  await button(page, "Marked square").click();
   await expect(page.getByTestId("triangulation-slope-0")).toHaveText(String(n));
   await page.locator(".flip-slope-strip button").first().focus();
   await page.keyboard.press("Enter");

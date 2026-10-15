@@ -6,15 +6,9 @@ import {
   useId,
   type ReactNode,
 } from "react";
-import {
-  type NumberSpec,
-  specLabel,
-  terms,
-  fromCF,
-} from "../math/continuedFraction";
+import { type NumberSpec, specLabel, terms } from "../math/continuedFraction";
 import { label, value, type Rational } from "../math/rational";
 import {
-  INITIAL_TRIANGLE,
   triangulationPath,
   triangleKey,
   flip,
@@ -24,19 +18,17 @@ import {
   followStatus,
   coefficientFlipRun,
   type TriangulationState,
-  type Triangulation,
   type Vector,
 } from "../math/triangulation";
-import {
-  diskVertex,
-  diskCenter,
-  diskTriangle,
-  flipColors,
-  ratio,
-} from "./triangulationGeometry";
+import { flipColors, ratio } from "./triangulationGeometry";
+import { useFlipPlayback } from "../useFlipPlayback";
+import { FareyDisk } from "./FareyDisk";
 import { stageColor } from "./dissectionColors";
 import { svgPath } from "./ModularTorus";
 type Props = {
+  time: number;
+  domainLift?: number;
+  onFrame: (time: number, term: number) => void;
   view?: "square" | "farey";
   coefficient?: number;
   playback?: { playing: boolean; onChange: (playing: boolean) => void };
@@ -75,8 +67,6 @@ export function MarkedTriangulation(props: Props) {
     [localPlaying, setLocalPlaying] = useState(false),
     [localView, setLocalView] = useState<"square" | "farey">("square"),
     [inspectFlip, setInspectFlip] = useState(false),
-    [followCamera, setFollowCamera] = useState(true),
-    [frame, setFrame] = useState<Triangulation>(INITIAL_TRIANGLE),
     [transition, setTransition] = useState<ReturnType<
       typeof flipDetails
     > | null>(null);
@@ -84,9 +74,6 @@ export function MarkedTriangulation(props: Props) {
   const setPlaying = props.playback?.onChange ?? setLocalPlaying;
   const view = props.view ?? localView;
   useEffect(() => setInspectFlip(false), [view]);
-  useEffect(() => {
-    if (followCamera && state.mode === "follow") setFrame(tri);
-  }, [tri, followCamera, state.mode]);
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const previous = useRef(tri);
   const previousSpec = useRef(spec);
@@ -171,18 +158,14 @@ export function MarkedTriangulation(props: Props) {
       state.mode === "follow" ? (step?.term ?? 0) : undefined,
     );
   }
-  useEffect(() => {
-    if (!playing || props.playback) return;
-    if (state.cursor >= state.steps.length) {
-      setPlaying(false);
-      return;
-    }
-    const timer = setTimeout(
-      () => navigate(state.cursor + 1, true),
-      1400 / speed,
-    );
-    return () => clearTimeout(timer);
-  }, [playing, state, speed]);
+  useFlipPlayback(
+    playing && !props.playback,
+    state,
+    props.time,
+    speed,
+    props.onFrame,
+    () => setPlaying(false),
+  );
   const shown = transition?.before ?? tri,
     wrapped = useMemo(() => shown.map((r) => wrappedEdge(r)), [shown]);
   const operationIndex = Math.max(0, state.cursor - 1);
@@ -221,11 +204,6 @@ export function MarkedTriangulation(props: Props) {
     x: 45 + 260 * p.x,
     y: 305 - 260 * p.y,
   });
-  const neighbors = tri.map((_, i) => flip(tri, i));
-  const disk = (p: { x: number; y: number }) => ({
-    x: 190 + 145 * p.x,
-    y: 185 + 145 * p.y,
-  });
   const faceData = flipDetails(shown, 2);
   const faceCopies = faceData.triangles.flatMap((triangle, k) => {
     const xs = triangle.map((v) => Number(v.x)),
@@ -251,9 +229,6 @@ export function MarkedTriangulation(props: Props) {
     spec.kind === "rational" && !spec.value.q ? [] : terms(spec, 96);
   const term = props.coefficient ?? state.steps[state.cursor - 1]?.term ?? 0;
   const run = coefficientFlipRun(spec, state, term);
-  const target =
-    spec.kind === "rational" ? spec.value : fromCF(terms(spec, 128));
-  const targetPoint = diskVertex(target, frame);
   const runSteps = state.steps.flatMap((step, i) =>
     step.term === term ? [i] : [],
   );
@@ -480,156 +455,19 @@ export function MarkedTriangulation(props: Props) {
           )}
         </div>
         <div hidden={view !== "farey"}>
-          <svg
-            viewBox="0 0 380 370"
-            role="group"
-            aria-label="Interactive Farey triangles"
-            data-slopes={triangleKey(tri)}
-          >
-            <circle cx={190} cy={185} r={145} fill="#f6f5ec" stroke="#b5c3aa" />
-            {neighbors.map((t, i) => (
-              <path
-                key={i}
-                role={edgeAction(i) ? "button" : "img"}
-                tabIndex={edgeAction(i) ? 0 : undefined}
-                aria-label={
-                  edgeAction(i)
-                    ? `${edgeAction(i)} path step via Farey triangle replacing ${label(tri[i])} with ${label(t[i])}`
-                    : `Neighboring Farey triangle ${triangleKey(t)}`
-                }
-                onClick={() => selectEdge(i)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    selectEdge(i);
-                  }
-                }}
-                d={svgPath(diskTriangle(t, frame).map(disk)) + "Z"}
-                fill={flipColors[i] + "20"}
-                stroke={flipColors[i]}
-                strokeWidth={1.4}
-              />
-            ))}
-            <path
-              data-current-farey-triangle="true"
-              d={svgPath(diskTriangle(tri, frame).map(disk)) + "Z"}
-              fill="#e4bf6680"
-              stroke="#887243"
-              strokeWidth={2}
+          {view === "farey" && (
+            <FareyDisk
+              spec={spec}
+              time={props.time}
+              lift={props.domainLift}
+              tri={tri}
+              path={path}
+              state={state}
+              term={term}
+              edgeAction={edgeAction}
+              selectEdge={selectEdge}
             />
-            {path
-              .slice(Math.max(0, state.cursor - 40), state.cursor + 5)
-              .map((t, i) => (
-                <path
-                  key={`context${i}`}
-                  d={svgPath(diskTriangle(t, frame).map(disk)) + "Z"}
-                  fill="none"
-                  stroke="#889984"
-                  strokeWidth={0.7}
-                  opacity={0.4}
-                  pointerEvents="none"
-                />
-              ))}
-            <g data-dual-flip-path="true" pointerEvents="none">
-              {state.steps.map((step, i) => (
-                <path
-                  key={i}
-                  data-run-term={step.term}
-                  data-selected-run={
-                    state.mode === "follow" && step.term === term
-                      ? term
-                      : undefined
-                  }
-                  d={svgPath([
-                    disk(diskCenter(path[i], frame)),
-                    disk(diskCenter(path[i + 1], frame)),
-                  ])}
-                  fill="none"
-                  stroke={
-                    state.mode === "follow" && step.term !== undefined
-                      ? stageColor(step.term)
-                      : "#4e6652"
-                  }
-                  strokeWidth={
-                    step.term === term && state.mode === "follow" ? 4 : 1.6
-                  }
-                  opacity={i < state.cursor ? 1 : 0.35}
-                  strokeDasharray={i < state.cursor ? undefined : "3 3"}
-                />
-              ))}
-            </g>
-            <g data-target-marker="true" pointerEvents="none">
-              <circle
-                cx={190 + 145 * targetPoint.x}
-                cy={185 + 145 * targetPoint.y}
-                r={7}
-                fill="#fbfbf6"
-                stroke="#385c43"
-                strokeWidth={2}
-              />
-              <text
-                x={190 + 126 * targetPoint.x}
-                y={185 + 126 * targetPoint.y}
-                textAnchor="middle"
-                fontSize={11}
-                fill="#385c43"
-              >
-                α
-              </text>
-              <title>
-                Target α = {specLabel(spec)}
-                {spec.kind === "periodic"
-                  ? " (boundary position approximated)"
-                  : ""}
-              </title>
-            </g>
-            {tri.map((r, i) => {
-              const a = diskVertex(r, frame),
-                p = disk(a);
-              return (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r={5} fill={flipColors[i]} />
-                  <text
-                    x={190 + 164 * a.x}
-                    y={190 + 164 * a.y}
-                    textAnchor="middle"
-                    fill={flipColors[i]}
-                    fontSize={13}
-                  >
-                    {short(r)}
-                    <title>{label(r)}</title>
-                  </text>
-                </g>
-              );
-            })}
-            {neighbors.map((t, i) => {
-              const a = diskVertex(t[i], frame);
-              return (
-                <text
-                  key={i}
-                  x={190 + 163 * a.x}
-                  y={190 + 163 * a.y}
-                  textAnchor="middle"
-                  fill={flipColors[i]}
-                  fontSize={11}
-                >
-                  {short(t[i])}
-                  <title>{label(t[i])}</title>
-                </text>
-              );
-            })}
-            <circle
-              cx={disk(diskCenter(tri, frame)).x}
-              cy={disk(diskCenter(tri, frame)).y}
-              r={4}
-              fill="#425b48"
-            />
-          </svg>
-          <p className="flip-diagram-caption">
-            Each step follows α into the next triangle. Click the next or
-            previous triangle on this path to navigate. Colored path segments
-            group flips by coefficient; dashed segments are ahead.
-          </p>
+          )}
         </div>
       </div>
       {view === "square" && hasOperation && (
@@ -841,20 +679,6 @@ export function MarkedTriangulation(props: Props) {
             />
             Puncture at vertex
           </label>
-        </div>
-        <label>
-          <input
-            type="checkbox"
-            checked={followCamera}
-            onChange={(e) => setFollowCamera(e.target.checked)}
-          />
-          Center current triangle during playback
-        </label>
-        <div className="tangle-controls">
-          <button onClick={() => setFrame(tri)}>Center Farey triangle</button>
-          <button onClick={() => setFrame(INITIAL_TRIANGLE)}>
-            Reset Farey camera
-          </button>
         </div>
         <p className="topology-note">
           Solid lines show completed steps; dashed lines show the path ahead.

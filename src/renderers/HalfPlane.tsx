@@ -205,16 +205,17 @@ export function HalfPlane({
           i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y),
         );
         ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
         return points;
       };
       for (let i = 0; i < 3; i++)
         triangleTargets.current.push({
           edge: i,
-          points: draw(flip(triangulation, i), flipColors[i] + "15"),
+          points: draw(flip(triangulation, i), flipColors[i] + "80"),
         });
-      draw(triangulation, "#d9b65a40");
+      draw(triangulation, "#425b48");
     }
     const edge = (l: number, r: number, color: string, width = 1) => {
       const radius = ((r - l) * scale) / 2,

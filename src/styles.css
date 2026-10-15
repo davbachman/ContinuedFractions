@@ -3237,3 +3237,14 @@ svg[data-rotation] * {
   margin: 0;
   letter-spacing: inherit;
 }
+
+.farey-camera-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.farey-camera-controls input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+}
