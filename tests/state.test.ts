@@ -1,6 +1,7 @@
 import { it, expect } from "vitest";
 import {
   initialScene,
+  followAlpha,
   execute,
   undo,
   redo,
@@ -15,7 +16,7 @@ it("round trips exact rational and periodic scenes and rejects unsafe schema dat
     parseInput("phi"),
     parseInput("[0;2,3]", "ones"),
   ]) {
-    const scene = { ...initialScene, spec, time: 4.3 };
+    const scene = followAlpha({ ...initialScene, spec, time: 4.3 });
     expect(deserialize(serialize(scene))).toEqual(scene);
   }
   expect(() => deserialize('{"version":3}')).toThrow();
@@ -111,35 +112,42 @@ import {
   triangleKey,
   targetItinerary,
 } from "../src/math/triangulation";
-it("flip commands preserve the independent target, round-trip exact history, and share undo with number edits", () => {
-  const base = {
-    past: [],
-    present: { ...initialScene, time: 2, end: 4 },
-    future: [],
-  };
-  const value = appendFlip(initialTriangulation, 0, "torus"),
-    flipped = execute(base, { type: "triangulation", value });
-  expect(flipped.present.spec).toEqual(initialScene.spec);
-  expect(flipped.present.time).toBe(2);
-  expect(flipped.present.end).toBe(4);
-  expect(
-    triangleKey(currentTriangulation(flipped.present.triangulation!)),
-  ).toBe("2 | ∞ | 1");
-  expect(deserialize(serialize(flipped.present))).toEqual(flipped.present);
-  const edited = execute(flipped, { type: "number", spec: parseInput("3/7") });
-  expect(edited.present.triangulation).toEqual(value);
-  expect(undo(edited).present).toEqual(flipped.present);
-  expect(undo(flipped).present).toEqual(base.present);
-  expect(redo(undo(flipped))).toEqual(flipped);
-  const follow = execute(edited, {
+it("every number edit rebuilds its target path, and navigation shares exact undo and persistence", () => {
+  const base = { past: [], present: initialScene, future: [] };
+  const path = initialScene.triangulation!;
+  expect(path).toEqual(targetItinerary(initialScene.spec));
+  const value = { ...path, cursor: 1 };
+  const advanced = execute(base, {
     type: "triangulation",
-    value: targetItinerary(parseInput("3/7")),
+    value,
+    time: path.steps[0].time,
   });
-  const next = execute(follow, { type: "number", spec: parseInput("13/5") });
-  expect(next.present.triangulation).toEqual(
-    targetItinerary(parseInput("13/5")),
-  );
-  expect(undo(next).present).toEqual(follow.present);
+  expect(advanced.present.spec).toEqual(initialScene.spec);
+  expect(advanced.present.triangulation?.steps).toBe(path.steps);
+  expect(
+    triangleKey(currentTriangulation(advanced.present.triangulation!)),
+  ).toBe("0 | 1/2 | 1");
+  expect(deserialize(serialize(advanced.present))).toEqual(advanced.present);
+  for (const input of ["13/5", "phi", "sqrt2", "3", "-2/3"]) {
+    const spec = parseInput(input);
+    const edited = execute(advanced, { type: "number", spec });
+    expect(edited.present.triangulation).toEqual(targetItinerary(spec));
+    expect(undo(edited).present).toEqual(advanced.present);
+    expect(redo(undo(edited))).toEqual(edited);
+  }
+  expect(undo(advanced).present).toEqual(initialScene);
+  expect(() =>
+    execute(base, {
+      type: "triangulation",
+      value: appendFlip(initialTriangulation, 0, "torus"),
+    }),
+  ).toThrow("must follow");
+  expect(() =>
+    execute(base, {
+      type: "triangulation",
+      value: targetItinerary(parseInput("13/5")),
+    }),
+  ).toThrow("must follow");
 });
 it("rejects malformed flip paths without accepting a changed marking", () => {
   const raw = JSON.parse(
@@ -150,4 +158,19 @@ it("rejects malformed flip paths without accepting a changed marking", () => {
   raw.scene.triangulation.steps = [];
   raw.scene.triangulation.start[2] = { p: "2", q: "1" };
   expect(() => deserialize(JSON.stringify(raw))).toThrow("determinant-one");
+});
+
+it("extending hyperbolic depth extends the same α itinerary and preserves its playback position", () => {
+  const spec = parseInput("phi");
+  const before = followAlpha({ ...initialScene, spec, time: 10 });
+  const after = followAlpha({ ...before, end: 16 });
+  expect(after.spec).toBe(spec);
+  expect(after.time).toBe(before.time);
+  expect(after.triangulation!.cursor).toBe(before.triangulation!.cursor);
+  expect(after.triangulation!.steps.length).toBeGreaterThan(
+    before.triangulation!.steps.length,
+  );
+  expect(
+    after.triangulation!.steps.slice(0, before.triangulation!.steps.length),
+  ).toEqual(before.triangulation!.steps);
 });

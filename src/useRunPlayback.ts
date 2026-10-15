@@ -33,7 +33,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     setPlaying(false);
     setEnabled(false);
   }, [itinerary]);
-  // Editing, undo, a new window, or manual exploration interrupts this clock.
+  // Editing, undo, or a new display window interrupts this clock.
   useEffect(() => {
     if (
       !available ||

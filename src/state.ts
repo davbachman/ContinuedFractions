@@ -42,6 +42,7 @@ export type Command =
 export type History = { past: Scene[]; present: Scene; future: Scene[] };
 export const initialScene: Scene = {
   spec: DEFAULT,
+  triangulation: targetItinerary(DEFAULT),
   time: 0,
   end: 12,
   speed: 1,
@@ -83,17 +84,38 @@ export function execute(h: History, c: Command): History {
             }
           : { ...h.present, spec: c.spec, tangle: undefined, time: 0, end: 12 };
   validateSpec(next.spec);
-  if (
-    (c.type === "number" || c.type === "tangle") &&
-    next.triangulation?.mode === "follow"
-  )
-    next = {
-      ...next,
-      end: Math.max(next.end, next.triangulation.horizon),
-      triangulation: targetItinerary(next.spec, next.triangulation.horizon),
-    };
   if (next.triangulation) validateTriangulationState(next.triangulation);
+  if (c.type === "triangulation") {
+    // Accept navigation and depth changes only on the selected number's path.
+    // Keep the supplied step array: linked playback uses its identity.
+    const expected = targetItinerary(next.spec, c.value.horizon);
+    const pathData = (t: TriangulationState) =>
+      JSON.stringify([t.start, t.steps], (_, v) =>
+        typeof v === "bigint" ? v.toString() : v,
+      );
+    if (c.value.mode !== "follow" || pathData(c.value) !== pathData(expected))
+      throw new Error("The flip path must follow the selected α.");
+  } else next = followAlpha(next);
   return { past: [...h.past.slice(-49), h.present], present: next, future: [] };
+}
+/** Derive the marked triangulation from α and the shared trajectory position.
+ * Playback never changes the target or branches to another path. */
+export function followAlpha(scene: Scene): Scene {
+  const horizon = Math.max(
+    scene.end,
+    scene.triangulation?.horizon ?? scene.end,
+  );
+  const path = targetItinerary(scene.spec, horizon);
+  return {
+    ...scene,
+    end: Math.max(scene.end, horizon),
+    triangulation: {
+      ...path,
+      cursor: path.steps.filter(
+        (step) => (step.time ?? Infinity) <= scene.time + 1e-8,
+      ).length,
+    },
+  };
 }
 export function undo(h: History): History {
   if (!h.past.length) return h;
@@ -219,7 +241,7 @@ export function deserialize(text: string): Scene {
       throw new Error("Invalid overlay settings.");
     overlays[key] = raw.overlays[key];
   }
-  return {
+  return followAlpha({
     spec,
     ...(tangle ? { tangle } : {}),
     ...(triangulation ? { triangulation } : {}),
@@ -228,7 +250,7 @@ export function deserialize(text: string): Scene {
     speed: raw.speed,
     follow: data.version === 1 ? true : raw.follow === true,
     overlays,
-  };
+  });
 }
 export function sceneFromLocation(): { scene: Scene; error?: string } {
   try {

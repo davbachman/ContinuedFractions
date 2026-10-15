@@ -52,7 +52,7 @@ export function correspondence(
   if ((has("h2") || has("farey")) && has("triangulation"))
     return {
       kind: "Farey triangles ↔ flips",
-      text: "A Farey triangle gives the three marked edge slopes. Click a neighboring triangle or a torus edge to flip. Manual flips preserve the target α; Follow target uses its Farey itinerary.",
+      text: "A Farey triangle gives the three marked edge slopes. Both panes automatically follow α’s Farey itinerary. Step forward or backward along the path; each crossing replaces one edge slope.",
     };
   if (a === b)
     return {
@@ -65,12 +65,12 @@ export function correspondence(
   )
     return {
       kind: "Coefficients → runs of flips",
-      text: "Follow target groups the left/right Farey turns by continued-fraction coefficient. Each crossed side flips one torus edge. The initial entry and first/last run offsets are shown explicitly. Selecting a coefficient highlights its run; Go to selected run seeks it.",
+      text: "α’s itinerary groups the left/right Farey turns by continued-fraction coefficient. Each crossed side flips one torus edge. The initial entry and first/last run offsets are shown explicitly. Selecting a coefficient highlights its run; Go to selected run seeks it.",
     };
   if (has("farey") && isTrajectory(a === "farey" ? b : a))
     return {
       kind: "Farey crossing → triangle step",
-      text: "Follow target records the vertical ray’s Farey crossings as adjacent triangles. Manual exploration has its own path and leaves the target unchanged. This marked triangulation does not assign a homology slope to the modular cover.",
+      text: "The selected α determines the vertical ray and its path through adjacent Farey triangles. Both views share the same crossing times. This marked triangulation does not assign a homology slope to the modular cover.",
     };
   if (isPrefixView(a) || isPrefixView(b)) {
     if (isCoefficientView(a) && isCoefficientView(b))

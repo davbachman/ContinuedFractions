@@ -6,9 +6,7 @@ import {
 import { Workspace } from "./Workspace";
 import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
 import {
-  initialTriangulation,
   currentTriangulation,
-  appendFlip,
   targetItinerary,
   type TriangulationState,
 } from "./math/triangulation";
@@ -69,6 +67,7 @@ import {
   type History,
   type Overlays,
   execute,
+  followAlpha,
   undo,
   redo,
   serialize,
@@ -141,8 +140,9 @@ export default function App() {
     undefined,
   );
   const markedTriangle = useMemo(
-    () => currentTriangulation(scene.triangulation ?? initialTriangulation),
-    [scene.triangulation],
+    () =>
+      currentTriangulation(scene.triangulation ?? targetItinerary(scene.spec)),
+    [scene.triangulation, scene.spec],
   );
   const infinite = scene.spec.kind === "rational" && scene.spec.value.q === 0n;
   const math = useMemo(
@@ -210,7 +210,17 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [rectanglePlaying, viewer, rectangleStage, selectedTerm, scene.speed]);
   const patch = (changes: Partial<Scene>) =>
-    setHistory((h) => ({ ...h, present: { ...h.present, ...changes } }));
+    setHistory((h) => {
+      const present = { ...h.present, ...changes };
+      return {
+        ...h,
+        present:
+          changes.end !== undefined &&
+          changes.end > (present.triangulation?.horizon ?? 0)
+            ? followAlpha(present)
+            : present,
+      };
+    });
   function changeNumber(spec: NumberSpec) {
     try {
       validateSpec(spec);
@@ -247,14 +257,10 @@ export default function App() {
           ...h.present,
           spec: { kind: "rational", value: r },
           tangle: undefined,
-          ...(h.present.triangulation?.mode === "follow"
-            ? {
-                triangulation: targetItinerary(
-                  { kind: "rational", value: r },
-                  h.present.triangulation.horizon,
-                ),
-              }
-            : {}),
+          triangulation: targetItinerary(
+            { kind: "rational", value: r },
+            h.present.triangulation?.horizon ?? h.present.end,
+          ),
         },
       };
     });
@@ -337,7 +343,11 @@ export default function App() {
           if (t > s.end && s.spec.kind === "periodic" && s.end < 24)
             return {
               ...h,
-              present: { ...s, time: t, end: Math.min(24, s.end + 4) },
+              present: followAlpha({
+                ...s,
+                time: t,
+                end: Math.min(24, s.end + 4),
+              }),
             };
           if ((!reverse && t >= s.end) || (reverse && t <= 0)) {
             setPlaying(false);
@@ -466,15 +476,6 @@ export default function App() {
     setPlaying(false);
     setRectanglePlaying(false);
   }
-  function flipFromPlane(edge: number) {
-    const state = scene.triangulation ?? initialTriangulation;
-    if (state.mode !== "manual") return;
-    try {
-      editTriangulation(appendFlip(state, edge, "farey"));
-    } catch (error) {
-      setError((error as Error).message);
-    }
-  }
   function editTangle(expression: TangleExpression) {
     try {
       const next = execute(history, { type: "tangle", expression });
@@ -488,11 +489,20 @@ export default function App() {
       setError((error as Error).message);
     }
   }
+  const previousFlipPosition = useRef({
+    spec: scene.spec,
+    cursor: scene.triangulation?.cursor,
+  });
   useEffect(() => {
-    const t = scene.triangulation;
+    const t = scene.triangulation,
+      previous = previousFlipPosition.current;
+    previousFlipPosition.current = { spec: scene.spec, cursor: t?.cursor };
+    // Number/coefficient edits choose their own coefficient; only navigation
+    // should replace that selection with the crossing's run.
+    if (previous.spec !== scene.spec || previous.cursor === t?.cursor) return;
     if (t?.mode === "follow" && t !== explicitRunSelection.current)
       setSelectedTerm(t.steps[t.cursor - 1]?.term ?? 0);
-  }, [scene.triangulation]);
+  }, [scene.triangulation, scene.spec]);
   useEffect(() => {
     const t = scene.triangulation;
     if (t?.mode !== "follow") return;
@@ -1045,12 +1055,6 @@ export default function App() {
                     triangulation={
                       showTriangulation ? markedTriangle : undefined
                     }
-                    onFlipTriangle={
-                      (scene.triangulation ?? initialTriangulation).mode ===
-                      "manual"
-                        ? flipFromPlane
-                        : undefined
-                    }
                     crossings={math.farey.crossings}
                     selectedTerm={selectedTerm}
                     onInspect={setInspect}
@@ -1069,11 +1073,8 @@ export default function App() {
                 {showTriangulation && (
                   <p className="topology-note">
                     Marked triangulation: {markedTriangle.map(label).join(", ")}
-                    .{" "}
-                    {(scene.triangulation ?? initialTriangulation).mode ===
-                    "manual"
-                      ? "Click a shaded neighboring Farey triangle to flip its third slope; the target stays unchanged."
-                      : "Following the target itinerary; use the flip controls below."}
+                    . Following α’s Farey itinerary; use the flip controls
+                    below.
                   </p>
                 )}
                 <div className="plot-footer">
@@ -1888,10 +1889,10 @@ export default function App() {
           “Synchronize by coefficient” to play each stage’s run of crossings.
           Both panes then share play/pause, stage stepping, reverse, and a run
           progress slider. Zero-crossing stages hold the point; a display limit
-          is explicitly incomplete. Enabling the link uses Follow target and
-          preserves the previous manual path in Undo. Canonical tangle regions
-          can link to coefficients; custom signed constructions retain their own
-          operations. A finite tangle for an irrational uses a labeled
+          is explicitly incomplete. All flip paths follow α; enabling the link
+          synchronizes their playback with rectangle stages. Canonical tangle
+          regions can link to coefficients; custom signed constructions retain
+          their own operations. A finite tangle for an irrational uses a labeled
           convergent. “Full atlas” restores the original layout.
         </p>
         <h3>Inspect a prefix</h3>
@@ -1958,14 +1959,16 @@ export default function App() {
         <h3>From continued fractions to flips</h3>
         <p>
           Choose “Continued fractions → flips” to pair the Farey diagram with
-          the marked square. Each crossed Farey side flips one edge. Follow
-          target groups left/right turns by coefficient, with the initial and
-          terminal offsets shown explicitly. Selecting a coefficient highlights
-          its run; “Go to selected run” seeks it. Manual flips preserve α.
-          “Explain this flip” replaces the diagram with its unfolded
-          quadrilateral. H² playback also advances the follow-target path at its
-          crossing times; flip steps seek those times. Rectangle stages keep
-          their own clock.
+          the marked square. Both automatically follow the α chosen at the top.
+          Each crossed Farey side flips one edge. Left/right turns are grouped
+          by coefficient, with the initial and terminal offsets shown
+          explicitly. Selecting a coefficient highlights its run; “Go to
+          selected run” seeks it. Changing α rebuilds the path; stepping the
+          path preserves α. “Explain this flip” replaces the diagram with its
+          unfolded quadrilateral. H² playback also advances the follow-target
+          path at its crossing times; flip steps seek those times. Rectangle
+          stages keep their own clock unless “Synchronize by coefficient” is
+          enabled.
         </p>
         <h3>Marked tangles</h3>
         <p>

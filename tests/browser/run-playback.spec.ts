@@ -27,8 +27,8 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     left = pane(page, "Left");
   await link(page).check();
   await expect(
-    right.getByRole("button", { name: "Follow target", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    right.getByText("Following α automatically", { exact: true }),
+  ).toBeVisible();
   await clock(page).fill("1");
   await expect(right.getByTestId("flip-status")).toContainText("Step 2");
   await clock(page).fill("0");
@@ -73,9 +73,7 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
   await expect(link(page)).not.toBeChecked();
-  await expect(
-    right.getByRole("button", { name: "Manual flips", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0");
   await page
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();

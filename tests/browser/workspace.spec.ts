@@ -245,11 +245,11 @@ test("Farey flips preserve the target, shared undo works, and layouts survive re
   await choose(page, "Left", "h2");
   await choose(page, "Right", "triangulation");
   await right(page)
-    .getByRole("button", { name: "Flip edge 1", exact: true })
+    .getByRole("button", { name: "Next flip step", exact: true })
     .click();
   await expect(
     left(page).getByRole("img", { name: /Upper half-plane/ }),
-  ).toHaveAttribute("data-triangulation", "0 | ∞ | -1");
+  ).toHaveAttribute("data-triangulation", "0 | 1/2 | 1");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(

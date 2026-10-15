@@ -13,12 +13,7 @@ import type { Scene } from "./state";
 import { approximate, specLabel } from "./math/continuedFraction";
 import { label, type Rational } from "./math/rational";
 import { heightAt, type derive } from "./math/trajectory";
-import {
-  currentTriangulation,
-  initialTriangulation,
-  appendFlip,
-  targetItinerary,
-} from "./math/triangulation";
+import { currentTriangulation, targetItinerary } from "./math/triangulation";
 import type { TangleExpression } from "./math/tangles";
 import { HalfPlane } from "./renderers/HalfPlane";
 import { Quotient } from "./renderers/Quotient";
@@ -121,7 +116,8 @@ export function Workspace(props: WorkspaceProps) {
         isTrajectory(p.kind) || ["farey", "triangulation"].includes(p.kind),
     );
   const runs = useRunPlayback(props, canLink);
-  const flipState = props.scene.triangulation ?? initialTriangulation;
+  const flipState =
+    props.scene.triangulation ?? targetItinerary(props.scene.spec);
   const previousFlip = useRef(flipState);
   useEffect(() => {
     if (
@@ -313,10 +309,9 @@ export function Workspace(props: WorkspaceProps) {
                   have bounded animation duration.
                 </p>
                 <p>
-                  Linked playback uses Follow target. Manual paths remain in
-                  Undo. Editing, undo, or switching views pauses and releases
-                  the link. The marked flip torus and six-sheet modular cover
-                  remain distinct constructions.
+                  All flip paths follow α. Editing, undo, or switching views
+                  pauses and releases the link. The marked flip torus and
+                  six-sheet modular cover remain distinct constructions.
                 </p>
               </details>
               {runs.stage && !runs.stage.complete && (
@@ -333,8 +328,7 @@ export function Workspace(props: WorkspaceProps) {
             </>
           ) : (
             <p>
-              Link rectangle groups to runs of crossings using Follow target. A
-              manual flip path is preserved in Undo.
+              Link rectangle groups to the runs of crossings determined by α.
             </p>
           )}
         </div>
@@ -621,7 +615,7 @@ function ComparisonPane({
   const infinite = p.scene.spec.kind === "rational" && !p.scene.spec.value.q;
   const triangleVisible =
     showTriangulation || ["triangulation", "farey"].includes(other.kind);
-  const triState = p.scene.triangulation ?? initialTriangulation;
+  const triState = p.scene.triangulation ?? targetItinerary(p.scene.spec);
   const stage = p.rectangle.stages[p.selected];
   const linkRun = isCoefficientView(other.kind);
   const selectedRun =
@@ -870,19 +864,6 @@ function ComparisonPane({
                 torusLift={other.kind === "torus" ? other.lift : undefined}
                 triangulation={
                   triangleVisible ? currentTriangulation(triState) : undefined
-                }
-                onFlipTriangle={
-                  triState.mode === "manual"
-                    ? (edge) => {
-                        try {
-                          p.triangulation.onChange(
-                            appendFlip(triState, edge, "farey"),
-                          );
-                        } catch (e) {
-                          p.onError((e as Error).message);
-                        }
-                      }
-                    : undefined
                 }
                 crossings={p.math.farey.crossings}
                 selectedTerm={p.selected}

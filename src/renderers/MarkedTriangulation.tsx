@@ -15,12 +15,10 @@ import {
 import { label, value, type Rational } from "../math/rational";
 import {
   INITIAL_TRIANGLE,
-  initialTriangulation,
   triangulationPath,
   triangleKey,
   flip,
   flipDetails,
-  appendFlip,
   wrappedEdge,
   targetItinerary,
   followStatus,
@@ -64,7 +62,7 @@ const short = (r: Rational) =>
 export function MarkedTriangulation(props: Props) {
   const id = useId();
   const { spec, speed, onChange, onTarget, onError } = props,
-    state = props.state ?? initialTriangulation;
+    state = props.state ?? targetItinerary(spec);
   const path = useMemo(
       () => triangulationPath(state),
       [state.start, state.steps],
@@ -81,8 +79,7 @@ export function MarkedTriangulation(props: Props) {
     [frame, setFrame] = useState<Triangulation>(INITIAL_TRIANGLE),
     [transition, setTransition] = useState<ReturnType<
       typeof flipDetails
-    > | null>(null),
-    [patch, setPatch] = useState<ReturnType<typeof flipDetails> | null>(null);
+    > | null>(null);
   const playing = props.playback?.playing ?? localPlaying;
   const setPlaying = props.playback?.onChange ?? setLocalPlaying;
   const view = props.view ?? localView;
@@ -92,9 +89,15 @@ export function MarkedTriangulation(props: Props) {
   }, [tri, followCamera, state.mode]);
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const previous = useRef(tri);
+  const previousSpec = useRef(spec);
   useEffect(() => {
     const before = previous.current;
     previous.current = tri;
+    if (previousSpec.current !== spec) {
+      previousSpec.current = spec;
+      setTransition(null);
+      return;
+    }
     if (triangleKey(before) === triangleKey(tri)) return;
     const changed = before.flatMap((r, i) =>
       label(r) !== label(tri[i]) ? [i] : [],
@@ -105,13 +108,11 @@ export function MarkedTriangulation(props: Props) {
     ) {
       const details = flipDetails(before, changed[0]);
       setSelected(changed[0]);
-      setPatch(details);
       if (!reduced()) setTransition(details);
     } else {
-      setPatch(null);
       setTransition(null);
     }
-  }, [tri]);
+  }, [tri, spec]);
   useEffect(() => {
     if (!transition) return;
     const timer = setTimeout(() => setTransition(null), 700);
@@ -134,20 +135,24 @@ export function MarkedTriangulation(props: Props) {
       onError((e as Error).message);
     }
   };
-  function manual(edge: number, source: "torus" | "farey") {
-    if (state.mode !== "manual") return;
-    setPlaying(false);
-    try {
-      const details = flipDetails(tri, edge),
-        next = appendFlip(state, edge, source);
-      setSelected(edge);
-      setPatch(details);
-      if (!reduced()) setTransition(details);
-      commit(next);
-      props.onShowPlane(true);
-    } catch (e) {
-      onError((e as Error).message);
-    }
+  // Only adjacent steps on α's itinerary are interactive, never other branches.
+  function adjacentCursor(edge: number) {
+    if (state.steps[state.cursor]?.edge === edge) return state.cursor + 1;
+    if (state.steps[state.cursor - 1]?.edge === edge) return state.cursor - 1;
+    return undefined;
+  }
+  function selectEdge(edge: number) {
+    setSelected(edge);
+    const cursor = adjacentCursor(edge);
+    if (cursor !== undefined) navigate(cursor);
+  }
+  function edgeAction(edge: number) {
+    const cursor = adjacentCursor(edge);
+    return cursor === undefined
+      ? undefined
+      : cursor > state.cursor
+        ? "Next"
+        : "Previous";
   }
   function navigate(cursor: number, automatic = false) {
     if (!automatic) setPlaying(false);
@@ -158,7 +163,6 @@ export function MarkedTriangulation(props: Props) {
       const edge = state.steps[forward ? state.cursor : cursor].edge,
         details = flipDetails(tri, edge);
       setSelected(edge);
-      setPatch(details);
       if (!reduced()) setTransition(details);
     } else setTransition(null);
     commit(
@@ -181,7 +185,11 @@ export function MarkedTriangulation(props: Props) {
   }, [playing, state, speed]);
   const shown = transition?.before ?? tri,
     wrapped = useMemo(() => shown.map((r) => wrappedEdge(r)), [shown]);
-  const operation = patch ?? flipDetails(tri, selected);
+  const operationIndex = Math.max(0, state.cursor - 1);
+  const hasOperation = state.steps.length > 0;
+  const operation =
+    transition ??
+    flipDetails(path[operationIndex], state.steps[operationIndex]?.edge ?? 2);
   const extent = operation.quad.reduce(
     (m, v) =>
       [v.x < 0n ? -v.x : v.x, v.y < 0n ? -v.y : v.y].reduce(
@@ -238,10 +246,7 @@ export function MarkedTriangulation(props: Props) {
         });
     return copies;
   });
-  const activeStatus =
-    state.mode === "follow"
-      ? followStatus(spec, state)
-      : "Manual flips change this marked triangulation, not the target number.";
+  const activeStatus = followStatus(spec, state);
   const coefficients =
     spec.kind === "rational" && !spec.value.q ? [] : terms(spec, 96);
   const term = props.coefficient ?? state.steps[state.cursor - 1]?.term ?? 0;
@@ -302,37 +307,9 @@ export function MarkedTriangulation(props: Props) {
           </button>
         </div>
       )}
-      <div
-        className="tangle-controls"
-        role="group"
-        aria-label="Triangulation editing mode"
-      >
-        <button
-          aria-pressed={state.mode === "manual"}
-          onClick={() => {
-            setPlaying(false);
-            commit({
-              ...state,
-              mode: "manual",
-              steps: state.steps.slice(0, state.cursor),
-            });
-          }}
-        >
-          Manual flips
-        </button>
-        <button
-          aria-pressed={state.mode === "follow"}
-          onClick={() => {
-            setPatch(null);
-            setTransition(null);
-            setPlaying(false);
-            commit(targetItinerary(spec, state.horizon), 0, 0);
-            props.onShowPlane(true);
-          }}
-        >
-          Follow target
-        </button>
-        {view === "square" && (
+      <div className="tangle-controls" role="group" aria-label="Target path">
+        <span className="small-tag">Following α automatically</span>
+        {view === "square" && hasOperation && (
           <button
             aria-pressed={inspectFlip}
             onClick={() => setInspectFlip(!inspectFlip)}
@@ -346,25 +323,26 @@ export function MarkedTriangulation(props: Props) {
         data-testid="flip-run-caption"
         style={{ borderLeftColor: stageColor(term) }}
       >
-        {state.mode === "manual"
-          ? "Manual exploration: each flip moves to a neighboring Farey triangle. Target α stays fixed."
-          : state.cursor === 0 && term === 0
-            ? `a₀ = ${coefficients[0] ?? "∞"} sets the starting bracket; it is not a left/right run.`
-            : term === 0
-              ? "Initial crossing into the Farey bracket. This first flip is separate from the coefficient’s left/right turns."
-              : `a${term} = ${coefficients[term]} · ${run.direction} run · ${run.completed} of ${run.expected} flips completed${BigInt(run.generated) < run.expected ? ` (${run.generated} generated so far)` : ""}.`}
+        {state.cursor === 0 && term === 0
+          ? `a₀ = ${coefficients[0] ?? "∞"} sets the starting bracket; it is not a left/right run.`
+          : term === 0
+            ? "Initial crossing into the Farey bracket. This first flip is separate from the coefficient’s left/right turns."
+            : `a${term} = ${coefficients[term]} · ${run.direction} run · ${run.completed} of ${run.expected} flips completed${BigInt(run.generated) < run.expected ? ` (${run.generated} generated so far)` : ""}.`}
         {state.mode === "follow" &&
           term > 0 &&
           run.expected === 0n &&
           " This coefficient has no flip after the boundary offsets."}
       </p>
-      <p className="flip-operation" data-testid="flip-operation-caption">
-        Retain {operation.retained.map(label).join(" and ")}; replace{" "}
-        {label(operation.removed)} with {label(operation.inserted)}.
-      </p>
+      {hasOperation && (
+        <p className="flip-operation" data-testid="flip-operation-caption">
+          {state.cursor === 0 ? "Next flip: " : "Current flip: "}
+          Retain {operation.retained.map(label).join(" and ")}; replace{" "}
+          {label(operation.removed)} with {label(operation.inserted)}.
+        </p>
+      )}
       <div
         className="triangulation-grid"
-        hidden={view === "square" && inspectFlip}
+        hidden={view === "square" && inspectFlip && hasOperation}
       >
         <div hidden={view !== "square"}>
           <svg
@@ -411,22 +389,25 @@ export function MarkedTriangulation(props: Props) {
             {wrapped.map((w, i) => (
               <g
                 key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`Flip torus edge ${label(shown[i])}`}
-                aria-disabled={state.mode !== "manual"}
+                role={edgeAction(i) ? "button" : "img"}
+                tabIndex={edgeAction(i) ? 0 : undefined}
+                aria-label={
+                  edgeAction(i)
+                    ? `${edgeAction(i)} path step via torus edge ${label(shown[i])}`
+                    : `Torus edge ${label(shown[i])}`
+                }
                 onFocus={() => setSelected(i)}
-                onClick={() => manual(i, "torus")}
+                onClick={() => selectEdge(i)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    manual(i, "torus");
+                    selectEdge(i);
                   }
                 }}
               >
                 <title>
-                  Edge class {label(shown[i])}; both boundary copies select this
-                  same edge
+                  Edge class {label(shown[i])}; both boundary copies represent
+                  the same edge. Only steps on α’s path can be followed.
                 </title>
                 {w.segments.map((segment, j) => {
                   const d = svgPath(
@@ -483,16 +464,13 @@ export function MarkedTriangulation(props: Props) {
             </text>
           </svg>
           <p className="flip-diagram-caption">
-            {state.mode === "manual"
-              ? "Click an edge to flip it. "
-              : "Step the path to see one edge change. "}
-            Opposite square sides are identified; colors match the Farey vertex
-            labels.
+            Step α’s path to see one edge change. Opposite square sides are
+            identified; colors match the Farey vertex labels.
           </p>
           {wrapped.some((w) => w.limited) && (
             <p className="topology-limit" role="status">
               Wrap display limit: edges with |p|+q &gt; 160 are hidden. Exact
-              slopes and all three flip controls remain available.
+              slopes and path controls remain available.
             </p>
           )}
           {!faceCopies.length && (
@@ -512,15 +490,18 @@ export function MarkedTriangulation(props: Props) {
             {neighbors.map((t, i) => (
               <path
                 key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`Flip via Farey triangle replacing ${label(tri[i])} with ${label(t[i])}`}
-                aria-disabled={state.mode !== "manual"}
-                onClick={() => manual(i, "farey")}
+                role={edgeAction(i) ? "button" : "img"}
+                tabIndex={edgeAction(i) ? 0 : undefined}
+                aria-label={
+                  edgeAction(i)
+                    ? `${edgeAction(i)} path step via Farey triangle replacing ${label(tri[i])} with ${label(t[i])}`
+                    : `Neighboring Farey triangle ${triangleKey(t)}`
+                }
+                onClick={() => selectEdge(i)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    manual(i, "farey");
+                    selectEdge(i);
                   }
                 }}
                 d={svgPath(diskTriangle(t, frame).map(disk)) + "Z"}
@@ -645,15 +626,13 @@ export function MarkedTriangulation(props: Props) {
             />
           </svg>
           <p className="flip-diagram-caption">
-            {state.mode === "manual"
-              ? "Click a neighboring triangle to flip. "
-              : "Each step crosses a side into the next triangle. "}
-            Colored path segments group flips by coefficient; dashed segments
-            are ahead.
+            Each step follows α into the next triangle. Click the next or
+            previous triangle on this path to navigate. Colored path segments
+            group flips by coefficient; dashed segments are ahead.
           </p>
         </div>
       </div>
-      {view === "square" && (
+      {view === "square" && hasOperation && (
         <div className="flip-patch" hidden={!inspectFlip}>
           <h3>Why this flip works</h3>
           <p>
@@ -774,10 +753,9 @@ export function MarkedTriangulation(props: Props) {
           <button
             key={i}
             style={{ borderBottomColor: flipColors[i], color: flipColors[i] }}
-            aria-label={`Flip edge ${short(r)}`}
-            disabled={state.mode !== "manual"}
+            aria-label={`Highlight edge ${short(r)}`}
             aria-pressed={selected === i}
-            onClick={() => manual(i, view === "farey" ? "farey" : "torus")}
+            onClick={() => setSelected(i)}
           >
             {label(r)}
           </button>
@@ -837,15 +815,6 @@ export function MarkedTriangulation(props: Props) {
                 {label(r)}
               </strong>
               <button
-                onClick={() => {
-                  setSelected(i);
-                  setPatch(flipDetails(tri, i));
-                  setInspectFlip(true);
-                }}
-              >
-                Inspect edge {short(r)}
-              </button>
-              <button
                 aria-label={`Use slope ${label(r)} as target`}
                 onClick={() => onTarget(r)}
               >
@@ -879,7 +848,7 @@ export function MarkedTriangulation(props: Props) {
             checked={followCamera}
             onChange={(e) => setFollowCamera(e.target.checked)}
           />
-          Center current triangle during Follow target
+          Center current triangle during playback
         </label>
         <div className="tangle-controls">
           <button onClick={() => setFrame(tri)}>Center Farey triangle</button>
@@ -888,8 +857,8 @@ export function MarkedTriangulation(props: Props) {
           </button>
         </div>
         <p className="topology-note">
-          Dotted line: the recorded dual-tree walk, including backtracks. The
-          disk camera changes coordinates only; the marking and slope labels
+          Solid lines show completed steps; dashed lines show the path ahead.
+          The disk camera changes coordinates only; the marking and slope labels
           stay fixed.
         </p>
         <div className="tangle-controls">
@@ -911,16 +880,7 @@ export function MarkedTriangulation(props: Props) {
           >
             Redo shared edit
           </button>
-          <button
-            onClick={() => {
-              setPlaying(false);
-              setPatch(null);
-              setTransition(null);
-              commit(initialTriangulation);
-            }}
-          >
-            Reset triangulation
-          </button>
+          <button onClick={() => navigate(0)}>Restart α’s path</button>
           {state.mode === "follow" && (
             <button
               disabled={state.horizon >= 24 || state.steps.length >= 512}
@@ -964,9 +924,9 @@ export function MarkedTriangulation(props: Props) {
           ))}
         </div>
         <p className="topology-note">
-          Number edits and flips share undo/redo. Path navigation retains later
-          steps; a new manual flip branches from the current step. Scene files
-          preserve the exact slope triples through structured flip records.
+          Changing α rebuilds this path. Path navigation retains later steps and
+          never changes α. Shared undo/redo restores the number and its playback
+          position together. Saved scenes retain the exact target itinerary.
         </p>
       </details>
       <details className="flip-details">

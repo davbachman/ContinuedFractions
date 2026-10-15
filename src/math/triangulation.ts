@@ -145,7 +145,7 @@ export function targetItinerary(
 }
 export function followStatus(spec: NumberSpec, state: TriangulationState) {
   if (spec.kind === "rational" && !spec.value.q)
-    return "Infinity has no finite vertical-ray itinerary. Use manual flips.";
+    return "Infinity has no finite vertical-ray itinerary. Choose a finite α to see its flip path.";
   if (spec.kind === "rational" && spec.value.q === 1n)
     return "The ray lies on a Farey edge. The triangle on its right is shown; automatic crossing is ambiguous, so no flips are generated.";
   if (
