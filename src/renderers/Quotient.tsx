@@ -60,8 +60,7 @@ export function Quotient({
     points
       .map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(3)},${p.y.toFixed(3)}`)
       .join(" ");
-  const schematic = (p: { x: number; y: number }) => {
-    const [x, y, z] = schematicPoint(p);
+  const projectSurface = ([x, y, z]: readonly number[]) => {
     // Roll around the model's center, keeping the default framing unchanged.
     const q = project3d([x, y, z - 0.35], rotation, roll);
     return {
@@ -70,6 +69,9 @@ export function Quotient({
       depth: q.depth,
     };
   };
+  const schematic = (p: { x: number; y: number }) =>
+    projectSurface(schematicPoint(p));
+  const cusp = projectSurface([0, 0, 1.35]);
   const surface = useMemo(() => {
     const at = (u: number, h: number) => {
       const x = u - 0.5;
@@ -360,7 +362,12 @@ export function Quotient({
                   </g>
                 );
               })}
-              <text x="190" y="78" textAnchor="middle" className="svg-muted">
+              <text
+                x={cusp.x}
+                y={Math.max(40, Math.min(350, cusp.y - 12))}
+                textAnchor="middle"
+                className="svg-muted"
+              >
                 cusp
               </text>
             </>

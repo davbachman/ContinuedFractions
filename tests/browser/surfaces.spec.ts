@@ -43,6 +43,8 @@ test("surface gestures preserve scene state, support keyboard reset and cancella
   await page.mouse.click(point.x, point.y);
   await expect(time).not.toHaveValue("5");
   const clickedTime = await time.inputValue();
+  const cusp = surface.locator("text").filter({ hasText: /^cusp$/ });
+  const cuspBefore = await cusp.getAttribute("y");
   const box = (await surface.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -53,6 +55,7 @@ test("surface gestures preserve scene state, support keyboard reset and cancella
   await expect(surface).not.toHaveAttribute("data-roll", "0");
   await expect(surface).toHaveAttribute("data-rotation", "-0.4");
   await expect(time).toHaveValue(clickedTime);
+  await expect(cusp).not.toHaveAttribute("y", cuspBefore!);
   await surface.screenshot({
     path: `test-results/${info.project.name}-rolled-orbifold.png`,
   });
