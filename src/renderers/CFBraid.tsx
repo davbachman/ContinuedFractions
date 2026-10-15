@@ -38,12 +38,17 @@ export function CFBraid({
   );
   const closure = useMemo(() => diagramClosure(diagram), [diagram]);
   const [draft, setDraft] = useState(String(coefficients[selected] ?? 0n));
+  const [fitWhole, setFitWhole] = useState(true);
   const viewport = useRef<HTMLDivElement>(null);
   useEffect(
     () => setDraft(String(coefficients[selected] ?? 0n)),
     [coefficients, selected],
   );
   useEffect(() => {
+    if (fitWhole) {
+      viewport.current?.scrollTo({ top: 0, behavior: "instant" });
+      return;
+    }
     const scroller = viewport.current;
     const group = scroller?.querySelector(
       `[data-braid-coefficient="${selected}"]`,
@@ -59,7 +64,7 @@ export function CFBraid({
           ? "instant"
           : "smooth",
       });
-  }, [selected, diagram]);
+  }, [selected, diagram, fitWhole]);
   const curve = (index: number) => {
     const e = diagram.edges[index],
       a = diagram.nodes[e.from],
@@ -154,7 +159,20 @@ export function CFBraid({
           nested bottom caps and closes to an unknot.
         </p>
       )}
-      <div className="braid-scroll" ref={viewport}>
+      <div className="braid-controls" role="group" aria-label="Braid framing">
+        <button aria-pressed={fitWhole} onClick={() => setFitWhole(true)}>
+          Fit whole knot
+        </button>
+        <button aria-pressed={!fitWhole} onClick={() => setFitWhole(false)}>
+          Inspect twists
+        </button>
+      </div>
+      {!fitWhole && (
+        <p className="braid-instruction">
+          Scroll inside the diagram to inspect the twists and bottom closure.
+        </p>
+      )}
+      <div className="braid-scroll" data-fit={fitWhole} ref={viewport}>
         <svg
           viewBox={`0 0 ${diagram.width} ${diagram.height}`}
           style={{ aspectRatio: `${diagram.width} / ${diagram.height}` }}

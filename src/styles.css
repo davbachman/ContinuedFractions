@@ -3380,6 +3380,13 @@ svg[data-rotation] * {
   height: auto;
   margin: auto;
 }
+.braid-scroll[data-fit="true"] svg {
+  max-height: min(48vh, 440px);
+}
+.braid-controls button[aria-pressed="true"] {
+  background: #e3ebd9;
+  border-color: #657b50;
+}
 .braid-scroll [role="button"] {
   cursor: pointer;
   outline: none;

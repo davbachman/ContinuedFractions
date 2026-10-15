@@ -196,3 +196,43 @@ test("zero, infinity, negative and large inputs have honest topology and bounded
   ).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("whole-knot framing includes both closures and detail can reach the bottom", async ({
+  page,
+}, info) => {
+  const right = pane(page, "Right");
+  for (const value of ["355/113", "233/144", "infinity"]) {
+    await number(page, value);
+    const viewport = right.locator(".braid-scroll");
+    await viewport.scrollIntoViewIfNeeded();
+    const bounds = await viewport.evaluate((frame) => {
+      const rect = frame.getBoundingClientRect();
+      return {
+        height: frame.clientHeight,
+        scrollHeight: frame.scrollHeight,
+        caps: [...frame.querySelectorAll("[data-plat-cap]")].map((cap) => {
+          const box = cap.getBoundingClientRect();
+          return { top: box.top - rect.top, bottom: box.bottom - rect.top };
+        }),
+      };
+    });
+    expect(bounds.scrollHeight).toBeLessThanOrEqual(bounds.height + 1);
+    for (const cap of bounds.caps) {
+      expect(cap.top).toBeGreaterThan(0);
+      expect(cap.bottom).toBeLessThan(bounds.height);
+    }
+  }
+  await number(page, "355/113");
+  await right.locator(".braid-scroll").scrollIntoViewIfNeeded();
+  await right.locator(".braid-scroll").screenshot({
+    path: `test-results/${info.project.name}-braid-fit.png`,
+  });
+  await right.getByRole("button", { name: "Inspect twists", exact: true }).click();
+  const bottomCap = braid(page).locator("[data-plat-cap]").last();
+  await bottomCap.scrollIntoViewIfNeeded();
+  await expect(bottomCap).toBeInViewport();
+  await right.getByRole("button", { name: "Fit whole knot", exact: true }).click();
+  await expect(right.locator(".braid-scroll")).toHaveJSProperty("scrollTop", 0);
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("355/113");
+  await expect(braid(page)).toHaveAttribute("data-fraction", "355/113");
+});
