@@ -23,11 +23,11 @@ import {
 import { flipColors, ratio } from "./triangulationGeometry";
 import { useFlipPlayback } from "../useFlipPlayback";
 import { FareyDisk } from "./FareyDisk";
+import { fareyTriangleColor, FAREY_FILL_OPACITY } from "./fareyColors";
 import { stageColor } from "./dissectionColors";
 import { svgPath } from "./ModularTorus";
 type Props = {
   time: number;
-  domainLift?: number;
   onFrame: (time: number, term: number) => void;
   view?: "square" | "farey";
   coefficient?: number;
@@ -325,6 +325,7 @@ export function MarkedTriangulation(props: Props) {
             role="group"
             aria-label="Marked torus triangulation"
             data-slopes={triangleKey(tri)}
+            data-triangle-color={fareyTriangleColor(shown)}
           >
             <defs>
               <clipPath id={`${id}-marked-square-clip`}>
@@ -346,9 +347,19 @@ export function MarkedTriangulation(props: Props) {
               y={45}
               width={260}
               height={260}
-              fill="#f3f3e8"
+              fill="#fbfbf6"
               stroke="#70816c"
             />
+            {!faceCopies.length && (
+              <rect
+                x={45}
+                y={45}
+                width={260}
+                height={260}
+                fill={fareyTriangleColor(shown)}
+                fillOpacity={FAREY_FILL_OPACITY}
+              />
+            )}
             <g
               clipPath={`url(#${id}-marked-square-clip)`}
               className={transition ? "flip-incident-triangles" : ""}
@@ -357,7 +368,9 @@ export function MarkedTriangulation(props: Props) {
                 <path
                   key={i}
                   d={svgPath(f.points) + "Z"}
-                  fill={f.k ? "#ead9b9" : "#dce9da"}
+                  fill={fareyTriangleColor(shown)}
+                  fillOpacity={FAREY_FILL_OPACITY}
+                  data-torus-face={f.k}
                 />
               ))}
             </g>
@@ -440,7 +453,8 @@ export function MarkedTriangulation(props: Props) {
           </svg>
           <p className="flip-diagram-caption">
             Step α’s path to see one edge change. Opposite square sides are
-            identified; colors match the Farey vertex labels.
+            identified. Face color matches the current Farey triangle; edge
+            colors match its vertex labels.
           </p>
           {wrapped.some((w) => w.limited) && (
             <p className="topology-limit" role="status">
@@ -459,7 +473,6 @@ export function MarkedTriangulation(props: Props) {
             <FareyDisk
               spec={spec}
               time={props.time}
-              lift={props.domainLift}
               tri={tri}
               path={path}
               state={state}
@@ -526,7 +539,8 @@ export function MarkedTriangulation(props: Props) {
               <path
                 key={i}
                 d={svgPath(t.map(qp)) + "Z"}
-                fill={i ? "#e8cea6b0" : "#bcd8b9b0"}
+                fill={fareyTriangleColor(operation.before)}
+                fillOpacity={FAREY_FILL_OPACITY}
                 stroke="#60755f"
               />
             ))}

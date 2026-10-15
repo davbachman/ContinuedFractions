@@ -6,8 +6,6 @@ import {
   triangulationMatrix,
   type Triangulation,
 } from "../math/triangulation";
-import { idealImage } from "./modularGeometry";
-import { domainSectors, domainSectorSheets } from "./torusDomains";
 
 export type DiskCamera = { x: Rational; y: number };
 const num = (r: Rational) => ratioNumber(r.p, r.q);
@@ -38,20 +36,10 @@ const key = (tri: Triangulation) => {
   return id;
 };
 function makeGeometry(tri: Triangulation) {
-  const matrix = triangulationMatrix(tri),
-    sheets = domainSectorSheets(matrix);
+  const matrix = triangulationMatrix(tri);
   return {
     center: mappedDiskPoint(matrix, half, rational(3n, 4n)),
     neighbors: [0, 1, 2].map((i) => flip(tri, i)),
-    sectors: domainSectors.map((s, i) => ({
-      sheet: sheets[i],
-      midpoint: mappedDiskPoint(
-        matrix,
-        rational(BigInt(s.midpoint.x * 2), 2n),
-        rational(BigInt(s.midpoint.y * s.midpoint.y * 4), 4n),
-      ),
-      cusp: idealImage(matrix, s.cusp),
-    })),
   };
 }
 // Cache exact world geometry, not camera projections. Keep playback work and
@@ -117,23 +105,6 @@ export function diskPolygon(points: Point[]) {
 export const diskTrianglePath = (tri: Triangulation, camera: DiskCamera) =>
   diskPolygon(tri.map(diskProjection(camera).vertex));
 
-export function diskDomainSectors(
-  tri: Triangulation,
-  camera: DiskCamera,
-  lift = 0,
-) {
-  const cell = cellGeometry(tri),
-    projection = diskProjection(camera);
-  const center = projection.point(cell.center);
-  return cell.sectors.map((s) => ({
-    sheet: (((s.sheet + lift) % 6) + 6) % 6,
-    d: diskPolygon([
-      center,
-      projection.point(s.midpoint),
-      projection.vertex(s.cusp),
-    ]),
-  }));
-}
 export const DISK_TRIANGLE_LIMIT = 180;
 // Adaptive neighborhood in the dual tree. Tiny boundary triangles do not expand.
 export function diskNeighborhood(

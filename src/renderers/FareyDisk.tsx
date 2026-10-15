@@ -17,14 +17,17 @@ import {
 import {
   diskProjection,
   diskTrianglePath,
-  diskDomainSectors,
   diskNeighborhood,
   diskGeodesic,
   triangleCenter,
   type DiskCamera,
 } from "./fareyDisk";
 import { flipColors } from "./triangulationGeometry";
-import { torusDomainColor } from "./torusDomains";
+import {
+  fareyTriangleColor,
+  fareyTriangleId,
+  FAREY_FILL_OPACITY,
+} from "./fareyColors";
 import { stageColor } from "./dissectionColors";
 import { rational } from "../math/rational";
 const transform = "translate(190 185) scale(145)";
@@ -33,7 +36,6 @@ const short = (s: string) =>
 type Props = {
   spec: NumberSpec;
   time: number;
-  lift?: number;
   tri: Triangulation;
   path: Triangulation[];
   state: TriangulationState;
@@ -44,7 +46,6 @@ type Props = {
 export function FareyDisk({
   spec,
   time,
-  lift = 0,
   tri,
   path,
   state,
@@ -68,11 +69,6 @@ export function FareyDisk({
   const neighborhood = useMemo(
     () => diskNeighborhood([follow ? tri : seed, tri], camera),
     [tri, seed, follow, camera],
-  );
-  const domains = useMemo(
-    () =>
-      neighborhood.triangles.flatMap((t) => diskDomainSectors(t, camera, lift)),
-    [neighborhood, camera, lift],
   );
   const neighbors = tri.map((_, i) => flip(tri, i));
   const endpoint = projection.vertex(target);
@@ -120,21 +116,21 @@ export function FareyDisk({
         data-slopes={triangleKey(tri)}
         data-time={time}
         data-follow-point={follow}
-        data-domain-lift={lift}
+        data-triangle-color={fareyTriangleColor(tri)}
       >
         <circle cx={190} cy={185} r={145} fill="#fbfbf6" stroke="#b5c3aa" />
         <g
           transform={transform}
           pointerEvents="none"
-          fillOpacity={0.26}
-          data-disk-domains="true"
+          fillOpacity={FAREY_FILL_OPACITY}
+          data-farey-fills="true"
         >
-          {domains.map((s, i) => (
+          {neighborhood.triangles.map((t) => (
             <path
-              key={i}
-              d={s.d}
-              fill={torusDomainColor(s.sheet)}
-              data-domain-sheet={s.sheet}
+              key={fareyTriangleId(t)}
+              d={diskTrianglePath(t, camera)}
+              fill={fareyTriangleColor(t)}
+              data-farey-triangle={fareyTriangleId(t)}
             />
           ))}
         </g>
@@ -309,10 +305,10 @@ export function FareyDisk({
         )}
       </svg>
       <p className="flip-diagram-caption">
-        Poincaré disk · the orange point is the moving H² point. Domain fills
-        match H² (cover lift {lift}); the current Farey triangle is outlined.
-        Colored path segments group flips by coefficient; dashed segments are
-        ahead.
+        Poincaré disk · the orange point is the moving H² point. Each triangle
+        keeps its color in the disk and H²; the marked square uses the same face
+        color. The current triangle is outlined. Colored path segments group
+        flips by coefficient; dashed segments are ahead.
       </p>
       {!moving && (
         <p className="topology-note">

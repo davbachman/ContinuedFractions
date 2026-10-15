@@ -15,9 +15,15 @@ import { visibleModularArcs } from "./modularGeometry";
 import { torusDomainColor, visibleTorusDomains } from "./torusDomains";
 import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
 import { heightAt } from "../math/trajectory";
+import {
+  fareyTriangleColor,
+  visibleFareyTriangles,
+  FAREY_FILL_OPACITY,
+} from "./fareyColors";
 type Props = {
   scene: Scene;
   torusLift?: number;
+  colorFarey?: boolean;
   triangulation?: Triangulation;
   onFlipTriangle?: (edge: number) => void;
   crossings: readonly Crossing[];
@@ -30,6 +36,7 @@ type Props = {
 export function HalfPlane({
   scene,
   torusLift,
+  colorFarey = false,
   triangulation,
   onFlipTriangle,
   crossings,
@@ -161,7 +168,7 @@ export function HalfPlane({
       max = toWorld(size.width);
     const geometry = visibleFarey(min, max, scale);
     const tiles =
-      torusLift === undefined
+      torusLift === undefined || colorFarey
         ? []
         : visibleTorusDomains(geometry, min, max, scale, bottom, torusLift);
     node.dataset.torusDomainCount = String(tiles.length);
@@ -170,6 +177,43 @@ export function HalfPlane({
     ctx.beginPath();
     ctx.rect(0, 0, size.width, bottom);
     ctx.clip();
+    const triangles = colorFarey
+      ? visibleFareyTriangles(geometry, min, max)
+      : [];
+    node.dataset.fareyTriangleCount = String(triangles.length);
+    ctx.globalAlpha = FAREY_FILL_OPACITY;
+    for (const triangle of triangles) {
+      const finite = triangle
+        .filter((r) => r.q)
+        .sort((a, b) => (a.p * b.q < b.p * a.q ? -1 : 1));
+      // Analytic semicircles avoid polygon facets when the H² camera zooms.
+      const arc = (a: Rational, b: Rational) => {
+        const delta = Number(b.p * a.q - a.p * b.q) / Number(a.q * b.q);
+        ctx.arc(
+          X(value(a) + delta / 2),
+          bottom,
+          (Math.abs(delta) * scale) / 2,
+          delta > 0 ? Math.PI : 0,
+          delta > 0 ? 2 * Math.PI : -Math.PI,
+          delta < 0,
+        );
+      };
+      ctx.beginPath();
+      if (finite.length === 2) {
+        ctx.moveTo(X(value(finite[0])), 0);
+        ctx.lineTo(X(value(finite[1])), 0);
+        ctx.lineTo(X(value(finite[1])), bottom);
+        arc(finite[1], finite[0]);
+      } else {
+        ctx.moveTo(X(value(finite[0])), bottom);
+        arc(finite[0], finite[2]);
+        arc(finite[2], finite[1]);
+        arc(finite[1], finite[0]);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fareyTriangleColor(triangle);
+      ctx.fill();
+    }
     ctx.globalAlpha = 0.26;
     for (const tile of tiles) {
       ctx.beginPath();
@@ -407,6 +451,7 @@ export function HalfPlane({
     selectedTerm,
     triangulation,
     torusLift,
+    colorFarey,
     scale,
     center,
     bottom,
@@ -418,6 +463,12 @@ export function HalfPlane({
       <canvas
         ref={canvas}
         data-triangulation={triangulation?.map(label).join(" | ")}
+        data-farey-coloring={colorFarey}
+        data-triangle-color={
+          colorFarey && triangulation
+            ? fareyTriangleColor(triangulation)
+            : undefined
+        }
         data-selected-term={selectedTerm}
         data-scale={scale}
         data-manual-zoom={zoom}

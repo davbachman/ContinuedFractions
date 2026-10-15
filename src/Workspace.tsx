@@ -801,13 +801,8 @@ function ComparisonPane({
             ) : (
               <HalfPlane
                 scene={localScene}
-                torusLift={
-                  other.kind === "torus"
-                    ? other.lift
-                    : other.kind === "farey"
-                      ? 0
-                      : undefined
-                }
+                torusLift={other.kind === "torus" ? other.lift : undefined}
+                colorFarey={other.kind !== "torus" && triangleVisible}
                 triangulation={
                   triangleVisible ? currentTriangulation(triState) : undefined
                 }
@@ -820,13 +815,16 @@ function ComparisonPane({
               />
             )}
             {overlays.modular && <DomainEdgeLegend />}
-            {(other.kind === "torus" || other.kind === "farey") && (
+            {other.kind === "torus" && (
               <p className="pane-note">
-                Domain fills match{" "}
-                {other.kind === "torus"
-                  ? "the punctured modular torus"
-                  : "the Farey disk"}{" "}
-                · lift {other.kind === "torus" ? other.lift : 0}.
+                Domain fills match the punctured modular torus · lift{" "}
+                {other.lift}.
+              </p>
+            )}
+            {other.kind !== "torus" && triangleVisible && (
+              <p className="pane-note">
+                Fixed triangle colors match the Farey disk and marked-square
+                faces.
               </p>
             )}
             {inspect && (
@@ -904,7 +902,6 @@ function ComparisonPane({
           <MarkedTriangulation
             {...p.triangulation}
             time={p.scene.time}
-            domainLift={other.kind === "torus" ? other.lift : 0}
             externalPlaying={p.triangulation.externalPlaying}
             view={pane.kind === "farey" ? "farey" : "square"}
             showPlane={triangleVisible}

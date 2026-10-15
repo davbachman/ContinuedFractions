@@ -9,20 +9,14 @@ import {
   triangulationMatrix,
   flip,
 } from "../src/math/triangulation";
-import { apply, reduce } from "../src/math/modular";
-import { coverSheet } from "../src/math/modularTorus";
+import { apply } from "../src/math/modular";
 import {
   diskProjection,
   mappedDiskPoint,
-  diskDomainSectors,
   diskNeighborhood,
   diskTrianglePath,
   DISK_TRIANGLE_LIMIT,
 } from "../src/renderers/fareyDisk";
-import {
-  domainSectors,
-  modularDomainTiles,
-} from "../src/renderers/torusDomains";
 
 describe("continuous Poincaré disk", () => {
   it("centers the H² point and preserves hyperbolic distance, with continuous forward/reverse projection", () => {
@@ -67,29 +61,14 @@ describe("continuous Poincaré disk", () => {
     expect(w.x).toBeCloseTo(0, 12);
     expect(w.y).toBeCloseTo(-1, 12);
   });
-  it("matches every H² domain color, including all six cover lifts and adjacent triangles", () => {
+  it("maps triangle centers consistently with their H² group action", () => {
     const state = targetItinerary(parseInput("13/5"));
     for (const tri of [
       INITIAL_TRIANGLE,
       flip(INITIAL_TRIANGLE, 2),
       ...triangulationPath(state),
     ]) {
-      const matrix = triangulationMatrix(tri),
-        camera = { x: rational(13n, 5n), y: 0.4 };
-      for (let lift = 0; lift < 6; lift++) {
-        const disk = diskDomainSectors(tri, camera, lift),
-          plane = modularDomainTiles(matrix, 100, lift);
-        expect(disk.map((s) => s.sheet)).toEqual(plane.map((s) => s.sheet));
-        disk.forEach((s, i) => {
-          expect(s.sheet).toBe(
-            coverSheet(
-              reduce(apply(matrix, domainSectors[i].sample)).matrix,
-              lift,
-            ),
-          );
-          expect(s.d).not.toMatch(/NaN|Infinity/);
-        });
-      }
+      const matrix = triangulationMatrix(tri);
       const sample = mappedDiskPoint(
         matrix,
         rational(1n, 2n),

@@ -1025,13 +1025,8 @@ export default function App() {
                 ) : (
                   <HalfPlane
                     scene={scene}
-                    torusLift={
-                      quotientView === "torus"
-                        ? torusLift
-                        : showTriangulation
-                          ? 0
-                          : undefined
-                    }
+                    torusLift={quotientView === "torus" ? torusLift : undefined}
+                    colorFarey={quotientView !== "torus" && showTriangulation}
                     triangulation={
                       showTriangulation ? markedTriangle : undefined
                     }
@@ -1621,7 +1616,6 @@ export default function App() {
             <MarkedTriangulation
               time={scene.time}
               onFrame={runFrame}
-              domainLift={quotientView === "torus" ? torusLift : 0}
               coefficient={selectedTerm}
               externalPlaying={playing || rectanglePlaying}
               spec={scene.spec}
