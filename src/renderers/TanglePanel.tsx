@@ -15,6 +15,7 @@ import {
 } from "../math/tangles";
 import { tangleDiagram } from "../math/tangleDiagram";
 import { tangleCurves } from "./tangleCurves";
+import { tangleHelices } from "./tangleHelices";
 import { Pillowcase } from "./Pillowcase";
 import { svgPath } from "./ModularTorus";
 type Props = {
@@ -123,6 +124,10 @@ export function TanglePanel({
   const point = (id: number) => diagram.nodes[id];
   const canThree = diagram.boxes.length === 0 && diagram.edges.length <= 180;
   const lifted = three && canThree;
+  const helices = useMemo(
+    () => (canThree ? tangleHelices(diagram) : []),
+    [diagram, canThree],
+  );
   const rotationControls = useSurfaceRotation(
     rotation,
     setRotation,
@@ -146,24 +151,16 @@ export function TanglePanel({
       depth: q.depth,
     };
   };
-  const over = new Set(diagram.crossings.map((c) => c.over)),
-    under = new Set(diagram.crossings.map((c) => c.under));
   const pieces = lifted
     ? diagram.edges
         .flatMap((_, id) =>
-          Array.from({ length: 40 }, (_, i) => {
-            const height = over.has(id) ? 18 : under.has(id) ? -18 : 0;
-            const at = (t: number) =>
-              project(
-                curves[id].at(t),
-                height *
-                  Math.sin(
-                    Math.PI * Math.max(0, Math.min(1, (t - 0.15) / 0.7)),
-                  ) **
-                    2,
-              );
-            const p = at(i / 40),
-              q = at((i + 1) / 40);
+          Array.from({ length: 64 }, (_, i) => {
+            const at = (t: number) => {
+              const p = helices[id].at(t);
+              return project(p, p.z);
+            };
+            const p = at(i / 64),
+              q = at((i + 1) / 64);
             return { points: [p, q], depth: (p.depth + q.depth) / 2, id };
           }),
         )
@@ -389,8 +386,18 @@ export function TanglePanel({
                     d={svgPath(piece.points)}
                     fill="none"
                     stroke={piece.id < 0 ? "#8b6291" : color(piece.id)}
-                    strokeWidth={3.5}
+                    strokeWidth={
+                      piece.id >= 0 &&
+                      diagram.edges[piece.id].region === activeRegion
+                        ? 4.5
+                        : 3.5
+                    }
                     strokeLinecap="round"
+                    onClick={
+                      piece.id < 0
+                        ? undefined
+                        : () => chooseRegion(diagram.edges[piece.id].region)
+                    }
                   />
                 ))
               ) : (
@@ -497,7 +504,7 @@ export function TanglePanel({
             Quarter-turn is active and sends x to −1/x. Mirror switches
             crossings.{" "}
             {lifted
-              ? "3D lifts overpasses above and underpasses below the diagram plane."
+              ? "Each signed half-twist is a half-turn of a double helix. Paired strands wind around a shared axis; reversing the sign reverses handedness."
               : "Gaps mark underpasses."}
           </p>
           {!canThree && (
