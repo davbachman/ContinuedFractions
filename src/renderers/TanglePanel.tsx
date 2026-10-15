@@ -14,6 +14,7 @@ import {
   canonicalTwistCoefficients,
 } from "../math/tangles";
 import { tangleDiagram } from "../math/tangleDiagram";
+import { tangleCurves } from "./tangleCurves";
 import { Pillowcase } from "./Pillowcase";
 import { svgPath } from "./ModularTorus";
 type Props = {
@@ -47,6 +48,7 @@ export function TanglePanel({
     [spec, expression, target],
   );
   const diagram = useMemo(() => tangleDiagram(ops), [ops]);
+  const curves = useMemo(() => tangleCurves(diagram), [diagram]);
   const fraction = useMemo(() => tangleFraction(ops), [ops]);
   const [localMode, setMode] = useState<"tangle" | "pillowcase">("tangle"),
     [localClosed, setClosed] = useState(false),
@@ -148,18 +150,20 @@ export function TanglePanel({
     under = new Set(diagram.crossings.map((c) => c.under));
   const pieces = lifted
     ? diagram.edges
-        .flatMap((edge, id) =>
-          Array.from({ length: 12 }, (_, i) => {
-            const a = point(edge.from),
-              b = point(edge.to),
-              height = over.has(id) ? 18 : under.has(id) ? -18 : 0;
+        .flatMap((_, id) =>
+          Array.from({ length: 40 }, (_, i) => {
+            const height = over.has(id) ? 18 : under.has(id) ? -18 : 0;
             const at = (t: number) =>
               project(
-                { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t },
-                height * Math.sin(Math.PI * t),
+                curves[id].at(t),
+                height *
+                  Math.sin(
+                    Math.PI * Math.max(0, Math.min(1, (t - 0.15) / 0.7)),
+                  ) **
+                    2,
               );
-            const p = at(i / 12),
-              q = at((i + 1) / 12);
+            const p = at(i / 40),
+              q = at((i + 1) / 40);
             return { points: [p, q], depth: (p.depth + q.depth) / 2, id };
           }),
         )
@@ -394,7 +398,7 @@ export function TanglePanel({
                   {diagram.edges.map((edge, i) => (
                     <path
                       key={i}
-                      d={svgPath([point(edge.from), point(edge.to)])}
+                      d={curves[i].path}
                       fill="none"
                       stroke={color(i)}
                       strokeWidth={edge.region === activeRegion ? 4.5 : 3.2}
