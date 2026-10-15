@@ -1,7 +1,7 @@
 export type DomainSide = "T" | "S";
 export const domainEdgeColor: Record<DomainSide, string> = {
-  T: "#197d9a",
-  S: "#9450a1",
+  T: "#0072b2",
+  S: "#d55e00",
 };
 export function DomainEdgeLegend() {
   return (

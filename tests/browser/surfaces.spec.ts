@@ -85,8 +85,8 @@ test("domain colors agree across the half-plane and filled translucent quotient 
     "0.78",
   );
   for (const [side, color] of [
-    ["T", "#197d9a"],
-    ["S", "#9450a1"],
+    ["T", "#0072b2"],
+    ["S", "#d55e00"],
   ])
     await expect(
       sphere.locator(`[data-domain-side="${side}"]`).first(),
@@ -108,7 +108,7 @@ test("domain colors agree across the half-plane and filled translucent quotient 
   );
   await expect(torus.locator('[data-domain-side="S"]').first()).toHaveAttribute(
     "stroke",
-    "#9450a1",
+    "#d55e00",
   );
   await torus.screenshot({
     path: `test-results/${info.project.name}-solid-torus.png`,
