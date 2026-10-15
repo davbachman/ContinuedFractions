@@ -315,8 +315,9 @@ export function HalfPlane({
         ctx.fillText(label(r), x, r.q ? bottom - 8 : 18);
       });
     }
-    for (const e of crossings.filter((e) => e.term === selectedTerm))
-      edge(value(e.left), value(e.right), "#cf7448", 2.5);
+    if (scene.overlays.farey)
+      for (const e of crossings.filter((e) => e.term === selectedTerm))
+        edge(value(e.left), value(e.right), "#cf7448", 2.5);
     if (scene.overlays.dual) {
       ctx.beginPath();
       ctx.setLineDash([3, 5]);

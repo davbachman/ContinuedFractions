@@ -118,11 +118,9 @@ test("coefficient inspection highlights folded and 3D quotient runs without seek
   await expect(
     right(page).getByRole("slider", { name: "Scrub trajectory" }),
   ).not.toHaveValue("0");
-  await page
-    .locator(".comparison-grid")
-    .screenshot({
-      path: `test-results/${info.project.name}-comparison-selected-run.png`,
-    });
+  await page.locator(".comparison-grid").screenshot({
+    path: `test-results/${info.project.name}-comparison-selected-run.png`,
+  });
 });
 
 test("two H² cameras and layers are independent, swap with their panes, and share trajectory time", async ({
@@ -273,5 +271,45 @@ test("Farey flips preserve the target, shared undo works, and layouts survive re
     "data-representation",
     "triangulation",
   );
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+});
+
+test("Farey crossing highlights obey each pane's Farey edges toggle while seeking", async ({
+  page,
+}) => {
+  await choose(page, "Left", "h2");
+  await choose(page, "Right", "h2");
+  const a = left(page).getByRole("img", { name: /Upper half-plane/ });
+  const b = right(page).getByRole("img", { name: /Upper half-plane/ });
+  const highlightPixels = (canvas: typeof a) =>
+    canvas.evaluate((element) => {
+      const node = element as HTMLCanvasElement;
+      const pixels = node
+        .getContext("2d")!
+        .getImageData(0, 0, node.width, node.height).data;
+      let count = 0;
+      for (let i = 0; i < pixels.length; i += 4)
+        if (pixels[i] === 207 && pixels[i + 1] === 116 && pixels[i + 2] === 72)
+          count++;
+      return count;
+    });
+  const scrub = left(page).getByRole("slider", { name: "Scrub trajectory" });
+  await scrub.fill("2");
+  await page
+    .getByRole("button", { name: "Highlight coefficient a2 = 1", exact: true })
+    .click();
+  await expect.poll(() => highlightPixels(a)).toBeGreaterThan(0);
+  await left(page).getByLabel("Farey edges", { exact: true }).uncheck();
+  await expect.poll(() => highlightPixels(a)).toBe(0);
+  await expect.poll(() => highlightPixels(b)).toBeGreaterThan(0);
+  for (const time of ["3", "4", "6", "2"]) {
+    await scrub.fill(time);
+    await expect.poll(() => highlightPixels(a)).toBe(0);
+  }
+  await page
+    .getByRole("button", { name: "Highlight coefficient a2 = 1", exact: true })
+    .click();
+  await left(page).getByLabel("Farey edges", { exact: true }).check();
+  await expect.poll(() => highlightPixels(a)).toBeGreaterThan(0);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
 });
