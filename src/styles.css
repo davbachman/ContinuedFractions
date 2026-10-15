@@ -1987,7 +1987,8 @@ footer,
   border-left: 3px solid #789568;
   padding-left: 12px;
 }
-.rectangle-unavailable {
+.rectangle-unavailable,
+.view-unavailable {
   padding: 60px 28px;
   min-height: 380px;
   line-height: 1.8;
@@ -2031,4 +2032,160 @@ footer,
   .rectangle-stage.current rect {
     animation: none;
   }
+}
+
+.topology-svg {
+  display: block;
+  width: 100%;
+  max-height: 430px;
+}
+.topology-options,
+.tangle-controls {
+  display: flex;
+  gap: 8px 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  font-size: 11px;
+}
+.topology-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.topology-options button,
+.tangle-controls button,
+.tangle-expression button {
+  padding: 6px 10px;
+  border: 1px solid #cad4bd;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.topology-options [aria-pressed="true"],
+.tangle-expression [aria-pressed="true"] {
+  background: #e3ebd9;
+  border-color: #78956a;
+}
+.topology-options input[type="range"] {
+  width: 100px;
+}
+.tangle-panel {
+  margin-top: 22px;
+}
+.tangle-fraction {
+  font:
+    24px Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+.topology-note,
+.topology-limit,
+.tangle-approximation {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 20px;
+  overflow-wrap: anywhere;
+}
+.topology-limit,
+.tangle-approximation {
+  padding: 10px 14px;
+  border-left: 3px solid #ab8852;
+  background: #f3f0e2;
+}
+.tangle-approximation label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.tangle-scroll {
+  max-height: 480px;
+  overflow: auto;
+  background: #fbfbf6;
+  overscroll-behavior: contain;
+}
+.tangle-scroll svg {
+  display: block;
+  margin: auto;
+}
+.tangle-expression {
+  padding: 16px 20px;
+  border-top: 1px solid #dbe3cf;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.twist-word {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow: auto;
+  padding: 14px 0;
+}
+.twist-word button {
+  flex-shrink: 0;
+  max-width: 180px;
+  overflow-wrap: anywhere;
+}
+.tangle-expression form,
+.tangle-controls form {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.tangle-expression form label,
+.tangle-controls form label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tangle-expression input,
+.tangle-controls input {
+  width: 130px;
+  border: 1px solid #cad4bd;
+  border-radius: 4px;
+  padding: 7px;
+}
+.tangle-expression summary {
+  cursor: pointer;
+}
+.pillowcase-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0 20px;
+  gap: 24px;
+}
+.pillowcase-grid h3 {
+  font:
+    17px Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+.pillowcase-grid p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.pillowcase-svg {
+  width: 100%;
+  display: block;
+}
+@media (max-width: 700px) {
+  .pillowcase-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .topology-options,
+  .tangle-controls {
+    padding: 10px 12px;
+  }
+  .tangle-panel .panel-heading {
+    flex-wrap: wrap;
+  }
+  .tangle-scroll {
+    max-height: 400px;
+  }
+}
+[hidden] {
+  display: none !important;
 }

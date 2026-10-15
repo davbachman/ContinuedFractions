@@ -56,9 +56,9 @@ test("scene share, download, load, validation and local persistence", async ({
   expect(file.suggestedFilename()).toBe("continued-fractions-scene.json");
   await page.goto(url);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("√2");
-  await page.getByLabel("ENDPOINT α").fill("1/0");
+  await page.getByLabel("ENDPOINT α").fill("0/0");
   await page.getByRole("button", { name: "Apply endpoint" }).click();
-  await expect(page.getByRole("alert")).toContainText("finite endpoint");
+  await expect(page.getByRole("alert")).toContainText("undefined");
   await page.locator("input[type=file]").setInputFiles({
     name: "invalid.json",
     mimeType: "application/json",
@@ -462,11 +462,9 @@ test("fraction tabs preserve the scene, support keyboard navigation, and share c
     "1",
     "2",
   ]);
-  await page
-    .locator(".fraction-panel")
-    .screenshot({
-      path: `test-results/${testInfo.project.name}-stacked-fraction.png`,
-    });
+  await page.locator(".fraction-panel").screenshot({
+    path: `test-results/${testInfo.project.name}-stacked-fraction.png`,
+  });
   await fractionTab.focus();
   await page.keyboard.press("Home");
   await expect(listTab).toBeFocused();

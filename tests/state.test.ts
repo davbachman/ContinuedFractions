@@ -45,3 +45,61 @@ it("schematic atlas identifies both vertical sides and both circular halves", ()
     a.forEach((v, i) => expect(v).toBeCloseTo(b[i], 12));
   }
 });
+
+it("retains signed diagram operations independently of the canonical number across undo and persistence", () => {
+  const base = { past: [], present: initialScene, future: [] };
+  const start = execute(base, { type: "tangle", expression: [] });
+  const positive = execute(start, {
+    type: "tangle",
+    expression: [{ kind: "twist", count: 1n }],
+  });
+  const cancelled = execute(positive, {
+    type: "tangle",
+    expression: [
+      { kind: "twist", count: 1n },
+      { kind: "twist", count: -1n },
+    ],
+  });
+  expect(cancelled.present.spec).toEqual(start.present.spec);
+  expect(cancelled.present.tangle).toHaveLength(2);
+  expect(undo(cancelled)).toEqual({ ...positive, future: [cancelled.present] });
+  expect(redo(undo(cancelled))).toEqual(cancelled);
+  expect(deserialize(serialize(cancelled.present))).toEqual(cancelled.present);
+  const edited = execute(cancelled, {
+    type: "number",
+    spec: parseInput("2/3"),
+  });
+  expect(edited.present.tangle).toBeUndefined();
+  expect(undo(edited).present).toEqual(cancelled.present);
+  const irrational = execute(base, { type: "number", spec: parseInput("phi") });
+  expect(
+    execute(irrational, { type: "tangle", expression: [] }).present.spec.kind,
+  ).toBe("rational");
+  const infinity = execute(base, {
+    type: "tangle",
+    expression: [{ kind: "rotate", turns: 1 }],
+  });
+  expect(deserialize(serialize(infinity.present))).toEqual(infinity.present);
+});
+
+it("imports old scenes and rejects inconsistent or oversized signed tangle words", () => {
+  for (const version of [1, 2]) {
+    const old = JSON.parse(serialize(initialScene));
+    old.version = version;
+    expect(deserialize(JSON.stringify(old))).toEqual(initialScene);
+  }
+  const raw = JSON.parse(serialize(initialScene));
+  raw.scene.tangle = [{ kind: "twist", count: "2" }];
+  expect(() => deserialize(JSON.stringify(raw))).toThrow("does not match");
+  raw.scene.tangle = [{ kind: "rotate", turns: 2 }];
+  expect(() => deserialize(JSON.stringify(raw))).toThrow(
+    "Invalid tangle operation",
+  );
+  raw.scene.tangle = Array.from({ length: 513 }, () => ({
+    kind: "rotate",
+    turns: 1,
+  }));
+  expect(() => deserialize(JSON.stringify(raw))).toThrow(
+    "Invalid tangle expression",
+  );
+});

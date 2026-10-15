@@ -135,10 +135,8 @@ export function validateSpec(spec: NumberSpec) {
     )
       throw new Error("A period needs 1–32 positive coefficients.");
   }
-  if (spec.kind === "rational" && !spec.value.q)
-    throw new Error(
-      "∞ is supported as a Farey vertex; choose a finite endpoint for the vertical ray.",
-    );
+  // Infinity is an exact tangle/marked-slope value; finite-only viewers handle it explicitly.
+  if (spec.kind === "rational" && !spec.value.q) return;
   if (spec.kind === "rational" && toCF(spec.value).length > 128)
     throw new Error(
       "The exact continued fraction exceeds the 128-term input budget.",

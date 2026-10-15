@@ -4,6 +4,11 @@ import {
   validateSpec,
 } from "./math/continuedFraction";
 import { rational } from "./math/rational";
+import {
+  tangleFraction,
+  validateTangle,
+  type TangleExpression,
+} from "./math/tangles";
 export type Overlays = {
   farey: boolean;
   ford: boolean;
@@ -15,6 +20,7 @@ export type Overlays = {
 };
 export type Scene = Readonly<{
   spec: NumberSpec;
+  tangle?: TangleExpression;
   time: number;
   end: number;
   speed: number;
@@ -22,7 +28,9 @@ export type Scene = Readonly<{
   overlays: Overlays;
 }>;
 export type Command =
-  { type: "number"; spec: NumberSpec } | { type: "load"; scene: Scene };
+  | { type: "number"; spec: NumberSpec }
+  | { type: "load"; scene: Scene }
+  | { type: "tangle"; expression: TangleExpression };
 export type History = { past: Scene[]; present: Scene; future: Scene[] };
 export const initialScene: Scene = {
   spec: DEFAULT,
@@ -44,7 +52,18 @@ export function execute(h: History, c: Command): History {
   const next =
     c.type === "load"
       ? c.scene
-      : { ...h.present, spec: c.spec, time: 0, end: 12 };
+      : c.type === "tangle"
+        ? {
+            ...h.present,
+            spec: {
+              kind: "rational" as const,
+              value: tangleFraction(c.expression),
+            },
+            tangle: [...c.expression],
+            time: 0,
+            end: 12,
+          }
+        : { ...h.present, spec: c.spec, tangle: undefined, time: 0, end: 12 };
   validateSpec(next.spec);
   return { past: [...h.past.slice(-49), h.present], present: next, future: [] };
 }
@@ -65,20 +84,20 @@ export function redo(h: History): History {
   };
 }
 export function serialize(scene: Scene) {
-  return JSON.stringify({ version: 2, scene }, (_, v) =>
+  return JSON.stringify({ version: 3, scene }, (_, v) =>
     typeof v === "bigint" ? v.toString() : v,
   );
 }
 export function deserialize(text: string): Scene {
-  if (text.length > 32000)
-    throw new Error("Scene file exceeds the 32 KB limit.");
+  if (text.length > 128000)
+    throw new Error("Scene file exceeds the 128 KB limit.");
   const data = JSON.parse(text);
-  if (![1, 2].includes(data.version) || !data.scene)
-    throw new Error("Expected an Atlas scene with version 1 or 2.");
+  if (![1, 2, 3].includes(data.version) || !data.scene)
+    throw new Error("Expected an Atlas scene with version 1, 2, or 3.");
   const raw = data.scene,
     s = raw.spec;
   const integer = (v: unknown) => {
-    if (typeof v !== "string" || !/^[-]?\d{1,512}$/.test(v))
+    if (typeof v !== "string" || !/^[-]?\d{1,1024}$/.test(v))
       throw new Error("Invalid exact integer in scene.");
     return BigInt(v);
   };
@@ -100,6 +119,28 @@ export function deserialize(text: string): Scene {
     };
   else throw new Error("Unknown number specification.");
   validateSpec(spec);
+  let tangle: TangleExpression | undefined;
+  if (data.version === 3 && raw.tangle !== undefined) {
+    if (!Array.isArray(raw.tangle) || raw.tangle.length > 512)
+      throw new Error("Invalid tangle expression.");
+    tangle = raw.tangle.map(
+      (op: { kind: string; count: unknown; turns: number }) => {
+        if (op.kind === "twist")
+          return { kind: "twist", count: integer(op.count) };
+        if (op.kind === "rotate" && (op.turns === 1 || op.turns === -1))
+          return { kind: "rotate", turns: op.turns };
+        throw new Error("Invalid tangle operation.");
+      },
+    );
+    validateTangle(tangle!);
+    const r = tangleFraction(tangle!);
+    if (
+      spec.kind !== "rational" ||
+      r.p !== spec.value.p ||
+      r.q !== spec.value.q
+    )
+      throw new Error("Tangle expression does not match the shared number.");
+  }
   for (const key of ["time", "end", "speed"])
     if (typeof raw[key] !== "number" || !Number.isFinite(raw[key]))
       throw new Error(`Invalid ${key}.`);
@@ -120,6 +161,7 @@ export function deserialize(text: string): Scene {
   }
   return {
     spec,
+    ...(tangle ? { tangle } : {}),
     time: raw.time,
     end: raw.end,
     speed: raw.speed,

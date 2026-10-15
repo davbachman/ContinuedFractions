@@ -2,7 +2,7 @@
 
 ## Scope and exact numbers
 
-This release implements phases A, B, and the folded-domain part of C. The optional 3D atlas, covers, torus triangulations, and tangles remain gated by the design's separate mathematical checks. The quotient is the modular orbifold (one cusp, cone orders 2 and 3), not a torus.
+The original quotient is the modular orbifold (one cusp, cone orders 2 and 3). The expanded application also implements its schematic atlas, the six-sheet commutator torus, marked rational tangles, and the separate branched-cover torus/pillowcase. Their conventions, checked source sections, and derivations are documented in [TOPOLOGY.md](TOPOLOGY.md). Marked triangulation flips and lens-space labels are not implemented.
 
 Rationals are normalized BigInt pairs with positive denominator. Infinity is the single projective value 1/0, supported by the kernel but not a finite vertical endpoint. Negative continued fractions use floor division. Finite regular expressions have positive tail coefficients and are canonicalized to a final term > 1. An alternate ending preserves value. Decimal input is an exact decimal rational, never an inferred irrational. A finite prefix either terminates or is explicitly completed with an infinite tail of ones. Presets φ=[1;overline(1)] and √2=[1;overline(2)] retain their periodic specifications.
 
@@ -36,7 +36,7 @@ Double precision renders geometry only. Exact comparisons use rational arithmeti
 - Grabiner and Lagarias, _Cutting Sequences for Geodesic Flow on the Modular Surface and Continued Fractions_, https://arxiv.org/abs/math/9707215, introductory discussion of geometric versus arithmetic coding. We keep standard-domain seam coding separate from Farey coding.
 - Ian Short, _Ford Circles, Continued Fractions, and Rational Approximation_, https://arxiv.org/abs/0912.1997, §1 (Ford circles and convergents). Our trajectory intersection formula is independently derived above from the circle equation.
 
-These are the design's reading references, not copied implementation or figures. Page/section details beyond those listed have not been independently verified in this environment. All implemented formulas and offset claims are backed by the derivations and executable fixtures in this repository. Later-phase sources and gates remain in the original handoff.
+These are the design's reading references, not copied implementation or figures. Page/section details beyond those listed have not been independently verified in this environment. All implemented formulas and offset claims are backed by the derivations and executable fixtures in this repository. The topology sources checked for the expanded scope are documented separately in [TOPOLOGY.md](TOPOLOGY.md).
 
 ## Schematic quotient atlas
 

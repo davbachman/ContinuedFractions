@@ -276,12 +276,10 @@ test("unavailable numbers remain unchanged, integer termination and large counts
   }
   await page.getByLabel("ENDPOINT α").fill("infinity");
   await page.getByRole("button", { name: "Apply endpoint" }).click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator(".rectangle-unavailable")).toContainText(
     "unavailable for infinity",
   );
-  await expect(page.locator(".rectangle-unavailable")).toContainText(
-    "zero or negative",
-  );
+  await expect(page.getByTestId("tangle-fraction")).toHaveText("∞");
   await page.getByLabel("ENDPOINT α").fill("10000");
   await page.getByRole("button", { name: "Apply endpoint" }).click();
   await expect(page.locator(".dissection-status")).toContainText(

@@ -20,6 +20,9 @@ import {
   X,
 } from "lucide-react";
 import { HalfPlane } from "./renderers/HalfPlane";
+import { TanglePanel } from "./renderers/TanglePanel";
+import type { TangleExpression } from "./math/tangles";
+import { ModularTorus } from "./renderers/ModularTorus";
 import { Quotient } from "./renderers/Quotient";
 import {
   RectangleDissection,
@@ -85,6 +88,9 @@ export default function App() {
   const [viewer, setViewer] = useState<"hyperbolic" | "rectangle">(
     "hyperbolic",
   );
+  const [quotientView, setQuotientView] = useState<"orbifold" | "torus">(
+    "orbifold",
+  );
   const [rectanglePlaying, setRectanglePlaying] = useState(false);
   const [rectangleDepth, setRectangleDepth] = useState(8);
   const [rectangleCamera, setRectangleCamera] = useState<"full" | "remainder">(
@@ -111,25 +117,28 @@ export default function App() {
   const file = useRef<HTMLInputElement>(null),
     guide = useRef<HTMLDialogElement>(null),
     endpointDragStart = useRef<Scene | null>(null);
+  const infinite = scene.spec.kind === "rational" && scene.spec.value.q === 0n;
   const math = useMemo(
       () => derive(scene.spec, scene.end),
       [scene.spec, scene.end],
     ),
     cf = useMemo(
       () =>
-        terms(
-          scene.spec,
-          Math.max(
-            rectangleDepth,
-            Math.min(64, Math.max(12, Math.ceil(scene.end * 2))),
-          ),
-        ),
+        infinite
+          ? []
+          : terms(
+              scene.spec,
+              Math.max(
+                rectangleDepth,
+                Math.min(64, Math.max(12, Math.ceil(scene.end * 2))),
+              ),
+            ),
       [scene.spec, scene.end, rectangleDepth],
     ),
-    cs = useMemo(() => convergents(cf), [cf]),
-    selectedTerm = Math.min(termSelection, cf.length - 1),
+    cs = useMemo(() => (cf.length ? convergents(cf) : []), [cf]),
+    selectedTerm = Math.max(0, Math.min(termSelection, cf.length - 1)),
     alpha = approximate(scene.spec),
-    current = cs[Math.min(selectedTerm, cs.length - 1)],
+    current = cs[Math.min(selectedTerm, cs.length - 1)] ?? rational(1n, 0n),
     rationalInput = scene.spec.kind === "rational";
   const rectangleUnavailable = useMemo(
     () => dissectionUnavailable(scene.spec),
@@ -185,11 +194,7 @@ export default function App() {
       setSelectedTerm(1);
       setAlternateEnding(false);
     } catch (e) {
-      setError(
-        viewer === "rectangle" && spec.kind === "rational" && !spec.value.q
-          ? `${dissectionUnavailable(spec)} The shared number has not been changed.`
-          : (e as Error).message,
-      );
+      setError((e as Error).message);
     }
   }
   function startEndpointDrag() {
@@ -211,7 +216,11 @@ export default function App() {
         return h;
       return {
         ...h,
-        present: { ...h.present, spec: { kind: "rational", value: r } },
+        present: {
+          ...h.present,
+          spec: { kind: "rational", value: r },
+          tangle: undefined,
+        },
       };
     });
   }
@@ -280,7 +289,7 @@ export default function App() {
     return () => clearTimeout(id);
   }, [scene]);
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || infinite) return;
     let frame = 0,
       last = 0;
     const animate = (now: number) => {
@@ -315,7 +324,7 @@ export default function App() {
     function key(e: KeyboardEvent) {
       if (
         (e.target as HTMLElement).closest(
-          'input,select,textarea,button,dialog,.stacked-scroll,[role="button"],[role="slider"]',
+          'input,select,textarea,button,dialog,.stacked-scroll,.tangle-scroll,[role="button"],[role="slider"]',
         )
       )
         return;
@@ -330,7 +339,7 @@ export default function App() {
           advanceRectangle(e.code === "ArrowRight" ? 1 : -1);
         }
       }
-      if (e.code === "Space" && viewer === "hyperbolic") {
+      if (e.code === "Space" && viewer === "hyperbolic" && !infinite) {
         e.preventDefault();
         setPlaying((p) => !p);
       }
@@ -370,6 +379,19 @@ export default function App() {
     if (first) seek(first.time);
     else setPlaying(false);
     setSelectedTerm(i);
+  }
+  function editTangle(expression: TangleExpression) {
+    try {
+      const next = execute(history, { type: "tangle", expression });
+      setHistory(next);
+      setPlaying(false);
+      setRectanglePlaying(false);
+      setInspect(null);
+      setAlternateEnding(false);
+      setError("");
+    } catch (error) {
+      setError((error as Error).message);
+    }
   }
   function editCoefficient() {
     try {
@@ -428,15 +450,16 @@ export default function App() {
     crossingsForTerm = math.farey.crossings.filter(
       (e) => e.term === selectedTerm && e.direction !== "initial",
     ),
-    selectedError = difference(scene.spec, current),
-    [lower, upper] = cylinder(
-      cf.slice(0, Math.min(cf.length, selectedTerm + 1)),
-    ),
+    selectedError = infinite ? NaN : difference(scene.spec, current),
+    [lower, upper] = infinite
+      ? [current, current]
+      : cylinder(cf.slice(0, Math.min(cf.length, selectedTerm + 1))),
     lastCrossing = [...math.farey.crossings]
       .reverse()
       .find((e) => e.time <= scene.time),
-    displayCF = alternateEnding && rationalInput ? alternate(cf) : cf,
-    displayConvergents = convergents(displayCF);
+    displayCF =
+      alternateEnding && rationalInput && !infinite ? alternate(cf) : cf,
+    displayConvergents = displayCF.length ? convergents(displayCF) : [];
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -579,8 +602,8 @@ export default function App() {
                 const f = e.target.files?.[0];
                 if (!f) return;
                 try {
-                  if (f.size > 32000)
-                    throw new Error("Scene file exceeds 32 KB.");
+                  if (f.size > 128000)
+                    throw new Error("Scene file exceeds 128 KB.");
                   const s = deserialize(await f.text());
                   setPlaying(false);
                   setHistory((h) => execute(h, { type: "load", scene: s }));
@@ -652,7 +675,7 @@ export default function App() {
               : "02 Euclidean division"}
           </button>
         </div>
-        {viewer === "rectangle" ? (
+        {viewer === "rectangle" && (
           <div className={`view-grid rectangle-grid mobile-${mobilePanel}`}>
             <section className="panel half-plane">
               <div className="panel-heading">
@@ -694,67 +717,76 @@ export default function App() {
               />
             </section>
           </div>
-        ) : (
-          <div className={`view-grid mobile-${mobilePanel}`}>
-            <section className="panel half-plane">
-              <div className="panel-heading">
-                <div>
-                  <span className="panel-number">01</span>
-                  <h2>The upper half-plane</h2>
-                </div>
-                <label className="follow-toggle">
+        )}
+        <div
+          hidden={viewer !== "hyperbolic"}
+          className={`view-grid mobile-${mobilePanel}`}
+        >
+          <section className="panel half-plane">
+            <div className="panel-heading">
+              <div>
+                <span className="panel-number">01</span>
+                <h2>The upper half-plane</h2>
+              </div>
+              <label className="follow-toggle">
+                <input
+                  type="checkbox"
+                  checked={scene.follow}
+                  onChange={(e) => patch({ follow: e.target.checked })}
+                />{" "}
+                Auto zoom
+              </label>
+            </div>
+            <div className="overlay-bar">
+              <Layers size={14} />
+              {(["farey", "ford", "modular"] as const).map((key) => (
+                <label key={key}>
                   <input
                     type="checkbox"
-                    checked={scene.follow}
-                    onChange={(e) => patch({ follow: e.target.checked })}
-                  />{" "}
-                  Auto zoom
+                    checked={scene.overlays[key]}
+                    onChange={(e) =>
+                      patch({
+                        overlays: {
+                          ...scene.overlays,
+                          [key]: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                  {overlayNames[key]}
                 </label>
+              ))}
+              <details className="more-overlays">
+                <summary>More</summary>
+                <div>
+                  {(
+                    ["trajectory", "labels", "convergents", "dual"] as const
+                  ).map((key) => (
+                    <label key={key}>
+                      <input
+                        type="checkbox"
+                        checked={scene.overlays[key]}
+                        onChange={(e) =>
+                          patch({
+                            overlays: {
+                              ...scene.overlays,
+                              [key]: e.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      {overlayNames[key]}
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </div>
+            {infinite ? (
+              <div className="view-unavailable" role="status">
+                The H² vertical-ray viewer is unavailable at ∞. The exact shared
+                value is retained for tangles and marked slopes.
               </div>
-              <div className="overlay-bar">
-                <Layers size={14} />
-                {(["farey", "ford", "modular"] as const).map((key) => (
-                  <label key={key}>
-                    <input
-                      type="checkbox"
-                      checked={scene.overlays[key]}
-                      onChange={(e) =>
-                        patch({
-                          overlays: {
-                            ...scene.overlays,
-                            [key]: e.target.checked,
-                          },
-                        })
-                      }
-                    />
-                    {overlayNames[key]}
-                  </label>
-                ))}
-                <details className="more-overlays">
-                  <summary>More</summary>
-                  <div>
-                    {(
-                      ["trajectory", "labels", "convergents", "dual"] as const
-                    ).map((key) => (
-                      <label key={key}>
-                        <input
-                          type="checkbox"
-                          checked={scene.overlays[key]}
-                          onChange={(e) =>
-                            patch({
-                              overlays: {
-                                ...scene.overlays,
-                                [key]: e.target.checked,
-                              },
-                            })
-                          }
-                        />
-                        {overlayNames[key]}
-                      </label>
-                    ))}
-                  </div>
-                </details>
-              </div>
+            ) : (
               <HalfPlane
                 scene={scene}
                 crossings={math.farey.crossings}
@@ -764,28 +796,64 @@ export default function App() {
                 onEndpointMove={moveEndpoint}
                 onEndpointEnd={endEndpointDrag}
               />
-              <div className="plot-footer">
-                <span>
-                  <i className="legend-line" /> α = {specLabel(scene.spec)}
-                </span>
-                <span>y ≈ {heightAt(scene.time).toPrecision(4)}</span>
-                <span>
-                  {math.farey.onEdge
-                    ? "On a Farey edge"
-                    : lastCrossing
-                      ? `Crossed ${label(lastCrossing.left)} ↔ ${label(lastCrossing.right)}`
-                      : "Descending from y₀ = 2"}
-                </span>
+            )}
+            <div className="plot-footer">
+              <span>
+                <i className="legend-line" /> α = {specLabel(scene.spec)}
+              </span>
+              <span>y ≈ {heightAt(scene.time).toPrecision(4)}</span>
+              <span>
+                {math.farey.onEdge
+                  ? "On a Farey edge"
+                  : lastCrossing
+                    ? `Crossed ${label(lastCrossing.left)} ↔ ${label(lastCrossing.right)}`
+                    : "Descending from y₀ = 2"}
+              </span>
+            </div>
+          </section>
+          <section className="panel quotient">
+            <div className="panel-heading">
+              <div>
+                <span className="panel-number">02</span>
+                <h2>
+                  {quotientView === "torus"
+                    ? "The modular punctured torus"
+                    : "The modular quotient"}
+                </h2>
               </div>
-            </section>
-            <section className="panel quotient">
-              <div className="panel-heading">
-                <div>
-                  <span className="panel-number">02</span>
-                  <h2>The modular quotient</h2>
-                </div>
-                <span className="small-tag">PSL(2, ℤ)</span>
-              </div>
+              <span className="small-tag">PSL(2, ℤ)</span>
+            </div>
+            <div
+              className="quotient-mode"
+              role="group"
+              aria-label="Quotient surface"
+            >
+              <button
+                className={quotientView === "orbifold" ? "active" : ""}
+                onClick={() => setQuotientView("orbifold")}
+              >
+                Modular orbifold
+              </button>
+              <button
+                className={quotientView === "torus" ? "active" : ""}
+                onClick={() => setQuotientView("torus")}
+              >
+                Punctured torus
+              </button>
+            </div>
+            {infinite ? (
+              <p className="quotient-caption">
+                No finite vertical-ray trajectory at ∞.
+              </p>
+            ) : quotientView === "torus" ? (
+              <ModularTorus
+                alpha={alpha}
+                time={scene.time}
+                segments={math.quotient.segments}
+                limited={math.quotient.limited}
+                onSeek={seek}
+              />
+            ) : (
               <Quotient
                 alpha={alpha}
                 time={scene.time}
@@ -793,9 +861,9 @@ export default function App() {
                 limited={math.quotient.limited}
                 onSeek={seek}
               />
-            </section>
-          </div>
-        )}
+            )}
+          </section>
+        </div>
         {viewer === "hyperbolic" && inspect && (
           <div className="inspection">
             <span>
@@ -815,7 +883,11 @@ export default function App() {
             </button>
           </div>
         )}
-        {viewer === "rectangle" ? (
+        {infinite ? (
+          <p className="motion-note">
+            Hyperbolic and rectangle playback are unavailable at infinity.
+          </p>
+        ) : viewer === "rectangle" ? (
           <section
             className="transport panel rectangle-transport"
             aria-label="Rectangle stage transport"
@@ -1033,209 +1105,241 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div
-            className="fraction-tabs"
-            role="tablist"
-            aria-label="Continued fraction view"
-          >
-            {(["coefficients", "stacked"] as const).map((view, index) => (
-              <button
-                key={view}
-                id={`fraction-tab-${view}`}
-                role="tab"
-                aria-selected={fractionView === view}
-                aria-controls={`fraction-panel-${view}`}
-                tabIndex={fractionView === view ? 0 : -1}
-                onClick={() => setFractionView(view)}
-                onKeyDown={(event) => {
-                  let next: number;
-                  if (event.key === "ArrowLeft" || event.key === "ArrowRight")
-                    next = 1 - index;
-                  else if (event.key === "Home") next = 0;
-                  else if (event.key === "End") next = 1;
-                  else return;
-                  event.preventDefault();
-                  const nextView = next === 0 ? "coefficients" : "stacked";
-                  setFractionView(nextView);
-                  document.getElementById(`fraction-tab-${nextView}`)?.focus();
-                }}
-              >
-                {view === "coefficients" ? "Coefficients" : "Stacked fraction"}
-              </button>
-            ))}
-          </div>
-          <div className="fraction-body">
-            <div
-              id="fraction-panel-coefficients"
-              role="tabpanel"
-              aria-labelledby="fraction-tab-coefficients"
-              hidden={fractionView !== "coefficients"}
-            >
-              <div className="cf-expression">
-                <span className="cf-value">
-                  {specLabel(scene.spec).length < 18
-                    ? specLabel(scene.spec)
-                    : "α"}{" "}
-                  <span>=</span>
-                </span>
-                <span className="bracket">[</span>
-                <div className="terms">
-                  {displayCF.map((a, i) => (
-                    <div className="term-wrap" key={i}>
-                      <button
-                        disabled={alternateEnding}
-                        aria-label={`Select coefficient a${i} = ${a}`}
-                        className={`${selectedTerm === i ? "active" : ""}${viewer === "rectangle" ? " colored-coefficient" : ""}`}
-                        style={
-                          viewer === "rectangle"
-                            ? { borderBottomColor: stageColor(i) }
-                            : undefined
-                        }
-                        onClick={() => selectTerm(Math.min(i, cf.length - 1))}
-                      >
-                        <span className="term-index">
-                          a<sub>{i}</sub>
-                        </span>
-                        <strong>{String(a)}</strong>
-                        <span className="term-convergent">
-                          {label(displayConvergents[i])}
-                        </span>
-                      </button>
-                      <span className="punctuation">
-                        {i === 0 ? ";" : i < displayCF.length - 1 ? "," : ""}
-                      </span>
-                    </div>
-                  ))}
-                  {!rationalInput && <span className="ellipsis">…</span>}
-                </div>
-                <span className="bracket">]</span>
-              </div>
-            </div>
-            <div
-              id="fraction-panel-stacked"
-              role="tabpanel"
-              aria-labelledby="fraction-tab-stacked"
-              hidden={fractionView !== "stacked"}
-            >
-              <div
-                className="stacked-scroll"
-                role="region"
-                aria-label="Nested continued fraction"
-                tabIndex={0}
-              >
-                <div className="stacked-expression">
-                  <span className="cf-value">
-                    {specLabel(scene.spec).length < 18
-                      ? specLabel(scene.spec)
-                      : "α"}{" "}
-                    <span>=</span>
-                  </span>
-                  <StackedFraction
-                    coefficients={displayCF}
-                    periodic={!rationalInput}
-                    selectedTerm={selectedTerm}
-                    disabled={alternateEnding}
-                    colored={viewer === "rectangle"}
-                    onSelect={(i) => selectTerm(Math.min(i, cf.length - 1))}
-                  />
-                </div>
-              </div>
-              <p className="cf-help">
-                {rationalInput
-                  ? "Full finite expansion."
-                  : "The periodic expansion continues indefinitely (…)."}{" "}
-                Long fractions scroll within this view.
-              </p>
-            </div>
-            <p className="cf-help">
-              {alternateEnding
-                ? "Alternate expression: same value. Switch back to the canonical expression to edit or select runs."
-                : viewer === "rectangle"
-                  ? "Select a coefficient or square group to inspect its Euclidean division. Colors identify the same stages in both displays."
-                  : "Select a term to inspect its convergent and Farey run. Ford contacts have their own timeline."}
+          {infinite ? (
+            <p className="view-unavailable">
+              ∞ has no finite regular continued-fraction expansion. Rotate the
+              infinity tangle to return to zero, or enter a finite number.
             </p>
-          </div>
-          <div className="coefficient-detail">
-            <div>
-              <span className="data-label">SELECTED CONVERGENT</span>
-              <strong>{label(current)}</strong>
-              <small>
-                α − p/q{" "}
-                {rationalInput && selectedTerm === cf.length - 1
-                  ? "= 0"
-                  : `≈ ${selectedError.toExponential(4)}`}
-              </small>
-            </div>
-            <div>
-              <span className="data-label">
-                FAREY RUN · a<sub>{selectedTerm}</sub>
-              </span>
-              <strong className="run-word">
-                {selectedTerm === 0
-                  ? "translation"
-                  : crossingsForTerm.map((e) => e.direction).join("") || "∅"}
-              </strong>
-              <small>
-                {selectedTerm === 0
-                  ? "a₀ shifts the bracket"
-                  : `${crossingsForTerm.length} crossings in this display window`}
-              </small>
-            </div>
-            <div className="determinant">
-              <span className="data-label">CONSECUTIVE DETERMINANT</span>
-              <strong>
-                {selectedTerm > 0
-                  ? String(
-                      current.p * cs[selectedTerm - 1].q -
-                        cs[selectedTerm - 1].p * current.q,
-                    )
-                  : "—"}
-              </strong>
-              <small>pₙqₙ₋₁ − pₙ₋₁qₙ</small>
-            </div>
-            <form
-              className="coefficient-edit"
-              onSubmit={(e) => {
-                e.preventDefault();
-                editCoefficient();
-              }}
-            >
-              <label htmlFor="coefficient-input">
-                EDIT a<sub>{selectedTerm}</sub>
-              </label>
-              <div className="input-group">
-                <input
-                  id="coefficient-input"
-                  value={coefficient}
-                  onChange={(e) => setCoefficient(e.target.value)}
-                  inputMode="numeric"
-                />
-                <button type="submit" aria-label="Apply coefficient">
-                  <Check size={16} />
-                </button>
+          ) : (
+            <>
+              <div
+                className="fraction-tabs"
+                role="tablist"
+                aria-label="Continued fraction view"
+              >
+                {(["coefficients", "stacked"] as const).map((view, index) => (
+                  <button
+                    key={view}
+                    id={`fraction-tab-${view}`}
+                    role="tab"
+                    aria-selected={fractionView === view}
+                    aria-controls={`fraction-panel-${view}`}
+                    tabIndex={fractionView === view ? 0 : -1}
+                    onClick={() => setFractionView(view)}
+                    onKeyDown={(event) => {
+                      let next: number;
+                      if (
+                        event.key === "ArrowLeft" ||
+                        event.key === "ArrowRight"
+                      )
+                        next = 1 - index;
+                      else if (event.key === "Home") next = 0;
+                      else if (event.key === "End") next = 1;
+                      else return;
+                      event.preventDefault();
+                      const nextView = next === 0 ? "coefficients" : "stacked";
+                      setFractionView(nextView);
+                      document
+                        .getElementById(`fraction-tab-${nextView}`)
+                        ?.focus();
+                    }}
+                  >
+                    {view === "coefficients"
+                      ? "Coefficients"
+                      : "Stacked fraction"}
+                  </button>
+                ))}
               </div>
-            </form>
-          </div>
-          <div className="fraction-foot">
-            <span>
-              Prefix cylinder: [{label(lower)}, {label(upper)}]{" "}
-              <span className="muted">
-                · endpoints bound possible completions
-              </span>
-            </span>
-            {rationalInput && viewer === "hyperbolic" && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={alternateEnding}
-                  onChange={(e) => setAlternateEnding(e.target.checked)}
-                />{" "}
-                Alternate ending <span className="muted">(same value)</span>
-              </label>
-            )}
-          </div>
+              <div className="fraction-body">
+                <div
+                  id="fraction-panel-coefficients"
+                  role="tabpanel"
+                  aria-labelledby="fraction-tab-coefficients"
+                  hidden={fractionView !== "coefficients"}
+                >
+                  <div className="cf-expression">
+                    <span className="cf-value">
+                      {specLabel(scene.spec).length < 18
+                        ? specLabel(scene.spec)
+                        : "α"}{" "}
+                      <span>=</span>
+                    </span>
+                    <span className="bracket">[</span>
+                    <div className="terms">
+                      {displayCF.map((a, i) => (
+                        <div className="term-wrap" key={i}>
+                          <button
+                            disabled={alternateEnding}
+                            aria-label={`Select coefficient a${i} = ${a}`}
+                            className={`${selectedTerm === i ? "active" : ""}${viewer === "rectangle" ? " colored-coefficient" : ""}`}
+                            style={
+                              viewer === "rectangle"
+                                ? { borderBottomColor: stageColor(i) }
+                                : undefined
+                            }
+                            onClick={() =>
+                              selectTerm(Math.min(i, cf.length - 1))
+                            }
+                          >
+                            <span className="term-index">
+                              a<sub>{i}</sub>
+                            </span>
+                            <strong>{String(a)}</strong>
+                            <span className="term-convergent">
+                              {label(displayConvergents[i])}
+                            </span>
+                          </button>
+                          <span className="punctuation">
+                            {i === 0
+                              ? ";"
+                              : i < displayCF.length - 1
+                                ? ","
+                                : ""}
+                          </span>
+                        </div>
+                      ))}
+                      {!rationalInput && <span className="ellipsis">…</span>}
+                    </div>
+                    <span className="bracket">]</span>
+                  </div>
+                </div>
+                <div
+                  id="fraction-panel-stacked"
+                  role="tabpanel"
+                  aria-labelledby="fraction-tab-stacked"
+                  hidden={fractionView !== "stacked"}
+                >
+                  <div
+                    className="stacked-scroll"
+                    role="region"
+                    aria-label="Nested continued fraction"
+                    tabIndex={0}
+                  >
+                    <div className="stacked-expression">
+                      <span className="cf-value">
+                        {specLabel(scene.spec).length < 18
+                          ? specLabel(scene.spec)
+                          : "α"}{" "}
+                        <span>=</span>
+                      </span>
+                      <StackedFraction
+                        coefficients={displayCF}
+                        periodic={!rationalInput}
+                        selectedTerm={selectedTerm}
+                        disabled={alternateEnding}
+                        colored={viewer === "rectangle"}
+                        onSelect={(i) => selectTerm(Math.min(i, cf.length - 1))}
+                      />
+                    </div>
+                  </div>
+                  <p className="cf-help">
+                    {rationalInput
+                      ? "Full finite expansion."
+                      : "The periodic expansion continues indefinitely (…)."}{" "}
+                    Long fractions scroll within this view.
+                  </p>
+                </div>
+                <p className="cf-help">
+                  {alternateEnding
+                    ? "Alternate expression: same value. Switch back to the canonical expression to edit or select runs."
+                    : viewer === "rectangle"
+                      ? "Select a coefficient or square group to inspect its Euclidean division. Colors identify the same stages in both displays."
+                      : "Select a term to inspect its convergent and Farey run. Ford contacts have their own timeline."}
+                </p>
+              </div>
+              <div className="coefficient-detail">
+                <div>
+                  <span className="data-label">SELECTED CONVERGENT</span>
+                  <strong>{label(current)}</strong>
+                  <small>
+                    α − p/q{" "}
+                    {rationalInput && selectedTerm === cf.length - 1
+                      ? "= 0"
+                      : `≈ ${selectedError.toExponential(4)}`}
+                  </small>
+                </div>
+                <div>
+                  <span className="data-label">
+                    FAREY RUN · a<sub>{selectedTerm}</sub>
+                  </span>
+                  <strong className="run-word">
+                    {selectedTerm === 0
+                      ? "translation"
+                      : crossingsForTerm.map((e) => e.direction).join("") ||
+                        "∅"}
+                  </strong>
+                  <small>
+                    {selectedTerm === 0
+                      ? "a₀ shifts the bracket"
+                      : `${crossingsForTerm.length} crossings in this display window`}
+                  </small>
+                </div>
+                <div className="determinant">
+                  <span className="data-label">CONSECUTIVE DETERMINANT</span>
+                  <strong>
+                    {selectedTerm > 0
+                      ? String(
+                          current.p * cs[selectedTerm - 1].q -
+                            cs[selectedTerm - 1].p * current.q,
+                        )
+                      : "—"}
+                  </strong>
+                  <small>pₙqₙ₋₁ − pₙ₋₁qₙ</small>
+                </div>
+                <form
+                  className="coefficient-edit"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    editCoefficient();
+                  }}
+                >
+                  <label htmlFor="coefficient-input">
+                    EDIT a<sub>{selectedTerm}</sub>
+                  </label>
+                  <div className="input-group">
+                    <input
+                      id="coefficient-input"
+                      value={coefficient}
+                      onChange={(e) => setCoefficient(e.target.value)}
+                      inputMode="numeric"
+                    />
+                    <button type="submit" aria-label="Apply coefficient">
+                      <Check size={16} />
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div className="fraction-foot">
+                <span>
+                  Prefix cylinder: [{label(lower)}, {label(upper)}]{" "}
+                  <span className="muted">
+                    · endpoints bound possible completions
+                  </span>
+                </span>
+                {rationalInput && viewer === "hyperbolic" && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={alternateEnding}
+                      onChange={(e) => setAlternateEnding(e.target.checked)}
+                    />{" "}
+                    Alternate ending <span className="muted">(same value)</span>
+                  </label>
+                )}
+              </div>
+            </>
+          )}
         </section>
-        <section className="details-grid">
+        <TanglePanel
+          spec={scene.spec}
+          expression={scene.tangle}
+          convergents={cs}
+          selected={selectedTerm}
+          onSelect={selectTerm}
+          onChange={editTangle}
+          onError={setError}
+        />
+        <section className="details-grid" hidden={infinite}>
           <div className="panel events-panel">
             <div className="panel-heading">
               <div>
@@ -1379,12 +1483,18 @@ export default function App() {
           α = {specLabel(scene.spec).length < 15 ? specLabel(scene.spec) : "α"}
         </strong>
         <span>
-          [
-          {cf
-            .slice(0, 7)
-            .map((a, i) => `${i === 1 ? "; " : i > 1 ? ", " : ""}${a}`)
-            .join("")}
-          {cf.length > 7 || !rationalInput ? ", …" : ""}]
+          {infinite ? (
+            "No finite expansion"
+          ) : (
+            <>
+              [
+              {cf
+                .slice(0, 7)
+                .map((a, i) => `${i === 1 ? "; " : i > 1 ? ", " : ""}${a}`)
+                .join("")}
+              {cf.length > 7 || !rationalInput ? ", …" : ""}]
+            </>
+          )}
         </span>
         <button
           aria-label="Jump to continued fraction"
@@ -1414,7 +1524,7 @@ export default function App() {
             <X size={20} />
           </button>
         </div>
-        <h2>A number, seen three ways.</h2>
+        <h2>A number, seen through geometry.</h2>
         <p>
           Choose an endpoint α, then press Play or step between crossings. The
           orange point follows z(t) = α + 2i e<sup>−t</sup>. Playback starts at
@@ -1458,6 +1568,24 @@ export default function App() {
           scale. The rotatable 3D view is a schematic punctured sphere with cone
           orders 2 and 3. It is neither a torus nor an isometric embedding. The
           vertical trajectory of a quadratic irrational is not closed.
+        </p>
+        <h3>Two different tori</h3>
+        <p>
+          Punctured torus shows the six-sheet commutator cover of the modular
+          orbifold. Its lifted point follows the H² timeline, with identified
+          seams and one cusp of width six. The separate marked torus /
+          pillowcase panel is the branched cover of a rational tangle. Its slope
+          is (q,p); it does not assign a homology slope to the modular-torus
+          ray.
+        </p>
+        <h3>Marked tangles</h3>
+        <p>
+          Add signed right endpoint twists, rotate, or edit a twist-region
+          count. A quarter-turn sends x to −1/x. The signed construction is
+          retained separately from the regular continued fraction, and both
+          editors share undo. Numerator closure adds dashed outer arcs. For an
+          irrational, choose a labeled convergent; editing makes the number
+          rational. Infinity is supported as a tangle with vertical arcs.
         </p>
         <h3>Controls and persistence</h3>
         <p>
