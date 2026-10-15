@@ -45,7 +45,7 @@ test("only α’s path is interactive, including boundary copies, keyboard navig
   await button(page, "Undo shared edit").click();
   await expect(torus).toHaveAttribute("data-slopes", "0 | ∞ | 1");
   await button(page, "Redo shared edit").click();
-  await button(page, "Restart α’s path").click();
+  await button(page, "Restart flips").click();
   await nextEdge.focus();
   await page.keyboard.press("Enter");
   await expect(torus).toHaveAttribute("data-slopes", "0 | 1/2 | 1");

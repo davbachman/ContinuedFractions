@@ -10,11 +10,43 @@ import {
   triangulationPath,
   followStatus,
   triangulationMatrix,
+  coefficientFlipPosition,
 } from "../src/math/triangulation";
 import { rational, label } from "../src/math/rational";
 import { parseInput } from "../src/math/continuedFraction";
 import { fareyCrossings } from "../src/math/farey";
 import { determinant } from "../src/math/modular";
+it("seeks coefficient runs, preserves empty runs, and distinguishes unavailable depth", () => {
+  const spec = parseInput("5/13"),
+    state = targetItinerary(spec);
+  expect(
+    [0, 1, 2, 3, 4].map((i) => coefficientFlipPosition(spec, state, i)?.cursor),
+  ).toEqual([0, 2, 3, 4, 5]);
+  for (const input of ["1/2", "2/3", "-1/2"]) {
+    const spec = parseInput(input),
+      state = targetItinerary(spec);
+    expect(coefficientFlipPosition(spec, state, 1)).toEqual({
+      cursor: 1,
+      time: state.steps[0].time,
+    });
+    expect(
+      coefficientFlipPosition(spec, { ...state, steps: [] }, 1),
+    ).toBeNull();
+  }
+  const integer = parseInput("3");
+  expect(coefficientFlipPosition(integer, targetItinerary(integer), 0)).toEqual(
+    { cursor: 0, time: 0 },
+  );
+  const infinity = parseInput("infinity");
+  expect(
+    coefficientFlipPosition(infinity, targetItinerary(infinity), 0),
+  ).toBeNull();
+  const phi = parseInput("phi"),
+    shallow = targetItinerary(phi, 4);
+  expect(coefficientFlipPosition(phi, shallow, 70)).toBeNull();
+  expect(coefficientFlipPosition(spec, state, -1)).toBeNull();
+  expect(coefficientFlipPosition(spec, state, 5)).toBeNull();
+});
 it("all three initial edges flip exactly, including identified square sides", () => {
   expect(flip(INITIAL_TRIANGLE, 2).map(label)).toEqual(["0", "∞", "-1"]);
   expect(flip(INITIAL_TRIANGLE, 0).map(label)).toEqual(["2", "∞", "1"]);

@@ -252,3 +252,33 @@ export function coefficientFlipRun(
             .filter((step) => step.term === term).length,
   };
 }
+
+/** Seek to a coefficient's first crossing, or the preceding boundary for an
+ * empty run. Missing display depth must not be mistaken for a zero-length run. */
+export function coefficientFlipPosition(
+  spec: NumberSpec,
+  state: TriangulationState,
+  term: number,
+) {
+  const cf = spec.kind === "rational" && !spec.value.q ? [] : terms(spec, 96);
+  if (!Number.isInteger(term) || term < 0 || term >= cf.length) return null;
+  if (term === 0) return { cursor: 0, time: 0 };
+  const first = state.steps.findIndex((step) => step.term === term);
+  if (first >= 0)
+    return { cursor: first + 1, time: state.steps[first].time ?? 0 };
+  if (coefficientFlipRun(spec, state, term).expected !== 0n) return null;
+  for (let i = 0; i < term; i++) {
+    const expected =
+      i === 0
+        ? spec.kind === "rational" && spec.value.q === 1n
+          ? 0n
+          : 1n
+        : coefficientFlipRun(spec, state, i).expected;
+    if (BigInt(state.steps.filter((step) => step.term === i).length) < expected)
+      return null;
+  }
+  const cursor = state.steps.filter(
+    (step) => (step.term ?? Infinity) < term,
+  ).length;
+  return { cursor, time: state.steps[cursor - 1]?.time ?? 0 };
+}

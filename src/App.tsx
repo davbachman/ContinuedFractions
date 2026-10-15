@@ -7,6 +7,7 @@ import { Workspace } from "./Workspace";
 import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
 import {
   currentTriangulation,
+  coefficientFlipPosition,
   targetItinerary,
   type TriangulationState,
 } from "./math/triangulation";
@@ -115,6 +116,8 @@ export default function App() {
     [reverse, setReverse] = useState(false),
     [notice, setNotice] = useState(""),
     [termSelection, setSelectedTerm] = useState(1),
+    [followFlipCoefficient, setFollowFlipCoefficient] = useState(false),
+    [coefficientSeekVersion, setCoefficientSeekVersion] = useState(0),
     [coefficient, setCoefficient] = useState("2"),
     [inspect, setInspect] = useState<Rational | null>(null),
     [mobilePanel, setMobilePanel] = useState<"plane" | "quotient">("plane"),
@@ -418,6 +421,10 @@ export default function App() {
     return () => clearTimeout(id);
   }, [notice]);
   function selectTerm(i: number) {
+    if (followFlipCoefficient) {
+      seekFlipCoefficient(i);
+      return;
+    }
     setRectanglePlaying(false);
     if (viewer === "rectangle") {
       setSelectedTerm(i);
@@ -435,6 +442,8 @@ export default function App() {
   ) {
     try {
       const next = execute(history, { type: "triangulation", value, time });
+      if (term !== undefined)
+        explicitRunSelection.current = next.present.triangulation;
       setHistory(next);
       setPlaying(false);
       setRectanglePlaying(false);
@@ -443,6 +452,20 @@ export default function App() {
     } catch (error) {
       setError((error as Error).message);
     }
+  }
+  function seekFlipCoefficient(term: number) {
+    setCoefficientSeekVersion((v) => v + 1);
+    setPlaying(false);
+    setRectanglePlaying(false);
+    setSelectedTerm(term);
+    const state = scene.triangulation ?? targetItinerary(scene.spec);
+    const position = coefficientFlipPosition(scene.spec, state, term);
+    if (position)
+      editTriangulation(
+        { ...state, cursor: position.cursor },
+        position.time,
+        term,
+      );
   }
   function runFrame(
     time: number,
@@ -848,6 +871,10 @@ export default function App() {
               },
             }}
             triangulation={{
+              followCoefficient: followFlipCoefficient,
+              coefficientSeekVersion,
+              onFollowCoefficient: setFollowFlipCoefficient,
+              onSeekCoefficient: seekFlipCoefficient,
               time: scene.time,
               onFrame: runFrame,
               externalPlaying: playing || rectanglePlaying,
@@ -1614,6 +1641,10 @@ export default function App() {
               )}
             </section>
             <MarkedTriangulation
+              followCoefficient={followFlipCoefficient}
+              coefficientSeekVersion={coefficientSeekVersion}
+              onFollowCoefficient={setFollowFlipCoefficient}
+              onSeekCoefficient={seekFlipCoefficient}
               time={scene.time}
               onFrame={runFrame}
               coefficient={selectedTerm}
@@ -1945,12 +1976,13 @@ export default function App() {
           in the two view selectors. Both automatically follow the α chosen at
           the top. Each crossed Farey side flips one edge. Left/right turns are
           grouped by coefficient, with the initial and terminal offsets shown
-          explicitly. Selecting a coefficient highlights its run; “Go to
-          selected run” seeks it. Changing α rebuilds the path; stepping the
-          path preserves α. The caption names the retained and replaced slopes.
-          H² playback also advances the follow-target path at its crossing
-          times; flip steps seek those times. Rectangle stages keep their own
-          clock unless “Synchronize by coefficient” is enabled.
+          explicitly. Selecting a coefficient highlights its run; enable “Follow
+          selected coefficient” to seek automatically, or use the “Go to”
+          button. “Restart flips” returns to the start. Changing α rebuilds the
+          path; stepping the path preserves α. The caption names the retained
+          and replaced slopes. H² playback also advances the follow-target path
+          at its crossing times; flip steps seek those times. Rectangle stages
+          keep their own clock unless “Synchronize by coefficient” is enabled.
         </p>
         <h3>Marked tangles</h3>
         <p>

@@ -2783,8 +2783,15 @@ svg[data-rotation] * {
 .flip-details p {
   overflow-wrap: anywhere;
 }
-.flip-run-actions {
-  padding: 3px 16px 8px;
+.flip-coefficient-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.flip-coefficient-controls input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
 }
 .flip-details .flip-edge-controls {
   padding: 8px 0;
@@ -2804,14 +2811,6 @@ svg[data-rotation] * {
   opacity: 1;
   color: inherit;
 }
-.flip-run-actions button {
-  font-size: 12px;
-  padding: 5px 9px;
-  min-height: 34px;
-  border: 1px solid #cad4bd;
-  border-radius: 4px;
-}
-
 .flip-focused .tangle-controls button[aria-pressed="true"] {
   background: #e5ecdc;
   border-color: #9ba988;

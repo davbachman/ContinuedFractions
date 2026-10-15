@@ -145,6 +145,16 @@ export function Workspace(props: WorkspaceProps) {
     () => setFlipPlaying(false),
   );
   const [activePane, setActivePane] = useState<string | null>(null);
+  const selectCoefficient = (i: number) => {
+    setFlipPlaying(false);
+    if (runs.enabled) runs.seek(i);
+    else if (
+      props.triangulation.followCoefficient &&
+      panes.some((p) => ["farey", "triangulation"].includes(p.kind))
+    )
+      props.triangulation.onSeekCoefficient(i);
+    else props.onSelect(i);
+  };
   const [coefficientDraft, setCoefficientDraft] = useState("");
   useEffect(
     () => setCoefficientDraft(String(props.coefficients[props.selected] ?? 0n)),
@@ -295,7 +305,7 @@ export function Workspace(props: WorkspaceProps) {
               aria-pressed={props.selected === i}
               aria-label={`Highlight coefficient a${i} = ${a}`}
               style={{ borderBottomColor: stageColor(i) }}
-              onClick={() => (runs.enabled ? runs.seek(i) : props.onSelect(i))}
+              onClick={() => selectCoefficient(i)}
             >
               <small>a{i}</small> {String(a)}
             </button>
@@ -352,7 +362,7 @@ export function Workspace(props: WorkspaceProps) {
                 runs.disable();
                 props.onSeek(time);
               },
-              onSelect: runs.enabled ? (i) => runs.seek(i) : props.onSelect,
+              onSelect: selectCoefficient,
               onEditCoefficient: (v) => {
                 runs.disable();
                 props.onEditCoefficient(v);
@@ -366,6 +376,11 @@ export function Workspace(props: WorkspaceProps) {
               },
               triangulation: {
                 ...props.triangulation,
+                onSeekCoefficient: (i) => {
+                  runs.disable();
+                  setFlipPlaying(false);
+                  props.triangulation.onSeekCoefficient(i);
+                },
                 onChange: (...args) => {
                   runs.disable();
                   props.triangulation.onChange(...args);

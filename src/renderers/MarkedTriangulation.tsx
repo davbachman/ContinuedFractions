@@ -17,6 +17,7 @@ import {
   targetItinerary,
   followStatus,
   coefficientFlipRun,
+  coefficientFlipPosition,
   type TriangulationState,
 } from "../math/triangulation";
 import { flipColors } from "./triangulationGeometry";
@@ -26,6 +27,10 @@ import { fareyTriangleColor, FAREY_FILL_OPACITY } from "./fareyColors";
 import { stageColor } from "./dissectionColors";
 import { svgPath } from "./ModularTorus";
 type Props = {
+  followCoefficient: boolean;
+  onFollowCoefficient: (enabled: boolean) => void;
+  onSeekCoefficient: (term: number) => void;
+  coefficientSeekVersion: number;
   time: number;
   onFrame: (time: number, term: number) => void;
   view?: "square" | "farey";
@@ -110,6 +115,7 @@ export function MarkedTriangulation(props: Props) {
   useEffect(() => {
     if (props.externalPlaying) setPlaying(false);
   }, [props.externalPlaying]);
+  useEffect(() => setPlaying(false), [props.coefficientSeekVersion]);
   const commit = (next: TriangulationState, time?: number, term?: number) => {
     try {
       onChange(next, time, term);
@@ -197,9 +203,7 @@ export function MarkedTriangulation(props: Props) {
     spec.kind === "rational" && !spec.value.q ? [] : terms(spec, 96);
   const term = props.coefficient ?? state.steps[state.cursor - 1]?.term ?? 0;
   const run = coefficientFlipRun(spec, state, term);
-  const runSteps = state.steps.flatMap((step, i) =>
-    step.term === term ? [i] : [],
-  );
+  const coefficientPosition = coefficientFlipPosition(spec, state, term);
   const graph =
     view === "farey" ? "Farey triangles" : "Marked torus · edge flips";
   return (
@@ -275,6 +279,81 @@ export function MarkedTriangulation(props: Props) {
           {label(operation.removed)} with {label(operation.inserted)}.
         </p>
       )}
+      <div
+        className="tangle-controls"
+        role="group"
+        aria-label="Flip path transport"
+      >
+        <button onClick={() => navigate(0)}>Restart flips</button>
+        {props.transport ?? (
+          <>
+            <button
+              disabled={!state.cursor}
+              onClick={() => {
+                setPlaying(false);
+                navigate(state.cursor - 1);
+              }}
+            >
+              Previous flip step
+            </button>
+            <button
+              disabled={state.cursor >= state.steps.length}
+              onClick={() => navigate(state.cursor + 1)}
+            >
+              Next flip step
+            </button>
+            <button
+              disabled={state.cursor >= state.steps.length && !playing}
+              onClick={() => setPlaying(!playing)}
+            >
+              {playing ? "Pause flips" : "Play flips"}
+            </button>
+          </>
+        )}
+      </div>
+      <p className="topology-note" role="status" data-testid="flip-status">
+        Step {state.cursor} / {state.steps.length}. {activeStatus}
+      </p>
+      {state.mode === "follow" && !props.transport && (
+        <div className="tangle-controls flip-coefficient-controls">
+          <button
+            disabled={!coefficientPosition}
+            aria-label="Go to selected coefficient"
+            onClick={() => {
+              setPlaying(false);
+              props.onSeekCoefficient(term);
+            }}
+          >
+            Go to a{term} = {String(coefficients[term] ?? "∞")}
+          </button>
+          <label>
+            <input
+              type="checkbox"
+              checked={props.followCoefficient}
+              disabled={!coefficients.length}
+              onChange={(e) => {
+                setPlaying(false);
+                props.onFollowCoefficient(e.target.checked);
+                if (e.target.checked) props.onSeekCoefficient(term);
+              }}
+            />
+            Follow selected coefficient
+          </label>
+        </div>
+      )}
+      {state.mode === "follow" &&
+        !props.transport &&
+        coefficients.length > 0 && (
+          <p className="topology-note">
+            {!coefficientPosition
+              ? "This coefficient is beyond the generated flip path. Extend the itinerary in the display options."
+              : term === 0
+                ? "a₀ sets the starting bracket. Go to a₀ returns to the start."
+                : run.expected === 0n
+                  ? `a${term} has no flips after the initial/terminal offsets; seeking selects its boundary triangle.`
+                  : `a${term} selects a ${run.direction} run of ${run.expected} flip${run.expected === 1n ? "" : "s"}. Go to it, or enable following to seek when you click a coefficient above.`}
+          </p>
+        )}
       <div className="triangulation-grid">
         <div hidden={view !== "square"}>
           <svg
@@ -456,48 +535,6 @@ export function MarkedTriangulation(props: Props) {
           </button>
         ))}
       </div>
-      {props.transport ?? (
-        <div
-          className="tangle-controls"
-          role="group"
-          aria-label="Flip path transport"
-        >
-          <button
-            disabled={!state.cursor}
-            onClick={() => {
-              setPlaying(false);
-              navigate(state.cursor - 1);
-            }}
-          >
-            Previous flip step
-          </button>
-          <button
-            disabled={state.cursor >= state.steps.length}
-            onClick={() => navigate(state.cursor + 1)}
-          >
-            Next flip step
-          </button>
-          <button
-            disabled={state.cursor >= state.steps.length && !playing}
-            onClick={() => setPlaying(!playing)}
-          >
-            {playing ? "Pause flips" : "Play flips"}
-          </button>
-        </div>
-      )}
-      <p className="topology-note" role="status" data-testid="flip-status">
-        Step {state.cursor} / {state.steps.length}. {activeStatus}
-      </p>
-      {state.mode === "follow" && !props.transport && (
-        <div className="flip-run-actions">
-          <button
-            disabled={term !== 0 && !runSteps.length}
-            onClick={() => navigate(term === 0 ? 0 : runSteps[0] + 1)}
-          >
-            Go to selected run
-          </button>
-        </div>
-      )}
       <details className="flip-details">
         <summary>Edge actions, history & display options</summary>
         <div className="flip-edge-controls">
@@ -561,7 +598,6 @@ export function MarkedTriangulation(props: Props) {
           >
             Redo shared edit
           </button>
-          <button onClick={() => navigate(0)}>Restart α’s path</button>
           {state.mode === "follow" && (
             <button
               disabled={state.horizon >= 24 || state.steps.length >= 512}
