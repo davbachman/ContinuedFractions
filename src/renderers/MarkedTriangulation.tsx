@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, useRef, useId } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useId,
+  type ReactNode,
+} from "react";
 import {
   type NumberSpec,
   specLabel,
@@ -35,6 +42,7 @@ type Props = {
   view?: "square" | "farey";
   coefficient?: number;
   playback?: { playing: boolean; onChange: (playing: boolean) => void };
+  transport?: ReactNode;
   externalPlaying: boolean;
   spec: NumberSpec;
   state?: TriangulationState;
@@ -251,6 +259,7 @@ export function MarkedTriangulation(props: Props) {
       className="panel triangulation-panel flip-focused"
       data-view={view}
       onKeyDown={(e) => {
+        if (props.transport) return;
         if (
           (e.target as Element).closest(
             'button,input,select,summary,[role="button"]',
@@ -764,37 +773,39 @@ export function MarkedTriangulation(props: Props) {
           </button>
         ))}
       </div>
-      <div
-        className="tangle-controls"
-        role="group"
-        aria-label="Flip path transport"
-      >
-        <button
-          disabled={!state.cursor}
-          onClick={() => {
-            setPlaying(false);
-            navigate(state.cursor - 1);
-          }}
+      {props.transport ?? (
+        <div
+          className="tangle-controls"
+          role="group"
+          aria-label="Flip path transport"
         >
-          Previous flip step
-        </button>
-        <button
-          disabled={state.cursor >= state.steps.length}
-          onClick={() => navigate(state.cursor + 1)}
-        >
-          Next flip step
-        </button>
-        <button
-          disabled={state.cursor >= state.steps.length && !playing}
-          onClick={() => setPlaying(!playing)}
-        >
-          {playing ? "Pause flips" : "Play flips"}
-        </button>
-      </div>
+          <button
+            disabled={!state.cursor}
+            onClick={() => {
+              setPlaying(false);
+              navigate(state.cursor - 1);
+            }}
+          >
+            Previous flip step
+          </button>
+          <button
+            disabled={state.cursor >= state.steps.length}
+            onClick={() => navigate(state.cursor + 1)}
+          >
+            Next flip step
+          </button>
+          <button
+            disabled={state.cursor >= state.steps.length && !playing}
+            onClick={() => setPlaying(!playing)}
+          >
+            {playing ? "Pause flips" : "Play flips"}
+          </button>
+        </div>
+      )}
       <p className="topology-note" role="status" data-testid="flip-status">
         Step {state.cursor} / {state.steps.length}. {activeStatus}
       </p>
-      {state.mode === "follow" && (
+      {state.mode === "follow" && !props.transport && (
         <div className="flip-run-actions">
           <button
             disabled={term !== 0 && !runSteps.length}

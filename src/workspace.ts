@@ -88,7 +88,7 @@ export function correspondence(
     if (isTangle(a) || isTangle(b))
       return {
         kind: "Shared value · explicit approximation",
-        text: "Prefixes describe the selected exact number. A finite tangle represents a rational; for an irrational it uses its own explicitly selected convergent. These selections are independent. Use convergent as target explicitly makes all views rational.",
+        text: "Prefixes describe the selected exact number. For an irrational, the tangle uses the selected prefix’s explicitly labeled convergent; each is a discrete rational approximation. Use convergent as target explicitly makes all views rational.",
       };
     return {
       kind: "Target approximation · independent triangulation",

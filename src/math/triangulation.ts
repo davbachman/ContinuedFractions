@@ -118,7 +118,7 @@ export function targetItinerary(
     rational(1n, 0n),
     rational(a0 + 1n),
   ];
-  const crossings = fareyCrossings(spec, horizon, MAX_FLIPS).crossings;
+  const crossings = fareyCrossings(spec, horizon, MAX_FLIPS - 1).crossings;
   const steps: FlipStep[] = [];
   let tri = start;
   for (const crossing of crossings) {

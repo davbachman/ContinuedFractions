@@ -34,6 +34,8 @@ import { TanglePanel } from "./renderers/TanglePanel";
 import { stageColor } from "./renderers/dissectionColors";
 import { DomainEdgeLegend } from "./renderers/domainEdges";
 import { coefficientTrace } from "./renderers/selectedRun";
+import { useRunPlayback } from "./useRunPlayback";
+import type { TriangulationState } from "./math/triangulation";
 
 export type WorkspaceProps = {
   scene: Scene;
@@ -47,6 +49,12 @@ export type WorkspaceProps = {
   onTangle: (expression: TangleExpression) => void;
   onError: (message: string) => void;
   onPause: () => void;
+  onRunFrame: (
+    time: number,
+    term: number,
+    itinerary?: TriangulationState,
+  ) => void;
+  linkedPlayback?: ReturnType<typeof useRunPlayback>;
   onPatch: (changes: Partial<Scene>) => void;
   math: ReturnType<typeof derive>;
   playing: boolean;
@@ -105,6 +113,14 @@ function initialPanes(): Pane[] {
 export function Workspace(props: WorkspaceProps) {
   const [panes, setPanes] = useState(initialPanes);
   const [flipPlaying, setFlipPlaying] = useState(false);
+  const canLink =
+    !props.rectangle.unavailable &&
+    panes.some((p) => p.kind === "rectangle") &&
+    panes.some(
+      (p) =>
+        isTrajectory(p.kind) || ["farey", "triangulation"].includes(p.kind),
+    );
+  const runs = useRunPlayback(props, canLink);
   const flipState = props.scene.triangulation ?? initialTriangulation;
   const previousFlip = useRef(flipState);
   useEffect(() => {
@@ -157,6 +173,7 @@ export function Workspace(props: WorkspaceProps) {
   const setKind = (id: string, kind: Representation) => {
     setActivePane(null);
     setFlipPlaying(false);
+    runs.disable();
     props.onPause();
     setPanes((p) => p.map((v) => (v.id === id ? { ...v, kind } : v)));
   };
@@ -179,6 +196,7 @@ export function Workspace(props: WorkspaceProps) {
               if (!preset) return;
               props.onPause();
               setFlipPlaying(false);
+              runs.disable();
               if (preset.follow)
                 props.triangulation.onChange(
                   targetItinerary(props.scene.spec, flipState.horizon),
@@ -213,6 +231,114 @@ export function Workspace(props: WorkspaceProps) {
         <strong>{connection.kind}</strong>
         <p>{connection.text}</p>
       </div>
+      {canLink && (
+        <div className="run-link" aria-label="Coefficient synchronization">
+          <label>
+            <input
+              type="checkbox"
+              checked={runs.enabled}
+              onChange={(e) => {
+                setFlipPlaying(false);
+                if (e.target.checked) runs.enable();
+                else runs.disable();
+              }}
+            />
+            Synchronize by coefficient
+          </label>
+          {runs.enabled ? (
+            <>
+              <label className="pane-scrubber">
+                Progress through a{runs.position.term}
+                <input
+                  aria-label="Progress through coefficient run"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.001"
+                  value={runs.position.progress}
+                  onChange={(e) =>
+                    runs.seek(runs.position.term, Number(e.target.value))
+                  }
+                />
+              </label>
+              <label>
+                Playback speed{" "}
+                <select
+                  aria-label="Linked playback speed"
+                  value={props.scene.speed}
+                  onChange={(e) =>
+                    props.onPatch({ speed: Number(e.target.value) })
+                  }
+                >
+                  {[0.25, 0.5, 1, 2, 4].map((v) => (
+                    <option key={v} value={v}>
+                      {v}×
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={props.reverse}
+                  onChange={(e) => props.onReverse(e.target.checked)}
+                />{" "}
+                Reverse linked playback
+              </label>
+              <button onClick={() => runs.seek(0)}>
+                Restart linked playback
+              </button>
+              <p data-testid="linked-run-status" role="status">
+                {runs.stage &&
+                  (runs.stage.term === 0
+                    ? `a₀ = ${runs.stage.coefficient}: ${runs.stage.coefficient === 0n ? "orientation change; no squares removed" : "initial square group"}. ${runs.stage.expected === 0n ? "The ray lies on a Farey edge; no automatic flip." : `Separate initial entry: ${runs.frame?.completed} of 1 crossing.`}`
+                    : `a${runs.stage.term} = ${runs.stage.coefficient} · ${runs.stage.term % 2 ? "L" : "R"} run · ${runs.frame?.completed} of ${runs.stage.expected} flips. ${runs.stage.expected === 0n ? "No crossings after the initial/terminal offsets; the point holds while this rectangle stage is shown." : ""}`)}
+                {runs.stage &&
+                  !runs.stage.complete &&
+                  ` Only ${runs.stage.times.length} crossings fit this display window. Playback stops here; the run is incomplete.`}
+                {props.scene.spec.kind === "rational" &&
+                  runs.position.progress === 1 &&
+                  runs.position.term === runs.stages.length - 1 &&
+                  runs.stage?.complete &&
+                  " Rational dissection complete; the ideal cusp is not reached in finite hyperbolic time."}
+              </p>
+              <details className="workspace-details">
+                <summary>How the clocks correspond</summary>
+                <p>
+                  One rectangle group spans a run of flips. Crossings receive
+                  equal animation beats, so this is not constant hyperbolic
+                  speed. The interval ends at the group’s last crossing. a₀ sets
+                  the bracket; its entry crossing is separate. The first and
+                  rational last runs use the documented −1 offsets. Large runs
+                  have bounded animation duration.
+                </p>
+                <p>
+                  Linked playback uses Follow target. Manual paths remain in
+                  Undo. Editing, undo, or switching views pauses and releases
+                  the link. The marked flip torus and six-sheet modular cover
+                  remain distinct constructions.
+                </p>
+              </details>
+              {runs.stage && !runs.stage.complete && (
+                <button
+                  disabled={props.scene.end >= 24}
+                  onClick={() => {
+                    runs.disable();
+                    props.onPatch({ end: Math.min(24, props.scene.end + 4) });
+                  }}
+                >
+                  Extend depth +4, then relink
+                </button>
+              )}
+            </>
+          ) : (
+            <p>
+              Link rectangle groups to runs of crossings using Follow target. A
+              manual flip path is preserved in Undo.
+            </p>
+          )}
+        </div>
+      )}
       <div
         className="comparison-strip"
         aria-label="Shared coefficient selection"
@@ -225,7 +351,7 @@ export function Workspace(props: WorkspaceProps) {
               aria-pressed={props.selected === i}
               aria-label={`Highlight coefficient a${i} = ${a}`}
               style={{ borderBottomColor: stageColor(i) }}
-              onClick={() => props.onSelect(i)}
+              onClick={() => (runs.enabled ? runs.seek(i) : props.onSelect(i))}
             >
               <small>a{i}</small> {String(a)}
             </button>
@@ -275,8 +401,40 @@ export function Workspace(props: WorkspaceProps) {
             onActivate={() => setActivePane(pane.id)}
             shared={{
               ...props,
+              linkedPlayback: runs.enabled ? runs : undefined,
+              onSeek: (time) => {
+                runs.disable();
+                props.onSeek(time);
+              },
+              onSelect: runs.enabled ? (i) => runs.seek(i) : props.onSelect,
+              onEditCoefficient: (v) => {
+                runs.disable();
+                props.onEditCoefficient(v);
+              },
+              rectangle: {
+                ...props.rectangle,
+                onStart: () => {
+                  runs.disable();
+                  props.rectangle.onStart();
+                },
+              },
               triangulation: {
                 ...props.triangulation,
+                onChange: (...args) => {
+                  runs.disable();
+                  props.triangulation.onChange(...args);
+                },
+                onUndo: () => {
+                  runs.disable();
+                  props.triangulation.onUndo();
+                },
+                onRedo: () => {
+                  runs.disable();
+                  props.triangulation.onRedo();
+                },
+                transport: runs.enabled ? (
+                  <RunTransport run={runs} />
+                ) : undefined,
                 playback: {
                   playing: flipPlaying,
                   onChange: (playing) => {
@@ -301,6 +459,32 @@ export function Workspace(props: WorkspaceProps) {
         the process they advance. Camera changes never edit the shared number.
       </p>
     </section>
+  );
+}
+
+function RunTransport({ run }: { run: ReturnType<typeof useRunPlayback> }) {
+  return (
+    <div
+      className="workspace-actions linked-transport"
+      role="group"
+      aria-label="Linked stage transport"
+    >
+      <button
+        disabled={run.position.term === 0}
+        onClick={() => run.seek(run.position.term - 1)}
+      >
+        Previous linked stage
+      </button>
+      <button className="primary-action" onClick={run.toggle}>
+        {run.playing ? "Pause linked playback" : "Play linked playback"}
+      </button>
+      <button
+        disabled={run.position.term >= run.stages.length - 1}
+        onClick={() => run.seek(run.position.term + 1)}
+      >
+        Next linked stage
+      </button>
+    </div>
   );
 }
 
@@ -464,7 +648,15 @@ function ComparisonPane({
     )
       return;
     if (!["Space", "ArrowLeft", "ArrowRight"].includes(e.code)) return;
-    if (isTrajectory(pane.kind) && !infinite) {
+    if (p.linkedPlayback) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.code === "Space") p.linkedPlayback.toggle();
+      else
+        p.linkedPlayback.seek(
+          p.linkedPlayback.position.term + (e.code === "ArrowRight" ? 1 : -1),
+        );
+    } else if (isTrajectory(pane.kind) && !infinite) {
       e.preventDefault();
       e.stopPropagation();
       if (e.code === "Space") p.onToggleTrajectory();
@@ -546,40 +738,44 @@ function ComparisonPane({
               </p>
             ) : (
               <>
-                <div className="pane-transport">
-                  <div className="workspace-actions">
-                    <button
-                      disabled={!p.selected}
-                      onClick={() => p.rectangle.onStep(-1)}
-                    >
-                      Previous stage
-                    </button>
-                    <button
-                      className="primary-action"
-                      onClick={p.rectangle.onToggle}
-                    >
-                      {p.rectangle.playing
-                        ? "Pause dissection"
-                        : "Play dissection"}
-                    </button>
-                    <button
-                      disabled={
-                        stage?.terminal ||
-                        (p.scene.spec.kind === "periodic" && p.selected >= 95)
-                      }
-                      onClick={() => p.rectangle.onStep(1)}
-                    >
-                      Next stage
-                    </button>
-                    <button onClick={() => p.onSelect(0)}>
-                      Restart dissection
-                    </button>
+                {p.linkedPlayback ? (
+                  <RunTransport run={p.linkedPlayback} />
+                ) : (
+                  <div className="pane-transport">
+                    <div className="workspace-actions">
+                      <button
+                        disabled={!p.selected}
+                        onClick={() => p.rectangle.onStep(-1)}
+                      >
+                        Previous stage
+                      </button>
+                      <button
+                        className="primary-action"
+                        onClick={p.rectangle.onToggle}
+                      >
+                        {p.rectangle.playing
+                          ? "Pause dissection"
+                          : "Play dissection"}
+                      </button>
+                      <button
+                        disabled={
+                          stage?.terminal ||
+                          (p.scene.spec.kind === "periodic" && p.selected >= 95)
+                        }
+                        onClick={() => p.rectangle.onStep(1)}
+                      >
+                        Next stage
+                      </button>
+                      <button onClick={() => p.onSelect(0)}>
+                        Restart dissection
+                      </button>
+                    </div>
+                    <p>
+                      Euclidean stage a{p.selected} · one square group per step.
+                      Hyperbolic time is unchanged.
+                    </p>
                   </div>
-                  <p>
-                    Euclidean stage a{p.selected} · one square group per step.
-                    Hyperbolic time is unchanged.
-                  </p>
-                </div>
+                )}
                 <RectangleDissection
                   spec={p.scene.spec}
                   stages={p.rectangle.stages}
@@ -762,7 +958,17 @@ function ComparisonPane({
                     : "This coefficient has no crossings in the current display window (run offsets apply)."}
               </p>
             )}
-            <TrajectoryControls shared={p} />
+            {p.linkedPlayback ? (
+              <>
+                <p className="pane-note">
+                  Linked run · hyperbolic time t = {p.scene.time.toFixed(3)}.
+                  This clock pauses at zero-crossing stages.
+                </p>
+                <RunTransport run={p.linkedPlayback} />
+              </>
+            ) : (
+              <TrajectoryControls shared={p} />
+            )}
           </>
         )}
         {(pane.kind === "triangulation" || pane.kind === "farey") && (

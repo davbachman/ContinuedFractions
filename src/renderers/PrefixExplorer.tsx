@@ -1,4 +1,10 @@
-import { useMemo, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { specLabel, toCF, type NumberSpec } from "../math/continuedFraction";
 import { label, rational, type Rational } from "../math/rational";
 import { determinant, type Matrix } from "../math/modular";
@@ -143,6 +149,27 @@ function MatrixDisplay({ m, name }: { m: Matrix; name: string }) {
   );
 }
 function Matrices({ data, selected, onSelect }: DiagramProps) {
+  const factors = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const parent = factors.current,
+      active = parent?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (parent && active) {
+      const left = active.offsetLeft;
+      if (
+        left < parent.scrollLeft ||
+        left + active.offsetWidth > parent.scrollLeft + parent.clientWidth
+      )
+        parent.scrollTo({
+          left: Math.max(
+            0,
+            left - parent.clientWidth / 2 + active.offsetWidth / 2,
+          ),
+          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "instant"
+            : "smooth",
+        });
+    }
+  }, [selected]);
   const p = data[selected],
     previous: Matrix = selected ? data[selected - 1].matrix : [1n, 0n, 0n, 1n];
   return (
@@ -154,12 +181,23 @@ function Matrices({ data, selected, onSelect }: DiagramProps) {
           previous convergents in its two columns.
         </p>
       </div>
-      <div className="matrix-factors" aria-label="Coefficient matrix factors">
+      <div
+        ref={factors}
+        className="matrix-factors"
+        aria-label="Coefficient matrix factors"
+      >
         {data.map((row) => (
           <button
             key={row.index}
             aria-label={`Select matrix factor a${row.index}`}
             aria-pressed={selected === row.index}
+            data-prefix-state={
+              row.index < selected
+                ? "included"
+                : row.index === selected
+                  ? "current"
+                  : "future"
+            }
             onClick={() => onSelect(row.index)}
             style={{ borderBottomColor: stageColor(row.index) }}
           >
@@ -183,12 +221,22 @@ function Matrices({ data, selected, onSelect }: DiagramProps) {
         >
           <MatrixDisplay m={previous} name="Previous product" />
           <span>×</span>
-          <MatrixDisplay
-            m={coefficientMatrix(p.coefficient)}
-            name="Selected factor"
-          />
+          <span
+            key={`factor-${selected}`}
+            className="matrix-new-factor"
+            style={{ borderColor: stageColor(selected) }}
+          >
+            <small>Append A(a{selected})</small>
+            <MatrixDisplay
+              m={coefficientMatrix(p.coefficient)}
+              name="Selected factor"
+            />
+          </span>
           <span>=</span>
-          <MatrixDisplay m={p.matrix} name="Product" />
+          <span key={`product-${selected}`} className="matrix-new-product">
+            <small>Exact product M{selected}</small>
+            <MatrixDisplay m={p.matrix} name="Product" />
+          </span>
         </div>
         <div data-testid="matrix-details">
           <p>
@@ -322,6 +370,42 @@ function Errors({
           stroke="#b6c4ac"
           strokeWidth="1.5"
         />
+        <polyline
+          data-testid="completed-error-trace"
+          data-through-prefix={selected}
+          points={nonzero
+            .filter((p) => p.index <= selected)
+            .map((p) => `${x(p)},${y(p)}`)
+            .join(" ")}
+          fill="none"
+          stroke="#426b63"
+          strokeWidth="2.5"
+        />
+        {selected > 0 &&
+          !current.error.zero &&
+          !rows[selected - 1].error.zero && (
+            <path
+              key={`${selected}-${scaled}`}
+              className="error-step-trace"
+              data-testid="current-error-step"
+              d={`M${x(rows[selected - 1])},${y(rows[selected - 1])}L${x(current)},${y(current)}`}
+              fill="none"
+              stroke={stageColor(selected)}
+              strokeWidth="4"
+              pathLength="1"
+            />
+          )}
+        <circle
+          key={`cursor-${selected}-${scaled}`}
+          className="error-selection-ring"
+          cx={x(current)}
+          cy={current.error.zero ? 346 : y(current)}
+          r="12"
+          fill="none"
+          stroke={stageColor(selected)}
+          strokeWidth="2"
+          pointerEvents="none"
+        />
         {rows.map((p) => (
           <g
             key={p.index}
@@ -347,6 +431,7 @@ function Errors({
               fill={stageColor(p.index)}
               stroke={p.index === selected ? "#253c30" : "#fff"}
               strokeWidth="1.5"
+              opacity={p.index > selected ? 0.4 : 1}
             />
           </g>
         ))}
@@ -356,6 +441,11 @@ function Errors({
           </text>
         )}
       </svg>
+      <p className="prefix-note">
+        Solid trace: prefixes through a{selected}. The colored segment tracks
+        the selected step; intermediate positions are a visual guide, not
+        additional convergents. Exact zero stays outside the logarithmic axis.
+      </p>
       <div className="prefix-facts" data-testid="error-details">
         <p>
           <b>

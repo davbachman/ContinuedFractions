@@ -136,6 +136,10 @@ export default function App() {
   const file = useRef<HTMLInputElement>(null),
     guide = useRef<HTMLDialogElement>(null),
     endpointDragStart = useRef<Scene | null>(null);
+  // A run clock can select a zero-crossing stage while the triangle stays put.
+  const explicitRunSelection = useRef<TriangulationState | undefined>(
+    undefined,
+  );
   const markedTriangle = useMemo(
     () => currentTriangulation(scene.triangulation ?? initialTriangulation),
     [scene.triangulation],
@@ -436,6 +440,32 @@ export default function App() {
       setError((error as Error).message);
     }
   }
+  function runFrame(
+    time: number,
+    term: number,
+    itinerary?: TriangulationState,
+  ) {
+    const source = itinerary ?? scene.triangulation;
+    if (!source || source.mode !== "follow") return;
+    const cursor = source.steps.filter(
+      (s) => (s.time ?? Infinity) <= time + 1e-8,
+    ).length;
+    const triangulation =
+      cursor === source.cursor ? source : { ...source, cursor };
+    explicitRunSelection.current = triangulation;
+    if (itinerary) {
+      setHistory((h) =>
+        execute(h, { type: "triangulation", value: triangulation, time }),
+      );
+    } else {
+      // Playback frames are navigation, not hundreds of undoable edits.
+      patch({ time, triangulation });
+    }
+    setSelectedTerm(term);
+    if (term >= rectangleDepth) setRectangleDepth(Math.min(96, term + 8));
+    setPlaying(false);
+    setRectanglePlaying(false);
+  }
   function flipFromPlane(edge: number) {
     const state = scene.triangulation ?? initialTriangulation;
     if (state.mode !== "manual") return;
@@ -460,7 +490,8 @@ export default function App() {
   }
   useEffect(() => {
     const t = scene.triangulation;
-    if (t?.mode === "follow") setSelectedTerm(t.steps[t.cursor - 1]?.term ?? 0);
+    if (t?.mode === "follow" && t !== explicitRunSelection.current)
+      setSelectedTerm(t.steps[t.cursor - 1]?.term ?? 0);
   }, [scene.triangulation]);
   useEffect(() => {
     const t = scene.triangulation;
@@ -784,6 +815,7 @@ export default function App() {
               setPlaying(false);
               setRectanglePlaying(false);
             }}
+            onRunFrame={runFrame}
             onPatch={patch}
             math={math}
             playing={playing}
@@ -1846,12 +1878,19 @@ export default function App() {
           connection. Both panes use the same exact number and undo history;
           their cameras are independent. The connection caption explains what is
           linked. Selecting a coefficient highlights its counterpart without
-          seeking the trajectory. Use “Seek selected run” to move the point.
+          seeking the trajectory, unless coefficient synchronization is enabled.
+          Use “Seek selected run” to move the point in independent mode.
         </p>
         <p>
           Hyperbolic views share trajectory time. Rectangle playback advances
-          Euclidean stages on its own clock. Canonical tangle regions can link
-          to coefficients; custom signed constructions retain their own
+          Euclidean stages on its own clock by default. Pair the rectangle with
+          Farey triangles, marked edge flips, or any hyperbolic view and enable
+          “Synchronize by coefficient” to play each stage’s run of crossings.
+          Both panes then share play/pause, stage stepping, reverse, and a run
+          progress slider. Zero-crossing stages hold the point; a display limit
+          is explicitly incomplete. Enabling the link uses Follow target and
+          preserves the previous manual path in Undo. Canonical tangle regions
+          can link to coefficients; custom signed constructions retain their own
           operations. A finite tangle for an irrational uses a labeled
           convergent. “Full atlas” restores the original layout.
         </p>

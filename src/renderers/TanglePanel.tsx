@@ -16,6 +16,7 @@ import { tangleCurves } from "./tangleCurves";
 import { tangleHelices } from "./tangleHelices";
 import { Pillowcase } from "./Pillowcase";
 import { svgPath } from "./ModularTorus";
+import { stageColor } from "./dissectionColors";
 type Props = {
   view?: "tangle" | "pillowcase";
   linkCoefficients?: boolean;
@@ -100,10 +101,16 @@ export function TanglePanel({
     if (coefficient !== undefined) onSelect(coefficient);
   };
   const twistRegions = ops.flatMap((op, i) => (op.kind === "twist" ? [i] : [])),
-    activeRegion =
-      linkedRegion ??
-      (twistRegions.includes(region) ? region : (twistRegions.at(-1) ?? -1)),
+    activeRegion = coefficientMap
+      ? (linkedRegion ?? -1)
+      : twistRegions.includes(region)
+        ? region
+        : (twistRegions.at(-1) ?? -1),
     active = ops[activeRegion];
+  const highlightRegion =
+    coefficientMap && active?.kind === "twist" && active.count === 0n
+      ? -1
+      : activeRegion;
   useEffect(() => {
     setDraft(active?.kind === "twist" ? String(active.count) : "0");
   }, [active]);
@@ -117,6 +124,8 @@ export function TanglePanel({
   const rotate = (turns: 1 | -1) => commit([...ops, { kind: "rotate", turns }]);
   const color = (edge: number) =>
     diagram.component[diagram.edges[edge].from] === 0 ? "#2b7274" : "#b16e38";
+  const mutedColor = (edge: number) =>
+    diagram.component[diagram.edges[edge].from] === 0 ? "#b2cbca" : "#e1c8b4";
   const point = (id: number) => diagram.nodes[id];
   const canThree = diagram.boxes.length === 0 && diagram.edges.length <= 180;
   const lifted = three && canThree;
@@ -180,7 +189,10 @@ export function TanglePanel({
       }
     : null;
   return (
-    <section className="panel tangle-panel">
+    <section
+      className="panel tangle-panel"
+      data-linked-coefficient={coefficientMap ? selected : undefined}
+    >
       <div className="panel-heading">
         <div>
           <span className="panel-number">04</span>
@@ -221,11 +233,36 @@ export function TanglePanel({
             : "Custom signed construction · the rational value is linked; its operation regions are independent of the regular continued-fraction coefficients."}
         </p>
       )}
+      {coefficientMap && mode === "tangle" && (
+        <p
+          key={selected}
+          className="tangle-run-focus"
+          style={{ borderColor: stageColor(selected) }}
+          data-testid="tangle-run-focus"
+        >
+          <strong>
+            a{selected} →{" "}
+            {active?.kind === "twist"
+              ? active.count === 0n
+                ? "H(0): zero twists"
+                : `signed region H(${active.count})`
+              : "no twist region (zero coefficient)"}
+          </strong>
+          <span>
+            Matching strands are emphasized in 2D and 3D. This highlights a
+            region; it does not reorder or perform the signed construction.
+          </span>
+        </p>
+      )}
       {spec.kind === "periodic" && (
         <div className="tangle-approximation" role="status">
           Approximation: convergent <strong>{label(target)}</strong> of{" "}
           {specLabel(spec)}. A finite tangle does not represent the exact
           irrational. Editing switches the shared number to a rational.
+          <p key={label(target)} className="approximation-change">
+            Prefix a{selected}: a discrete rational approximation, not a
+            continuous deformation of the previous tangle.
+          </p>
           <label>
             Selected convergent
             <select
@@ -329,11 +366,24 @@ export function TanglePanel({
                 pieces.map((piece, i) => (
                   <path
                     key={i}
+                    className="tangle-strand"
+                    data-active-region={
+                      highlightRegion >= 0 &&
+                      diagram.edges[piece.id].region === highlightRegion
+                    }
+                    opacity={1}
                     d={svgPath(piece.points)}
                     fill="none"
-                    stroke={color(piece.id)}
+                    stroke={
+                      coefficientMap &&
+                      highlightRegion >= 0 &&
+                      diagram.edges[piece.id].region !== highlightRegion
+                        ? mutedColor(piece.id)
+                        : color(piece.id)
+                    }
                     strokeWidth={
-                      diagram.edges[piece.id].region === activeRegion
+                      highlightRegion >= 0 &&
+                      diagram.edges[piece.id].region === highlightRegion
                         ? 4.5
                         : 3.5
                     }
@@ -346,10 +396,25 @@ export function TanglePanel({
                   {diagram.edges.map((edge, i) => (
                     <path
                       key={i}
+                      className="tangle-strand"
+                      data-active-region={
+                        highlightRegion >= 0 && edge.region === highlightRegion
+                      }
+                      opacity={
+                        coefficientMap &&
+                        highlightRegion >= 0 &&
+                        edge.region !== highlightRegion
+                          ? 0.35
+                          : 1
+                      }
                       d={curves[i].path}
                       fill="none"
                       stroke={color(i)}
-                      strokeWidth={edge.region === activeRegion ? 4.5 : 3.2}
+                      strokeWidth={
+                        highlightRegion >= 0 && edge.region === highlightRegion
+                          ? 4.5
+                          : 3.2
+                      }
                       strokeLinecap="round"
                       onClick={() => chooseRegion(edge.region)}
                     />
@@ -380,7 +445,19 @@ export function TanglePanel({
                           d={svgPath(points)}
                           fill="none"
                           stroke={color(c.over)}
-                          strokeWidth={c.region === activeRegion ? 4.5 : 3.2}
+                          className="tangle-strand"
+                          opacity={
+                            coefficientMap &&
+                            highlightRegion >= 0 &&
+                            c.region !== highlightRegion
+                              ? 0.35
+                              : 1
+                          }
+                          strokeWidth={
+                            highlightRegion >= 0 && c.region === highlightRegion
+                              ? 4.5
+                              : 3.2
+                          }
                         />
                       </g>
                     );
