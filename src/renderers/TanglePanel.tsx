@@ -1,6 +1,6 @@
 import { rollCameraPoint } from "./geometry";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type NumberSpec, specLabel } from "../math/continuedFraction";
 import { label, type Rational } from "../math/rational";
 import {
@@ -62,6 +62,29 @@ export function TanglePanel({
       : "tangle"
     : localMode;
   const closed = view ? view === "closure" : localClosed;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const zoomAnchor = useRef({ x: 0.5, y: 0.5 });
+  const changeZoom = (value: number) => {
+    const viewport = scrollRef.current;
+    const svg = viewport?.querySelector("svg");
+    if (viewport && svg) {
+      zoomAnchor.current = {
+        x: (viewport.scrollLeft + viewport.clientWidth / 2) / svg.clientWidth,
+        y: (viewport.scrollTop + viewport.clientHeight / 2) / svg.clientHeight,
+      };
+    }
+    setZoom(value);
+  };
+  useLayoutEffect(() => {
+    const viewport = scrollRef.current;
+    const svg = viewport?.querySelector("svg");
+    if (!viewport || !svg) return;
+    // Preserve the inspected point, including after panning, before paint.
+    viewport.scrollLeft =
+      zoomAnchor.current.x * svg.clientWidth - viewport.clientWidth / 2;
+    viewport.scrollTop =
+      zoomAnchor.current.y * svg.clientHeight - viewport.clientHeight / 2;
+  }, [zoom, mode]);
   const coefficientMap = useMemo(
     () =>
       linkCoefficients && spec.kind === "rational"
@@ -298,11 +321,12 @@ export function TanglePanel({
                 max={4}
                 step={0.1}
                 value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
+                onChange={(e) => changeZoom(Number(e.target.value))}
               />
             </label>
           </div>
           <div
+            ref={scrollRef}
             className="tangle-scroll"
             tabIndex={0}
             role="region"
@@ -318,7 +342,6 @@ export function TanglePanel({
               style={{
                 ...rotationControls.style,
                 width: `${100 * zoom}%`,
-                minWidth: 400 * zoom,
                 height: 360 * zoom,
               }}
               role="img"

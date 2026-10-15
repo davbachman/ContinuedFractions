@@ -2098,8 +2098,9 @@ footer,
   margin-top: 8px;
 }
 .tangle-scroll {
-  max-height: 480px;
+  height: 360px;
   overflow: auto;
+  overflow-anchor: none;
   background: #fbfbf6;
   overscroll-behavior: contain;
 }
