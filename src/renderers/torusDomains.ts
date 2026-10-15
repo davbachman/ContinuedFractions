@@ -1,4 +1,12 @@
-import { apply, reduce, type Matrix, type Point } from "../math/modular";
+import {
+  apply,
+  reduce,
+  multiply,
+  inverse,
+  matrixKey,
+  type Matrix,
+  type Point,
+} from "../math/modular";
 import { abelianization, coverSheet, mod6 } from "../math/modularTorus";
 import { rational, value, type Rational } from "../math/rational";
 import type { Edge } from "../math/farey";
@@ -61,9 +69,10 @@ export const domainSectors = [
   supports: Support[];
   sample: Point;
 }[];
-const sectorSheets = domainSectors.map(({ sample }) =>
-  coverSheet(reduce(sample).matrix),
+const sectorReductions = domainSectors.map(
+  ({ sample }) => reduce(sample).matrix,
 );
+const sectorSheets = sectorReductions.map((matrix) => coverSheet(matrix));
 export const domainSectorSheets = (matrix: Matrix, lift = 0) => {
   const chi = abelianization(matrix);
   return sectorSheets.map((sheet) => mod6(lift + chi + sheet));
@@ -71,7 +80,15 @@ export const domainSectorSheets = (matrix: Matrix, lift = 0) => {
 export type DomainBoundary =
   | { kind: "line"; from: Point; to: Point }
   | { kind: "arc"; x: number; radius: number; from: number; to: number };
-export type DomainTile = { sheet: number; boundaries: DomainBoundary[] };
+export const domainSectorKeys = (matrix: Matrix) =>
+  sectorReductions.map((reduction) =>
+    matrixKey(multiply(reduction, inverse(matrix))),
+  );
+export type DomainTile = {
+  key: string;
+  sheet: number;
+  boundaries: DomainBoundary[];
+};
 
 export function modularDomainTiles(
   matrix: Matrix,
@@ -79,6 +96,7 @@ export function modularDomainTiles(
   lift = 0,
 ): DomainTile[] {
   const sheets = domainSectorSheets(matrix, lift);
+  const keys = domainSectorKeys(matrix);
   const transformed = (v: Vertex): Point => {
     if ("x" in v) return apply(matrix, v);
     const r = idealImage(matrix, v);
@@ -88,6 +106,7 @@ export function modularDomainTiles(
     const vertices = [center, sector.midpoint, sector.cusp].map(transformed);
     return {
       // R maps the sample to F, so the transformed reduction is R M^-1.
+      key: keys[i],
       sheet: sheets[i],
       boundaries: sector.supports.map((support, j): DomainBoundary => {
         const a = idealImage(matrix, support[0]),

@@ -75,13 +75,13 @@ test("disk trajectory playback shares the H² clock and pauses", async ({
 }) => {
   const right = pane(page, "Right"),
     svg = disk(page);
-  await right
+  await pane(page, "Left")
     .getByRole("button", { name: "Play trajectory", exact: true })
     .click();
   await expect
     .poll(async () => Number(await svg.getAttribute("data-time")))
     .toBeGreaterThan(0.05);
-  await right
+  await pane(page, "Left")
     .getByRole("button", { name: "Pause trajectory", exact: true })
     .click();
   const paused = await svg.getAttribute("data-time");
@@ -94,7 +94,7 @@ test("disk trajectory playback shares the H² clock and pauses", async ({
         .inputValue(),
     ),
   ).toBeCloseTo(Number(paused), 3);
-  await right
+  await pane(page, "Left")
     .getByRole("button", { name: "Restart trajectory", exact: true })
     .click();
   await expect(svg).toHaveAttribute("data-time", "0");

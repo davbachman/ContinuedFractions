@@ -23,8 +23,9 @@ test("disk layers work independently and its path is exclusive to an edge-flip c
     right.getByRole("button", { name: "Play flips", exact: true }),
   ).toHaveCount(0);
   await expect(
-    right.getByRole("button", { name: "Play trajectory", exact: true }),
+    left.getByRole("button", { name: "Play trajectory", exact: true }),
   ).toBeVisible();
+  await expect(right.getByRole("button", {name:"Play trajectory",exact:true})).toHaveCount(0);
   await right.getByLabel("Farey edges", { exact: true }).uncheck();
   await expect(svg.locator("[data-disk-farey]")).toHaveCount(0);
   await expect(svg.locator("[data-farey-fills]")).toHaveCount(0);
@@ -166,10 +167,8 @@ test("disk supports stationary Ford inspection, pan gestures, wheel and two-fing
     exact: true,
   });
   await ford.click();
-  await expect(right.locator(".pane-inspection")).toContainText(
-    "Ford horocycle 0",
-  );
-  await right
+  await expect(page.locator(".shared-inspection")).toContainText("C0: 0");
+  await page
     .getByRole("button", { name: "Close inspection", exact: true })
     .click();
   await svg.evaluate((n) => n.scrollIntoView({ block: "center" }));

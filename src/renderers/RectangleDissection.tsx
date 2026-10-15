@@ -9,6 +9,7 @@ import {
   ONE,
   originalRectangle,
   lengthLabel,
+  evaluateLength,
   dimensionsLabel,
   lengthRatio,
   minus,
@@ -180,6 +181,17 @@ export function RectangleDissection({
     height: lengthRatio(r.height, ONE, alpha) * overviewScale,
   });
   const remainder = project(stage.remainder);
+  const rest =
+    stage.axis === "x" ? stage.remainder.width : stage.remainder.height;
+  const nextTail = stage.terminal
+    ? null
+    : spec.kind === "rational"
+      ? (() => {
+          const a = evaluateLength(stage.side, spec.value),
+            b = evaluateLength(rest, spec.value);
+          return label(rational(a.p * b.q, a.q * b.p));
+        })()
+      : `(${lengthLabel(stage.side, spec)}) / (${lengthLabel(rest, spec)})`;
   return (
     <>
       <div
@@ -286,7 +298,7 @@ export function RectangleDissection({
                       vectorEffect="non-scaling-stroke"
                     />
                   ))}
-                  {!detailed &&
+                  {(s.index === selected || !detailed) &&
                     group.width * frame.target.scale > 55 &&
                     group.height * frame.target.scale > 28 && (
                       <text
@@ -298,7 +310,7 @@ export function RectangleDissection({
                         fill="#20352d"
                       >
                         {String(s.count).length < 14
-                          ? `${s.count} squares`
+                          ? `a${s.index} = ${s.count}`
                           : `a${s.index} squares`}
                       </text>
                     )}
@@ -322,12 +334,12 @@ export function RectangleDissection({
         <strong>
           Stage a<sub>{selected}</sub> = {String(stage.count)}
         </strong>
-        <span>
-          {camera === "full"
-            ? "Original rectangle stays in view."
-            : "Working remainder, rotated to place the cutting direction horizontally."}
+        <span>Remainder: {dimensionsLabel(stage.remainder, spec)}</span>
+        <span data-testid="remainder-tail">
+          {stage.terminal
+            ? "Remainder 0 · exact termination"
+            : `Next CF tail [a${selected + 1}; …] = ${nextTail}`}
         </span>
-        <span>Working dimensions: {dimensionsLabel(stage.before, spec)}</span>
       </div>
       <div className="rectangle-overview">
         <svg

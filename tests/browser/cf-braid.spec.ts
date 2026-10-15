@@ -44,10 +44,8 @@ test("vertical CF boxes select and edit the shared coefficient, with undo and re
       exact: true,
     }),
   ).toHaveAttribute("aria-pressed", "true");
-  await right.getByLabel("Braid coefficient a2", { exact: true }).fill("3");
-  await right
-    .getByRole("button", { name: "Apply braid coefficient", exact: true })
-    .click();
+  await page.getByLabel("Edit coefficient a2", { exact: true }).fill("3");
+  await page.locator(".coefficient-inline-editor input").press("Enter");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("11/25");
   await expect(braid(page)).toHaveAttribute("data-fraction", "11/25");
   await page
@@ -68,7 +66,7 @@ test("vertical CF boxes select and edit the shared coefficient, with undo and re
     .focus();
   await page.keyboard.press("Enter");
   await expect(
-    right.getByLabel("Braid coefficient a1", { exact: true }),
+    page.getByLabel("Edit coefficient a1", { exact: true }),
   ).toHaveValue("2");
   await right
     .locator(".cf-braid-panel")
@@ -125,26 +123,27 @@ test("irrationals explicitly use the selected convergent, and conversion, edits 
 }) => {
   await number(page, "phi");
   const right = pane(page, "Right");
-  await expect(right.getByText(/Finite rational approximation/)).toContainText(
-    "does not represent the exact irrational",
+  await expect(page.locator(".shared-approximation")).toContainText(
+    "α remains irrational",
   );
-  await right.getByLabel("Braid convergent", { exact: true }).selectOption("4");
+  await page
+    .getByLabel("Diagram convergent", { exact: true })
+    .selectOption("4");
   await expect(braid(page)).toHaveAttribute("data-fraction", "8/5");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
-  await right
-    .getByRole("button", { name: "Use braid convergent as α", exact: true })
+  await page
+    .getByRole("button", { name: "Use approximation as α", exact: true })
     .click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("8/5");
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
-  await right.getByLabel("Braid coefficient a1", { exact: true }).fill("3");
-  await right
-    .getByRole("button", { name: "Apply braid coefficient", exact: true })
-    .click();
+  await page.locator('.comparison-coefficients [data-coefficient="1"]').click();
+  await page.getByLabel("Edit coefficient a1", { exact: true }).fill("3");
+  await page.locator(".coefficient-inline-editor input").press("Enter");
   await expect(page.getByLabel("ENDPOINT α")).not.toHaveValue("φ");
-  await expect(right.getByText(/Finite rational approximation/)).toBeVisible();
+  await expect(page.locator(".shared-approximation")).toBeVisible();
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();

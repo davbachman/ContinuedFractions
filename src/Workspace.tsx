@@ -8,10 +8,10 @@ import {
 import {
   isRepresentation,
   isTrajectory,
-  isCoefficientView,
   representations,
   type Representation,
 } from "./workspace";
+import { rationalRole } from "./math/correspondence";
 import type { Scene } from "./state";
 import { approximate } from "./math/continuedFraction";
 import { label, type Rational } from "./math/rational";
@@ -36,6 +36,7 @@ import { CFBraid } from "./renderers/CFBraid";
 import { TanglePanel } from "./renderers/TanglePanel";
 import { stageColor } from "./renderers/dissectionColors";
 import { DomainEdgeLegend } from "./renderers/domainEdges";
+import { domainFocus } from "./renderers/domainFocus";
 import { coefficientTrace } from "./renderers/selectedRun";
 import { useFlipPlayback } from "./useFlipPlayback";
 import { useRunPlayback } from "./useRunPlayback";
@@ -60,6 +61,9 @@ export type WorkspaceProps = {
     term: number,
     itinerary?: TriangulationState,
   ) => void;
+  inspection?: { rational: Rational; label: string; color: string };
+  onInspect?: (r: Rational | null) => void;
+  approximationIndex?: number;
   linkedPlayback?: ReturnType<typeof useRunPlayback>;
   onPatch: (changes: Partial<Scene>) => void;
   math: ReturnType<typeof derive>;
@@ -116,6 +120,32 @@ function initialPanes(): Pane[] {
 }
 export function Workspace(props: WorkspaceProps) {
   const [panes, setPanes] = useState(initialPanes);
+  const [selectedEdge, setSelectedEdge] = useState(2);
+  const [inspect, setInspect] = useState<Rational | null>(null);
+  const [approximationIndex, setApproximationIndex] = useState(4);
+  const approximation = Math.min(
+    approximationIndex,
+    props.convergents.length - 1,
+  );
+  const finiteDiagram =
+    props.scene.spec.kind === "periodic" &&
+    panes.some((p) => p.kind === "tangle" || p.kind === "braid");
+  const focused =
+    inspect ??
+    props.convergents[finiteDiagram ? approximation : props.selected];
+  const inspection = focused
+    ? {
+        color: inspect
+          ? "#344d43"
+          : stageColor(finiteDiagram ? approximation : props.selected),
+        rational: focused,
+        label: rationalRole(focused, props.coefficients) ?? "Rational",
+      }
+    : undefined;
+  useEffect(
+    () => setInspect(null),
+    [props.scene.spec, props.selected, approximation],
+  );
   const [flipPlaying, setFlipPlaying] = useState(false);
   const canLink =
     !props.rectangle.unavailable &&
@@ -390,6 +420,46 @@ export function Workspace(props: WorkspaceProps) {
           {infinite && <span>No finite regular expansion</span>}
         </div>
       </div>
+      {finiteDiagram && (
+        <div className="shared-approximation">
+          <label>
+            Finite diagram approximation{" "}
+            <select
+              aria-label="Diagram convergent"
+              value={approximation}
+              onChange={(e) => setApproximationIndex(Number(e.target.value))}
+            >
+              {props.convergents.map((r, i) => (
+                <option key={i} value={i}>
+                  C{i} = {label(r)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span>
+            α remains irrational; editing the tangle makes it rational.
+          </span>
+          <button
+            onClick={() => props.onNumber(props.convergents[approximation])}
+          >
+            Use approximation as α
+          </button>
+        </div>
+      )}
+      {inspect && (
+        <div className="shared-inspection" role="status">
+          {inspection?.label}: {label(inspect)}
+          <span>
+            {inspect.q
+              ? `Ford radius 1/${2n * inspect.q * inspect.q} in H²`
+              : "Ford horocycle y = 1 in H²"}
+          </span>
+          <button onClick={() => props.onNumber(inspect)}>
+            Use this endpoint
+          </button>
+          <button onClick={() => setInspect(null)}>Close inspection</button>
+        </div>
+      )}
       {props.inputError}
       <div className="comparison-grid">
         {panes.map((pane, i) => (
@@ -402,6 +472,9 @@ export function Workspace(props: WorkspaceProps) {
             onActivate={() => setActivePane(pane.id)}
             shared={{
               ...props,
+              inspection,
+              onInspect: setInspect,
+              approximationIndex: approximation,
               linkedPlayback: runs.enabled ? runs : undefined,
               onSeek: (time) => {
                 runs.disable();
@@ -421,6 +494,8 @@ export function Workspace(props: WorkspaceProps) {
               },
               triangulation: {
                 ...props.triangulation,
+                selectedEdge,
+                onSelectedEdge: setSelectedEdge,
                 onSeekCoefficient: (i) => {
                   runs.disable();
                   setFlipPlaying(false);
@@ -502,13 +577,27 @@ function TrajectoryControls({ shared: p }: { shared: WorkspaceProps }) {
         <button onClick={() => p.onSeek(0)} aria-label="Restart trajectory">
           ↺
         </button>
-        <button onClick={() => p.onStepTrajectory(-1)}>
-          Previous crossing
+        <button
+          aria-label="Previous crossing"
+          title="Previous Farey crossing"
+          onClick={() => p.onStepTrajectory(-1)}
+        >
+          Previous
         </button>
-        <button className="primary-action" onClick={p.onToggleTrajectory}>
-          {p.playing ? "Pause trajectory" : "Play trajectory"}
+        <button
+          aria-label={p.playing ? "Pause trajectory" : "Play trajectory"}
+          className="primary-action"
+          onClick={p.onToggleTrajectory}
+        >
+          {p.playing ? "Pause" : "Play"}
         </button>
-        <button onClick={() => p.onStepTrajectory(1)}>Next crossing</button>
+        <button
+          aria-label="Next crossing"
+          title="Next Farey crossing"
+          onClick={() => p.onStepTrajectory(1)}
+        >
+          Next
+        </button>
       </div>
       <label className="pane-scrubber">
         Hyperbolic time · t = {p.scene.time.toFixed(2)}
@@ -522,35 +611,35 @@ function TrajectoryControls({ shared: p }: { shared: WorkspaceProps }) {
           onChange={(e) => p.onSeek(Number(e.target.value))}
         />
       </label>
-      <div className="workspace-actions">
-        <label>
-          <input
-            type="checkbox"
-            checked={p.reverse}
-            onChange={(e) => p.onReverse(e.target.checked)}
-          />{" "}
-          Reverse
-        </label>
-        <label>
-          Speed{" "}
-          <select
-            aria-label="Playback speed"
-            value={p.scene.speed}
-            onChange={(e) => p.onPatch({ speed: Number(e.target.value) })}
-          >
-            {[0.25, 0.5, 1, 2, 4].map((v) => (
-              <option key={v} value={v}>
-                {v}×
-              </option>
-            ))}
-          </select>
-        </label>
-        <button disabled={!run} onClick={() => run && p.onSeek(run.time)}>
-          Seek selected run
-        </button>
-      </div>
       <details className="workspace-details">
-        <summary>Trajectory events and depth</summary>
+        <summary>Playback options & events</summary>{" "}
+        <div className="workspace-actions">
+          <label>
+            <input
+              type="checkbox"
+              checked={p.reverse}
+              onChange={(e) => p.onReverse(e.target.checked)}
+            />{" "}
+            Reverse
+          </label>
+          <label>
+            Speed{" "}
+            <select
+              aria-label="Playback speed"
+              value={p.scene.speed}
+              onChange={(e) => p.onPatch({ speed: Number(e.target.value) })}
+            >
+              {[0.25, 0.5, 1, 2, 4].map((v) => (
+                <option key={v} value={v}>
+                  {v}×
+                </option>
+              ))}
+            </select>
+          </label>
+          <button disabled={!run} onClick={() => run && p.onSeek(run.time)}>
+            Seek selected run
+          </button>
+        </div>
         <p>
           z(t) = α + 2i exp(−t). Display cutoff y ={" "}
           {heightAt(p.scene.end).toExponential(1)}; the ideal endpoint is never
@@ -618,35 +707,44 @@ function ComparisonPane({
   const [overlays, setOverlays] = useState(p.scene.overlays),
     [follow, setFollow] = useState(p.scene.follow);
   const [camera, setCamera] = useState<"full" | "remainder">("full");
-  const [inspect, setInspect] = useState<Rational | null>(null);
   const [showTriangulation, setShowTriangulation] = useState(false);
   const infinite = p.scene.spec.kind === "rational" && !p.scene.spec.value.q;
   const triangleVisible =
     showTriangulation || ["triangulation", "farey"].includes(other.kind);
   const triState = p.scene.triangulation ?? targetItinerary(p.scene.spec);
   const stage = p.rectangle.stages[p.selected];
-  const linkRun = isCoefficientView(other.kind);
-  const selectedRun =
-    linkRun && !infinite
-      ? {
-          segments: coefficientTrace(
-            p.math.quotient.segments,
-            p.math.farey.crossings,
-            p.selected,
-            approximate(p.scene.spec),
-            p.scene.end,
-          ),
-          term: p.selected,
-          color: stageColor(p.selected),
-        }
-      : undefined;
-  useEffect(() => setInspect(null), [p.scene.spec]);
+  const selectedRun = !infinite
+    ? {
+        segments: coefficientTrace(
+          p.math.quotient.segments,
+          p.math.farey.crossings,
+          p.selected,
+          approximate(p.scene.spec),
+          p.scene.end,
+        ),
+        term: p.selected,
+        color: stageColor(p.selected),
+      }
+    : undefined;
   const flipPartner = other.kind === "triangulation";
+  const focus = infinite
+    ? undefined
+    : domainFocus(
+        p.math.quotient.segments,
+        approximate(p.scene.spec),
+        p.scene.time,
+      );
+  const surfacePartner = other.kind === "torus" || other.kind === "orbifold";
   const diskOptions = {
+    domainFocus: surfacePartner ? focus : undefined,
     overlays: { ...overlays, dual: true },
     showFlipPath: flipPartner,
+    showCurrentTriangle: other.kind === "h2",
     torusLift: other.kind === "torus" ? other.lift : undefined,
-    onInspect: setInspect,
+    onInspect: p.onInspect,
+    inspection: p.inspection,
+    selectedRun,
+    selectedEdge: p.triangulation.selectedEdge,
     onEndpointStart: p.rectangle.onStart,
     onEndpointMove: p.rectangle.onMove,
     onEndpointEnd: p.rectangle.onEnd,
@@ -717,6 +815,7 @@ function ComparisonPane({
             coefficients={p.coefficients}
             selected={p.selected}
             onSelect={p.onSelect}
+            sharedControls
             onEdit={p.onEditCoefficient}
             crossings={p.math.farey.crossings}
             onExtend={p.onExtendTerms}
@@ -724,10 +823,12 @@ function ComparisonPane({
         )}
         {pane.kind === "braid" && (
           <CFBraid
+            approximationIndex={p.approximationIndex}
             spec={p.scene.spec}
             coefficients={p.coefficients}
             selected={p.selected}
             onSelect={p.onSelect}
+            sharedControls
             onEdit={p.onEditCoefficient}
             onNumber={p.onNumber}
             onExtend={p.onExtendTerms}
@@ -748,35 +849,42 @@ function ComparisonPane({
                     <div className="workspace-actions">
                       <button
                         disabled={!p.selected}
+                        aria-label="Previous stage"
+                        title="Previous Euclidean stage"
                         onClick={() => p.rectangle.onStep(-1)}
                       >
-                        Previous stage
+                        Previous
                       </button>
                       <button
                         className="primary-action"
+                        aria-label={
+                          p.rectangle.playing
+                            ? "Pause dissection"
+                            : "Play dissection"
+                        }
                         onClick={p.rectangle.onToggle}
                       >
-                        {p.rectangle.playing
-                          ? "Pause dissection"
-                          : "Play dissection"}
+                        {p.rectangle.playing ? "Pause" : "Play"}
                       </button>
                       <button
                         disabled={
                           stage?.terminal ||
                           (p.scene.spec.kind === "periodic" && p.selected >= 95)
                         }
+                        aria-label="Next stage"
+                        title="Next Euclidean stage"
                         onClick={() => p.rectangle.onStep(1)}
                       >
-                        Next stage
+                        Next
                       </button>
-                      <button onClick={() => p.onSelect(0)}>
-                        Restart dissection
+                      <button
+                        aria-label="Restart dissection"
+                        title="Restart dissection"
+                        onClick={() => p.onSelect(0)}
+                      >
+                        ↺
                       </button>
                     </div>
-                    <p>
-                      Euclidean stage a{p.selected} · one square group per step.
-                      Hyperbolic time is unchanged.
-                    </p>
                   </div>
                 )}
                 <RectangleDissection
@@ -833,6 +941,21 @@ function ComparisonPane({
                   Auto zoom
                 </label>
               )}
+              {surfacePartner && !overlays.modular && (
+                <button
+                  className="layer-preset"
+                  onClick={() =>
+                    setOverlays((v) => ({
+                      ...v,
+                      modular: true,
+                      farey: false,
+                      ford: false,
+                    }))
+                  }
+                >
+                  Match surface layers
+                </button>
+              )}
               <details>
                 <summary>More layers</summary>
                 {(
@@ -875,6 +998,7 @@ function ComparisonPane({
               flipPartner ? (
                 <MarkedTriangulation
                   {...p.triangulation}
+                  compact
                   view="farey"
                   diskOptions={diskOptions}
                 />
@@ -898,6 +1022,7 @@ function ComparisonPane({
               </p>
             ) : (
               <HalfPlane
+                domainFocus={surfacePartner ? focus : undefined}
                 scene={localScene}
                 flipPath={flipPartner ? triState : undefined}
                 torusLift={other.kind === "torus" ? other.lift : undefined}
@@ -907,41 +1032,16 @@ function ComparisonPane({
                 }
                 crossings={p.math.farey.crossings}
                 selectedTerm={p.selected}
-                onInspect={setInspect}
+                inspection={p.inspection}
+                selectedRun={selectedRun}
+                selectedEdge={p.triangulation.selectedEdge}
+                onInspect={p.onInspect!}
                 onEndpointStart={p.rectangle.onStart}
                 onEndpointMove={p.rectangle.onMove}
                 onEndpointEnd={p.rectangle.onEnd}
               />
             )}
             {overlays.modular && <DomainEdgeLegend />}
-            {other.kind === "torus" && (
-              <p className="pane-note">
-                Domain fills match the punctured modular torus · lift{" "}
-                {other.lift}.
-              </p>
-            )}
-            {pane.kind === "h2" &&
-              other.kind !== "torus" &&
-              triangleVisible && (
-                <p className="pane-note">
-                  Fixed triangle colors match the Poincare Disk and lattice
-                  faces.
-                </p>
-              )}
-            {inspect && (
-              <div className="pane-inspection">
-                Ford horocycle {label(inspect)} ·{" "}
-                {inspect.q
-                  ? `H² radius 1/${2n * inspect.q * inspect.q}`
-                  : "H² line y = 1"}
-                <button onClick={() => p.onNumber(inspect)}>
-                  Use this endpoint
-                </button>
-                <button onClick={() => setInspect(null)}>
-                  Close inspection
-                </button>
-              </div>
-            )}
           </>
         )}
         {(pane.kind === "orbifold" || pane.kind === "torus") &&
@@ -952,6 +1052,7 @@ function ComparisonPane({
             </p>
           ) : pane.kind === "orbifold" ? (
             <Quotient
+              domainFocus={focus}
               selectedRun={selectedRun}
               alpha={approximate(p.scene.spec)}
               time={p.scene.time}
@@ -962,6 +1063,7 @@ function ComparisonPane({
           ) : (
             <>
               <ModularTorus
+                domainFocus={focus}
                 selectedRun={selectedRun}
                 lift={pane.lift}
                 onLiftChange={onLift}
@@ -971,25 +1073,13 @@ function ComparisonPane({
                 limited={p.math.quotient.limited}
                 onSeek={p.onSeek}
               />
-              <p className="pane-note">
-                Six-sheet commutator cover. Its lifted ray has no automatically
-                assigned homology slope.
-              </p>
             </>
           ))}
         {isTrajectory(pane.kind) &&
           !(pane.kind === "farey" && flipPartner) &&
-          !infinite && (
+          !infinite &&
+          !(side === "Right" && isTrajectory(other.kind)) && (
             <>
-              {selectedRun && pane.kind !== "h2" && pane.kind !== "farey" && (
-                <p className="pane-note">
-                  {selectedRun.segments.length
-                    ? `Thick colored overlay: the displayed Farey run for a${p.selected}, including its future portion. The moving point keeps its own time.`
-                    : p.selected === 0
-                      ? "a₀ translates the initial Farey bracket; it is not a crossing run."
-                      : "This coefficient has no crossings in the current display window (run offsets apply)."}
-                </p>
-              )}
               {p.linkedPlayback ? (
                 <>
                   <p className="pane-note">
@@ -1015,6 +1105,10 @@ function ComparisonPane({
           <TanglePanel
             key={pane.kind}
             linkCoefficients
+            sharedControls
+            approximationIndex={p.approximationIndex}
+            coefficients={p.coefficients}
+            showClosure={other.kind === "braid"}
             spec={p.scene.spec}
             expression={p.scene.tangle}
             convergents={p.convergents}

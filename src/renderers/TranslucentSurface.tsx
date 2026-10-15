@@ -103,24 +103,47 @@ export function TranslucentSurface({
       });
     }),
   );
-  const curves = (foreground: boolean) =>
-    fragments
-      .filter((f) => f.front === foreground)
-      .map((f) => (
-        <path
-          key={f.key}
-          data-domain-side={f.line.side}
-          data-surface-trail={f.line.trail || undefined}
-          data-selected-run={f.line.selectedRun}
-          data-surface-front={foreground}
-          d={path(f.points)}
+  const curves = (foreground: boolean) => {
+    const layer = fragments.filter((f) => f.front === foreground);
+    // Draw every halo before the colored strokes; per-fragment halos would
+    // cover their neighbors' round caps and produce a striped curve.
+    return (
+      <>
+        <g
+          pointerEvents="none"
           fill="none"
-          stroke={f.line.color}
-          strokeWidth={f.line.width}
+          stroke="#fffdf7"
+          strokeOpacity={0.85}
           strokeLinecap="round"
-          onClick={f.line.onSelect}
-        />
-      ));
+        >
+          {layer
+            .filter((f) => f.line.selectedRun !== undefined)
+            .map((f) => (
+              <path
+                key={f.key}
+                d={path(f.points)}
+                strokeWidth={f.line.width + 2.5}
+              />
+            ))}
+        </g>
+        {layer.map((f) => (
+          <path
+            key={f.key}
+            data-domain-side={f.line.side}
+            data-surface-trail={f.line.trail || undefined}
+            data-selected-run={f.line.selectedRun}
+            data-surface-front={foreground}
+            d={path(f.points)}
+            fill="none"
+            stroke={f.line.color}
+            strokeWidth={f.line.width}
+            strokeLinecap="round"
+            onClick={f.line.onSelect}
+          />
+        ))}
+      </>
+    );
+  };
   return (
     <g data-translucent-surface="true">
       {curves(false)}

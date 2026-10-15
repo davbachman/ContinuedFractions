@@ -27,19 +27,15 @@ test("defaults to two views, synchronizes coefficient edits and undo, and fits d
   await left(page)
     .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
     .click();
-  await expect(
-    right(page).getByText("Euclidean stage a2", { exact: false }),
-  ).toBeVisible();
-  await left(page).getByLabel("Edit a2", { exact: true }).fill("3");
-  await left(page)
-    .getByRole("button", { name: "Apply coefficient", exact: true })
-    .click();
+  await expect(right(page).locator(".rectangle-caption strong")).toBeVisible();
+  await page.getByLabel("Edit coefficient a2", { exact: true }).fill("3");
+  await page.getByLabel("Edit coefficient a2", { exact: true }).press("Enter");
   await expect(page.getByLabel("ENDPOINT α")).not.toHaveValue("5/13");
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
-  await expect(left(page).getByLabel("Edit a2", { exact: true })).toHaveValue(
-    "1",
-  );
+  await expect(
+    page.getByLabel("Edit coefficient a2", { exact: true }),
+  ).toHaveValue("1");
   const a = (await left(page).boundingBox())!,
     b = (await right(page).boundingBox())!;
   if (info.project.name === "mobile")
@@ -141,8 +137,11 @@ test("two H² cameras and layers are independent and share trajectory time", asy
     .getByRole("slider", { name: "Scrub trajectory" })
     .fill("1.2");
   await expect(
-    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+    left(page).getByRole("slider", { name: "Scrub trajectory" }),
   ).toHaveValue("1.2");
+  await expect(
+    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+  ).toHaveCount(0);
   await choose(page, "Right", "torus");
   await right(page).getByLabel("Cover lift", { exact: true }).selectOption("3");
   await expect(
@@ -185,6 +184,7 @@ test("canonical tangle selection links coefficients, custom words and irrational
   page,
 }, info) => {
   await choose(page, "Right", "tangle");
+  await right(page).locator(".tangle-expression summary").click();
   await left(page)
     .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
     .click();
@@ -210,16 +210,16 @@ test("canonical tangle selection links coefficients, custom words and irrational
     right(page).getByText(/Custom signed construction/),
   ).toBeVisible();
   await page.getByRole("button", { name: "Undo number edit" }).click();
-  await expect(right(page).getByText(/Canonical construction/)).toBeVisible();
+  await expect(right(page).locator("[data-linked-coefficient]")).toHaveCount(1);
   await page.getByLabel("ENDPOINT α").fill("φ");
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
-  await right(page)
-    .getByLabel("Tangle convergent", { exact: true })
+  await page
+    .getByLabel("Diagram convergent", { exact: true })
     .selectOption("4");
   await expect(
-    right(page).getByText(/Approximation: convergent/),
+    page.getByLabel("Diagram convergent", { exact: true }),
   ).toContainText("8/5");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
   await right(page)
@@ -284,10 +284,16 @@ test("Farey crossing highlights obey each pane's Farey edges toggle while seekin
         .getImageData(0, 0, node.width, node.height).data;
       let count = 0;
       for (let i = 0; i < pixels.length; i += 4)
-        if (pixels[i] === 207 && pixels[i + 1] === 116 && pixels[i + 2] === 72)
+        if (pixels[i] === 101 && pixels[i + 1] === 137 && pixels[i + 2] === 171)
           count++;
       return count;
     });
+  for (const region of [left(page), right(page)]) {
+    await region.getByLabel("Ford circles", { exact: true }).uncheck();
+    await region.getByText("More layers", { exact: true }).click();
+    await region.getByLabel("Trajectory", { exact: true }).uncheck();
+    await region.getByLabel("Convergents", { exact: true }).uncheck();
+  }
   const scrub = left(page).getByRole("slider", { name: "Scrub trajectory" });
   await scrub.fill("2");
   await page.locator('.comparison-coefficients [data-coefficient="2"]').click();

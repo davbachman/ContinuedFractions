@@ -204,10 +204,10 @@ test("large exact α discloses wrap limits without inventing a flip or changing 
   await button(page, "Poincare Disk").click();
   await button(page, "Center Farey triangle").click();
   await button(page, "Euclidean lattice").click();
-  await expect(page.getByTestId("triangulation-slope-0")).toHaveText(String(n));
+  await expect(page.getByTestId("triangulation-slope-0")).toHaveText(`${n} C0`);
   await page.locator(".flip-slope-strip button").first().focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("triangulation-slope-0")).toHaveText(String(n));
+  await expect(page.getByTestId("triangulation-slope-0")).toHaveText(`${n} C0`);
   await expect(button(page, "Next flip step")).toBeDisabled();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue(String(n));
   expect(

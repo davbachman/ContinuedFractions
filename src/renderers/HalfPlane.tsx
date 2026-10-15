@@ -1,3 +1,5 @@
+import type { DomainFocus } from "./domainFocus";
+import type { SelectedRun } from "./selectedRun";
 import {
   flip,
   triangulationPath,
@@ -28,6 +30,10 @@ import {
   FAREY_FILL_OPACITY,
 } from "./fareyColors";
 type Props = {
+  domainFocus?: DomainFocus;
+  inspection?: { rational: Rational; label: string; color: string };
+  selectedRun?: SelectedRun;
+  selectedEdge?: number;
   scene: Scene;
   torusLift?: number;
   colorFarey?: boolean;
@@ -42,6 +48,10 @@ type Props = {
   onEndpointEnd: (cancelled: boolean) => void;
 };
 export function HalfPlane({
+  domainFocus,
+  inspection,
+  selectedRun,
+  selectedEdge,
   scene,
   torusLift,
   colorFarey = false,
@@ -177,9 +187,16 @@ export function HalfPlane({
       max = toWorld(size.width);
     const geometry = visibleFarey(min, max, scale);
     const tiles =
-      torusLift === undefined || colorFarey
+      (torusLift === undefined && !domainFocus) || colorFarey
         ? []
-        : visibleTorusDomains(geometry, min, max, scale, bottom, torusLift);
+        : visibleTorusDomains(
+            geometry,
+            min,
+            max,
+            scale,
+            bottom,
+            torusLift ?? 0,
+          );
     node.dataset.torusDomainCount = String(tiles.length);
     node.dataset.torusLift = torusLift === undefined ? "" : String(torusLift);
     ctx.save();
@@ -243,8 +260,36 @@ export function HalfPlane({
         }
       });
       ctx.closePath();
-      ctx.fillStyle = torusDomainColor(tile.sheet);
-      ctx.fill();
+      if (torusLift !== undefined) {
+        ctx.fillStyle = torusDomainColor(tile.sheet);
+        ctx.fill();
+      }
+      if (domainFocus?.key === tile.key) {
+        ctx.save();
+        ctx.globalAlpha = 1;
+        for (const index of [0, 2]) {
+          const b = tile.boundaries[index],
+            side = index === 0 ? "S" : "T";
+          ctx.beginPath();
+          if (b.kind === "line") {
+            ctx.moveTo(X(b.from.x), Y(b.from.y));
+            ctx.lineTo(X(b.to.x), Y(b.to.y));
+          } else
+            ctx.arc(
+              X(b.x),
+              bottom,
+              b.radius * scale,
+              -b.from,
+              -b.to,
+              b.to > b.from,
+            );
+          ctx.strokeStyle =
+            domainFocus.seam === side ? domainEdgeColor[side] : "#344d43";
+          ctx.lineWidth = domainFocus.seam === side ? 5 : 2.5;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
     ctx.restore();
     if (triangulation) {
@@ -351,7 +396,7 @@ export function HalfPlane({
           const a = triangulation[(i + 1) % 3],
             b = triangulation[(i + 2) % 3];
           ctx.strokeStyle = flipColors[i];
-          ctx.lineWidth = 2.5;
+          ctx.lineWidth = selectedEdge === i ? 4 : 2;
           if (!a.q || !b.q) {
             const x = X(value(a.q ? a : b));
             ctx.beginPath();
@@ -363,7 +408,7 @@ export function HalfPlane({
               Math.min(value(a), value(b)),
               Math.max(value(a), value(b)),
               flipColors[i],
-              2.5,
+              selectedEdge === i ? 4 : 2,
             );
         });
       ctx.font = "bold 12px ui-monospace, monospace";
@@ -377,7 +422,7 @@ export function HalfPlane({
     }
     if (scene.overlays.farey && !flipPath)
       for (const e of crossings.filter((e) => e.term === selectedTerm))
-        edge(value(e.left), value(e.right), "#cf7448", 2.5);
+        edge(value(e.left), value(e.right), stageColor(selectedTerm), 2.5);
     if (flipPath) {
       const path = triangulationPath(flipPath);
       for (let i = 0; i < flipPath.steps.length; i++) {
@@ -424,6 +469,35 @@ export function HalfPlane({
       ctx.moveTo(x, Y(2));
       ctx.lineTo(x, Y(y));
       ctx.stroke();
+      if (selectedRun?.segments.length) {
+        ctx.beginPath();
+        ctx.moveTo(x, Y(heightAt(selectedRun.segments[0].start)));
+        ctx.lineTo(x, Y(heightAt(selectedRun.segments.at(-1)!.end)));
+        ctx.strokeStyle = "#fffdf7";
+        ctx.lineWidth = 8;
+        ctx.stroke();
+        ctx.strokeStyle = selectedRun.color;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        for (const t of [
+          selectedRun.segments[0].start,
+          selectedRun.segments.at(-1)!.end,
+        ]) {
+          ctx.beginPath();
+          ctx.arc(x, Y(heightAt(t)), 4, 0, 2 * Math.PI);
+          ctx.fillStyle = "#fffdf7";
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        const labelY = Y(heightAt(selectedRun.segments[0].start));
+        if (labelY > 20 && labelY < bottom - 20) {
+          ctx.font = "bold 12px ui-monospace, monospace";
+          ctx.fillStyle = selectedRun.color;
+          ctx.textAlign = "left";
+          ctx.fillText(`a${selectedRun.term}`, x + 9, labelY - 5);
+        }
+      }
       for (const e of crossings) {
         if (e.time > scene.time) continue;
         ctx.beginPath();
@@ -489,7 +563,49 @@ export function HalfPlane({
         ctx.fill();
       }
     }
+    if (inspection && (scene.overlays.convergents || scene.overlays.ford)) {
+      const r = inspection.rational,
+        x = r.q ? X(value(r)) : size.width - 22;
+      if (!r.q && scene.overlays.ford) {
+        ctx.strokeStyle = inspection.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, Y(1));
+        ctx.lineTo(size.width, Y(1));
+        ctx.stroke();
+        ctx.font = "bold 12px ui-monospace, monospace";
+        ctx.textAlign = "right";
+        ctx.fillStyle = inspection.color;
+        ctx.fillText("∞ · Ford horocycle y = 1", size.width - 10, Y(1) - 9);
+      } else if (r.q && x >= -20 && x <= size.width + 20) {
+        ctx.strokeStyle = inspection.color;
+        ctx.lineWidth = 3;
+        if (scene.overlays.ford && r.q) {
+          const radius = scale / Number(2n * r.q * r.q);
+          ctx.beginPath();
+          ctx.arc(x, bottom - radius, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(x, bottom, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "#fbfbf6";
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = "bold 12px ui-monospace, monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = inspection.color;
+        ctx.fillText(
+          `${inspection.label} = ${label(r)}`,
+          Math.max(65, Math.min(size.width - 65, x)),
+          bottom - 24,
+        );
+      }
+    }
   }, [
+    domainFocus,
+    inspection,
+    selectedRun,
+    selectedEdge,
     scene,
     size,
     zoom,
@@ -509,6 +625,12 @@ export function HalfPlane({
     <div className="canvas-wrap">
       <canvas
         ref={canvas}
+        data-current-domain={domainFocus?.key}
+        data-seam={domainFocus?.seam}
+        data-inspected-rational={
+          inspection ? label(inspection.rational) : undefined
+        }
+        data-selected-run={selectedRun?.term}
         data-flip-path={flipPath ? flipPath.steps.length : undefined}
         data-flip-cursor={flipPath?.cursor}
         data-triangulation={triangulation?.map(label).join(" | ")}

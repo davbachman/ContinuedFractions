@@ -1,3 +1,5 @@
+import type { DomainFocus } from "./domainFocus";
+import type { SelectedRun } from "./selectedRun";
 import { useMemo, useState, useRef, useEffect } from "react";
 import {
   fromCF,
@@ -41,8 +43,13 @@ import { domainEdgeColor } from "./domainEdges";
 import { torusDomainColor } from "./torusDomains";
 import type { Rational } from "../math/rational";
 export type DiskOptions = {
+  domainFocus?: DomainFocus;
+  inspection?: { rational: Rational; label: string; color: string };
+  selectedRun?: SelectedRun;
+  selectedEdge?: number;
   overlays?: Overlays;
   showFlipPath?: boolean;
+  showCurrentTriangle?: boolean;
   torusLift?: number;
   onInspect?: (r: Rational) => void;
   onEndpointStart?: () => void;
@@ -72,6 +79,10 @@ type Props = DiskOptions & {
   selectEdge: (edge: number) => void;
 };
 export function FareyDisk({
+  domainFocus,
+  inspection,
+  selectedRun,
+  selectedEdge,
   spec,
   time,
   tri,
@@ -82,6 +93,7 @@ export function FareyDisk({
   selectEdge,
   overlays = defaultOverlays,
   showFlipPath = false,
+  showCurrentTriangle = false,
   torusLift,
   onInspect,
   onEndpointStart,
@@ -123,12 +135,12 @@ export function FareyDisk({
   }, [neighborhood, spec, camera]);
   const domains = useMemo(
     () =>
-      overlays.modular || torusLift !== undefined
+      overlays.modular || torusLift !== undefined || domainFocus !== undefined
         ? neighborhood.triangles.flatMap((t) =>
             diskDomains(t, camera, torusLift),
           )
         : [],
-    [neighborhood, camera, overlays.modular, torusLift],
+    [neighborhood, camera, overlays.modular, torusLift, domainFocus],
   );
   const endpoint = projection.vertex(target);
   const point = moving ? projection.point(moving) : null;
@@ -323,6 +335,43 @@ export function FareyDisk({
             ))}
           </g>
         )}
+        {domainFocus && (
+          <g
+            data-current-domain={domainFocus.key}
+            data-seam={domainFocus.seam}
+            transform={transform}
+            fill="none"
+            pointerEvents="none"
+          >
+            {domains
+              .filter((d) => d.key === domainFocus.key)
+              .map((d, i) => (
+                <g key={i}>
+                  {(
+                    [
+                      ["S", d.s],
+                      ["T", d.t],
+                    ] as const
+                  ).map(
+                    ([side, path]) =>
+                      path && (
+                        <path
+                          key={side}
+                          d={path}
+                          stroke={
+                            domainFocus.seam === side
+                              ? domainEdgeColor[side]
+                              : "#344d43"
+                          }
+                          strokeWidth={domainFocus.seam === side ? 5 : 2.5}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ),
+                  )}
+                </g>
+              ))}
+          </g>
+        )}
         {overlays.modular && (
           <g
             transform={transform}
@@ -419,8 +468,12 @@ export function FareyDisk({
           d={diskTrianglePath(tri, camera)}
           transform={transform}
           fill="none"
-          stroke={showFlipPath ? "#425b48" : "none"}
-          strokeWidth={0.5}
+          stroke={
+            showFlipPath || (showCurrentTriangle && overlays.farey)
+              ? "#425b48"
+              : "none"
+          }
+          strokeWidth={showFlipPath ? 0.5 : 1.7}
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
         />
@@ -436,7 +489,7 @@ export function FareyDisk({
                 transform={transform}
                 fill="none"
                 stroke={flipColors[i]}
-                strokeWidth="2.5"
+                strokeWidth={selectedEdge === i ? 4 : 2}
                 vectorEffect="non-scaling-stroke"
               >
                 <title>Cross this side to replace slope {label(r)}</title>
@@ -501,6 +554,106 @@ export function FareyDisk({
             pointerEvents="none"
           />
         )}
+        {selectedRun?.segments.length && moving && overlays.trajectory
+          ? (() => {
+              const a = projection.point({
+                x: target,
+                y: heightAt(selectedRun.segments[0].start),
+              });
+              const b = projection.point({
+                x: target,
+                y: heightAt(selectedRun.segments.at(-1)!.end),
+              });
+              return (
+                <g data-trajectory-run={selectedRun.term}>
+                  <path
+                    d={`M${a.x} ${a.y}` + diskGeodesic(a, b)}
+                    transform={transform}
+                    fill="none"
+                    stroke="#fffdf7"
+                    strokeWidth={8}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                  <path
+                    d={`M${a.x} ${a.y}` + diskGeodesic(a, b)}
+                    transform={transform}
+                    fill="none"
+                    stroke={selectedRun.color}
+                    strokeWidth={5}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  >
+                    <title>Selected run a{selectedRun.term}</title>
+                  </path>
+                  {[a, b].map((p, i) => (
+                    <circle
+                      key={i}
+                      cx={190 + 145 * p.x}
+                      cy={185 + 145 * p.y}
+                      r={3}
+                      fill="#fffdf7"
+                      stroke={selectedRun.color}
+                      strokeWidth={1.5}
+                      pointerEvents="none"
+                    />
+                  ))}
+                  <text
+                    x={190 + 145 * a.x + 6}
+                    y={185 + 145 * a.y - 5}
+                    fill={selectedRun.color}
+                    fontSize={10}
+                    stroke="#fbfbf6"
+                    strokeWidth={2}
+                    paintOrder="stroke"
+                  >
+                    a{selectedRun.term}
+                  </text>
+                </g>
+              );
+            })()
+          : null}
+        {inspection &&
+          (overlays.convergents || overlays.ford) &&
+          (() => {
+            const r = inspection.rational,
+              p = projection.vertex(r),
+              c = diskFordCircle(r, camera);
+            return (
+              <g
+                data-inspected-rational={label(r)}
+                stroke={inspection.color}
+                pointerEvents="none"
+              >
+                {overlays.ford && (
+                  <circle
+                    cx={190 + 145 * c.x}
+                    cy={185 + 145 * c.y}
+                    r={145 * c.radius}
+                    fill="none"
+                    strokeWidth={3}
+                  />
+                )}
+                <circle
+                  cx={190 + 145 * p.x}
+                  cy={185 + 145 * p.y}
+                  r={6}
+                  fill="#fbfbf6"
+                  strokeWidth={3}
+                />
+                <text
+                  x={190 + 116 * p.x}
+                  y={185 + 116 * p.y}
+                  fill={inspection.color}
+                  stroke="none"
+                  textAnchor="middle"
+                  fontSize={10}
+                >
+                  {inspection.label} = {short(label(r))}
+                </text>
+              </g>
+            );
+          })()}
         <g data-target-marker="true" pointerEvents="none">
           <circle
             cx={190 + 145 * endpoint.x}
@@ -651,16 +804,19 @@ export function FareyDisk({
         </button>
       </div>
 
-      <p className="flip-diagram-caption">
-        Poincare Disk · the orange point is the same moving H² point.
-        {showFlipPath
-          ? " Three colors match the lattice edge classes and slope labels. Crossing a colored side replaces the slope of that color. Path segments group flips by coefficient; dashed segments are ahead."
-          : " Layer controls show the same hyperbolic geometry as H² in a disk."}
-      </p>
-      <p className="plot-hint">
-        Drag to pan · drag α to edit with rational snapping · wheel or two
-        fingers ↑ zoom in / ↓ out. Camera controls leave α unchanged.
-      </p>
+      <details className="workspace-details">
+        <summary>Camera & diagram guide</summary>
+        <p>
+          Drag to pan; drag α to edit. Wheel or two-finger vertical drag zooms.
+          The orange point shares H² time.
+        </p>
+        {showFlipPath && (
+          <p>
+            Crossing a colored side replaces the slope of that color. Dashed
+            path segments are future flips.
+          </p>
+        )}
+      </details>
       {!moving && (
         <p className="topology-note">
           ∞ has no finite vertical H² ray. The disk shows the triangulation

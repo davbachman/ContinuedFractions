@@ -16,42 +16,42 @@ test("visible restart and coefficient following synchronize both flip panes with
   const coefficient = (i: number, _value: number) =>
     page.locator(`.comparison-coefficients [data-coefficient="${i}"]`);
   await coefficient(3, 1).click();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await expect(button(left, "Go to selected coefficient")).toContainText(
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
+  await expect(button(right, "Go to selected coefficient")).toContainText(
     "Go to a3 = 1",
   );
-  await button(left, "Go to selected coefficient").click();
+  await button(right, "Go to selected coefficient").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 4 / 5");
   await right
     .getByLabel("Follow selected coefficient", { exact: true })
     .check();
   await expect(
-    left.getByLabel("Follow selected coefficient", { exact: true }),
+    right.getByLabel("Follow selected coefficient", { exact: true }),
   ).toBeChecked();
   await coefficient(1, 2).click();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 2 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
   await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
   await button(right, "Restart flips").click();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await expect(coefficient(0, 0)).toHaveValue("0");
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 2 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
   await page
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await button(left, "Play flips").click();
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
+  await button(right, "Play flips").click();
   await expect(button(right, "Pause flips")).toBeVisible();
   await button(right, "Restart flips").click();
-  await expect(button(left, "Play flips")).toBeVisible();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
+  await expect(button(right, "Play flips")).toBeVisible();
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await right
     .getByLabel("Follow selected coefficient", { exact: true })
     .uncheck();
   await coefficient(3, 1).click();
-  await expect(left.getByTestId("flip-status")).toContainText("Step 0 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page.locator(".comparison-grid").screenshot({
     path: `test-results/${info.project.name}-flip-controls.png`,
@@ -73,7 +73,7 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
     .check();
   await page.locator('.comparison-coefficients [data-coefficient="1"]').click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 1");
-  await expect(right).toContainText("a1 has no flips");
+  await expect(right).toContainText("no flip after the boundary offsets");
   await expect(
     page.locator('.comparison-coefficients [data-coefficient="1"]'),
   ).toHaveValue("1");
@@ -145,9 +145,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
     }),
   ).toBeHidden();
   await expect(button(right, "Explain this flip")).toHaveCount(0);
-  await expect(
-    left.getByText("Following α automatically", { exact: true }),
-  ).toBeVisible();
+  await expect(right.getByTestId("flip-status")).toContainText("Step 0");
   await expect(
     page.getByRole("button", { name: "Manual flips", exact: true }),
   ).toHaveCount(0);
@@ -156,17 +154,17 @@ test("paired Farey and square panes share following, coefficient runs and playba
     "data-slopes",
     (await square.getAttribute("data-slopes")) as string,
   );
-  await expect(left.getByTestId("flip-run-caption")).toContainText(
+  await expect(right.getByTestId("flip-run-caption")).toContainText(
     "Initial crossing",
   );
-  await button(left, "Next flip step").click();
+  await button(right, "Next flip step").click();
   await expect(right.getByTestId("flip-run-caption")).toContainText(
     "a1 = 2 · L run · 1 of 1",
   );
   await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
   await expect(left.locator('[data-selected-run="3"]')).toHaveCount(1);
-  await expect(left.getByTestId("flip-status")).toContainText("Step 2");
-  await button(left, "Go to selected coefficient").click();
+  await expect(right.getByTestId("flip-status")).toContainText("Step 2");
+  await button(right, "Go to selected coefficient").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 4");
   await button(right, "Previous flip step").click();
   // Freeze the animation clock while scrolling between stacked mobile panes.
@@ -174,19 +172,19 @@ test("paired Farey and square panes share following, coefficient runs and playba
   const playbackStart = new Date("2026-01-01T00:00:00Z");
   await page.clock.install({ time: playbackStart });
   await page.clock.pauseAt(playbackStart);
-  await button(left, "Play flips").click();
+  await button(right, "Play flips").click();
   await expect(button(right, "Pause flips")).toBeVisible();
   await page.clock.runFor(1500);
   await expect(right.getByTestId("flip-status")).toContainText("Step 4", {
     timeout: 4000,
   });
   await button(right, "Pause flips").click();
-  await expect(button(left, "Play flips")).toBeVisible();
+  await expect(button(right, "Play flips")).toBeVisible();
   await button(right, "Next flip step").click();
-  await expect(left.getByTestId("flip-status")).toContainText(
+  await expect(right.getByTestId("flip-status")).toContainText(
     "Terminal triangle",
   );
-  await expect(button(left, "Next flip step")).toBeDisabled();
+  await expect(button(right, "Next flip step")).toBeDisabled();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page
     .locator(".comparison-grid")
@@ -216,9 +214,9 @@ test("target-path navigation works from either pane; the square stays visible an
   ).toHaveCount(0);
   await expect(
     left.getByRole("button", { name: /^Use slope .* as target$/ }),
-  ).toHaveCount(1);
+  ).toHaveCount(0);
   await button(left, "Highlight edge 0").click();
-  await expect(button(left, "Use slope 0 as target")).toBeVisible();
+  await expect(button(right, "Use slope 0 as target")).toBeVisible();
   await expect(square).toHaveAttribute("data-slopes", "0 | ∞ | 1");
   await right
     .getByLabel("Show a hole at the shared corner", { exact: true })
@@ -261,8 +259,8 @@ test("target-path navigation works from either pane; the square stays visible an
   await button(right, "Next flip step").focus();
   await page.keyboard.press("Enter");
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
-  await left.getByText("Flip history", { exact: true }).click();
-  await expect(button(left, "Extend flip itinerary")).toHaveCount(0);
+  await right.getByText("Flip history", { exact: true }).click();
+  await expect(button(right, "Extend flip itinerary")).toHaveCount(0);
   await left.locator(".triangulation-panel").screenshot({
     path: `test-results/${info.project.name}-farey-history.png`,
   });
@@ -293,6 +291,7 @@ test("H² playback and seeking drive follow-target flips in both directions", as
   expect(Number(await clock.inputValue())).toBeGreaterThan(0);
   await clock.fill("0");
   await expect(right.getByTestId("flip-status")).toContainText("Step 0");
+  await left.getByText("Playback options & events", { exact: true }).click();
   await left.getByLabel("Playback speed", { exact: true }).selectOption("4");
   await button(left, "Play trajectory").click();
   await expect(right.getByTestId("flip-status")).not.toContainText("Step 0", {
@@ -314,7 +313,7 @@ test("H² playback and seeking drive follow-target flips in both directions", as
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   const before = await right.locator(".flip-history button").count();
-  await left.getByText("Trajectory events and depth", { exact: true }).click();
+
   await button(left, "Extend depth +4").click();
   await expect
     .poll(() => right.locator(".flip-history button").count())
@@ -363,9 +362,7 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
   await page
     .getByRole("combobox", { name: "Right representation", exact: true })
     .selectOption("triangulation");
-  await expect(right.locator(".flip-target")).toContainText(
-    `Target α = ${updated}`,
-  );
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue(updated);
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();

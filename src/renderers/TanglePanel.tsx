@@ -1,7 +1,7 @@
 import { rollCameraPoint } from "./geometry";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { type NumberSpec, specLabel } from "../math/continuedFraction";
+import { type NumberSpec, specLabel, terms } from "../math/continuedFraction";
 import { label, type Rational } from "../math/rational";
 import {
   type TangleExpression,
@@ -9,14 +9,18 @@ import {
   tangleFraction,
   mirrorExpression,
   endpointNames,
-  canonicalTwistCoefficients,
 } from "../math/tangles";
 import { tangleDiagram } from "../math/tangleDiagram";
 import { tangleCurves } from "./tangleCurves";
 import { tangleHelices } from "./tangleHelices";
 import { svgPath } from "./ModularTorus";
+import { twistCoefficientGroups } from "../math/correspondence";
 import { stageColor } from "./dissectionColors";
 type Props = {
+  sharedControls?: boolean;
+  approximationIndex?: number;
+  coefficients?: readonly bigint[];
+  showClosure?: boolean;
   linkCoefficients?: boolean;
   spec: NumberSpec;
   expression?: TangleExpression;
@@ -27,6 +31,10 @@ type Props = {
   onError: (message: string) => void;
 };
 export function TanglePanel({
+  sharedControls = false,
+  approximationIndex,
+  coefficients,
+  showClosure = false,
   spec,
   expression,
   convergents,
@@ -36,7 +44,9 @@ export function TanglePanel({
   onError,
   linkCoefficients = false,
 }: Props) {
-  const target = spec.kind === "rational" ? spec.value : convergents[selected];
+  const approximation = approximationIndex ?? selected;
+  const target =
+    spec.kind === "rational" ? spec.value : convergents[approximation];
   const ops = useMemo(
     () =>
       spec.kind === "rational" && expression
@@ -78,18 +88,25 @@ export function TanglePanel({
   }, [zoom]);
   const coefficientMap = useMemo(
     () =>
-      linkCoefficients && spec.kind === "rational"
-        ? canonicalTwistCoefficients(ops, target)
+      linkCoefficients && target.q
+        ? twistCoefficientGroups(
+            ops,
+            (coefficients ?? terms(spec, 96)).slice(
+              0,
+              spec.kind === "periodic" ? approximation + 1 : undefined,
+            ),
+          )
         : null,
-    [linkCoefficients, spec, ops, target],
+    [linkCoefficients, spec, ops, target, coefficients, approximation],
   );
   const linkedRegion = coefficientMap
-    ? [...coefficientMap].find(([, index]) => index === selected)?.[0]
+    ? [...coefficientMap].find(([, indices]) => indices.includes(selected))?.[0]
     : undefined;
   const chooseRegion = (index: number) => {
     setRegion(index);
     const coefficient = coefficientMap?.get(index);
-    if (coefficient !== undefined) onSelect(coefficient);
+    if (coefficient !== undefined)
+      onSelect(coefficient.includes(selected) ? selected : coefficient[0]);
   };
   const twistRegions = ops.flatMap((op, i) => (op.kind === "twist" ? [i] : [])),
     activeRegion = coefficientMap
@@ -193,7 +210,7 @@ export function TanglePanel({
           {label(fraction)}
         </strong>
       </div>
-      {linkCoefficients && spec.kind === "rational" && (
+      {linkCoefficients && !coefficientMap && (
         <p className="pane-note">
           {coefficientMap
             ? `Canonical construction · selected coefficient a${selected} highlights its signed twist region.`
@@ -213,15 +230,21 @@ export function TanglePanel({
               ? active.count === 0n
                 ? "H(0): zero twists"
                 : `signed region H(${active.count})`
-              : "no twist region (zero coefficient)"}
+              : "outside this finite prefix"}
           </strong>
-          <span>
-            Matching strands are emphasized in 2D and 3D. This highlights a
-            region; it does not reorder or perform the signed construction.
-          </span>
+          {coefficientMap.get(activeRegion)?.length === 2 && (
+            <span>
+              Merged ending:{" "}
+              {coefficientMap
+                .get(activeRegion)!
+                .map((i) => `a${i}`)
+                .join(" + ")}
+              .
+            </span>
+          )}
         </p>
       )}
-      {spec.kind === "periodic" && (
+      {spec.kind === "periodic" && !sharedControls && (
         <div className="tangle-approximation" role="status">
           Approximation: convergent <strong>{label(target)}</strong> of{" "}
           {specLabel(spec)}. A finite tangle does not represent the exact
@@ -247,15 +270,6 @@ export function TanglePanel({
         </div>
       )}
       <>
-        <div className="tangle-controls">
-          <button onClick={() => twist(1n)}>Add +1 endpoint twist</button>
-          <button onClick={() => twist(-1n)}>Add −1 endpoint twist</button>
-          <button onClick={() => rotate(1)}>Quarter-turn ↺</button>
-          <button onClick={() => rotate(-1)}>Quarter-turn ↻</button>
-          <button onClick={() => commit(mirrorExpression(ops))}>
-            Mirror crossings
-          </button>
-        </div>
         <div className="topology-options">
           <button aria-pressed={!three} onClick={() => setThree(false)}>
             2D diagram
@@ -319,6 +333,65 @@ export function TanglePanel({
                 stroke="#b5c1ad"
                 strokeDasharray="5 5"
               />
+            )}
+            {coefficientMap && highlightRegion >= 0 && (
+              <g
+                data-coefficient-halo={selected}
+                fill="none"
+                stroke={stageColor(selected)}
+                strokeWidth={14}
+                strokeOpacity={0.24}
+                strokeLinecap="round"
+                pointerEvents="none"
+              >
+                {lifted
+                  ? pieces
+                      .filter(
+                        (piece) =>
+                          diagram.edges[piece.id].region === highlightRegion,
+                      )
+                      .map((piece, i) => (
+                        <path key={i} d={svgPath(piece.points)} />
+                      ))
+                  : diagram.edges.map((edge, i) =>
+                      edge.region === highlightRegion ? (
+                        <path key={i} d={curves[i].path} />
+                      ) : null,
+                    )}
+              </g>
+            )}
+            {showClosure && (
+              <g
+                data-numerator-closure="true"
+                fill="none"
+                stroke="#637568"
+                strokeWidth={2}
+                strokeDasharray="6 5"
+              >
+                {[
+                  [0, 1, -42],
+                  [2, 3, 42],
+                ].map(([a, b, offset]) => {
+                  const u = point(diagram.ends[a]),
+                    v = point(diagram.ends[b]);
+                  const ps = [
+                    u,
+                    { x: u.x, y: u.y + offset },
+                    { x: v.x, y: v.y + offset },
+                    v,
+                  ].map((p) => (lifted ? project(p) : p));
+                  return (
+                    <path
+                      key={a}
+                      d={`M${ps[0].x} ${ps[0].y} C${ps[1].x} ${ps[1].y} ${ps[2].x} ${ps[2].y} ${ps[3].x} ${ps[3].y}`}
+                    >
+                      <title>
+                        Numerator closure: {a === 0 ? "NW–NE" : "SW–SE"}
+                      </title>
+                    </path>
+                  );
+                })}
+              </g>
             )}
             {lifted ? (
               pieces.map((piece, i) => (
@@ -469,14 +542,9 @@ export function TanglePanel({
         </div>
         {lifted && <p className="rotation-hint">{rotationHint}</p>}
         <p className="topology-note">
-          Open marked tangle · endpoints NW, NE, SW, SE are fixed.
-        </p>
-        <p className="topology-note">
-          +1 twists the right endpoint pair; its NW→SE branch passes over.
-          Quarter-turn is active and sends x to −1/x. Mirror switches crossings.{" "}
-          {lifted
-            ? "Each signed half-twist is a half-turn of a double helix. Paired strands wind around a shared axis; reversing the sign reverses handedness."
-            : "Gaps mark underpasses."}
+          {showClosure
+            ? "Dashed arcs: numerator closure, represented as a 4-plat in the braid pane."
+            : "Open tangle · endpoints NW, NE, SW, SE."}
         </p>
         {!canThree && (
           <p className="topology-limit">
@@ -486,10 +554,26 @@ export function TanglePanel({
           </p>
         )}
       </>
-      <details className="tangle-expression" open>
+      <details className="tangle-expression" open={!sharedControls}>
         <summary>
           Signed twist expression · chronological operations from 0
-        </summary>
+        </summary>{" "}
+        <p className="topology-note">
+          +1 twists the right endpoint pair; its NW→SE branch passes over.
+          Quarter-turn is active and sends x to −1/x. Mirror switches crossings.{" "}
+          {lifted
+            ? "Each signed half-twist is a half-turn of a double helix. Paired strands wind around a shared axis; reversing the sign reverses handedness."
+            : "Gaps mark underpasses."}
+        </p>
+        <div className="tangle-controls">
+          <button onClick={() => twist(1n)}>Add +1 endpoint twist</button>
+          <button onClick={() => twist(-1n)}>Add −1 endpoint twist</button>
+          <button onClick={() => rotate(1)}>Quarter-turn ↺</button>
+          <button onClick={() => rotate(-1)}>Quarter-turn ↻</button>
+          <button onClick={() => commit(mirrorExpression(ops))}>
+            Mirror crossings
+          </button>
+        </div>
         <div className="twist-word">
           {ops.length ? (
             ops.map((op, i) =>

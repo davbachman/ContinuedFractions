@@ -12,12 +12,16 @@ import {
   coefficientFlipPosition,
   type TriangulationState,
 } from "../math/triangulation";
+import { rationalRole } from "../math/correspondence";
 import { flipColors } from "./triangulationGeometry";
 import { useFlipPlayback } from "../useFlipPlayback";
 import { LatticeTriangulation } from "./LatticeTriangulation";
 import { FareyDisk, type DiskOptions } from "./FareyDisk";
 import { stageColor } from "./dissectionColors";
 type Props = {
+  compact?: boolean;
+  selectedEdge?: number;
+  onSelectedEdge?: (edge: number) => void;
   followCoefficient: boolean;
   onFollowCoefficient: (enabled: boolean) => void;
   onSeekCoefficient: (term: number) => void;
@@ -53,13 +57,15 @@ export function MarkedTriangulation(props: Props) {
       [state.start, state.steps],
     ),
     tri = path[state.cursor];
-  const [selected, setSelected] = useState(2),
+  const [localSelected, setLocalSelected] = useState(2),
     [puncture, setPuncture] = useState(false),
     [localPlaying, setLocalPlaying] = useState(false),
     [localView, setLocalView] = useState<"square" | "farey">("square"),
     [transition, setTransition] = useState<ReturnType<
       typeof flipDetails
     > | null>(null);
+  const selected = props.selectedEdge ?? localSelected;
+  const setSelected = props.onSelectedEdge ?? setLocalSelected;
   const playing = props.playback?.playing ?? localPlaying;
   const setPlaying = props.playback?.onChange ?? setLocalPlaying;
   const view = props.view ?? localView;
@@ -205,99 +211,46 @@ export function MarkedTriangulation(props: Props) {
           <span className="small-tag">FIXED BASIS (q,p)</span>
         </div>
       )}
-      <p className="flip-target">
-        Target α = <strong>{specLabel(spec)}</strong> · current slopes{" "}
-        <strong>{triangleKey(tri)}</strong>
-      </p>
-      {!props.view && (
-        <div className="tangle-controls" aria-label="Triangulation display">
-          <button
-            aria-pressed={view === "square"}
-            onClick={() => setLocalView("square")}
+      {!props.compact && (
+        <>
+          {!props.view && (
+            <p className="flip-target">
+              Target α = <strong>{specLabel(spec)}</strong> · current slopes{" "}
+              <strong>{triangleKey(tri)}</strong>
+            </p>
+          )}
+          {!props.view && (
+            <div className="tangle-controls" aria-label="Triangulation display">
+              <button
+                aria-pressed={view === "square"}
+                onClick={() => setLocalView("square")}
+              >
+                Euclidean lattice
+              </button>
+              <button
+                aria-pressed={view === "farey"}
+                onClick={() => setLocalView("farey")}
+              >
+                Poincare Disk
+              </button>
+            </div>
+          )}
+          <p
+            className="flip-run-caption"
+            data-testid="flip-run-caption"
+            style={{ borderLeftColor: stageColor(term) }}
           >
-            Euclidean lattice
-          </button>
-          <button
-            aria-pressed={view === "farey"}
-            onClick={() => setLocalView("farey")}
-          >
-            Poincare Disk
-          </button>
-        </div>
-      )}
-      <p
-        className="flip-run-caption"
-        data-testid="flip-run-caption"
-        style={{ borderLeftColor: stageColor(term) }}
-      >
-        {state.cursor === 0 && term === 0
-          ? `a₀ = ${coefficients[0] ?? "∞"} sets the starting bracket; it is not a left/right run.`
-          : term === 0
-            ? "Initial crossing into the Farey bracket. This first flip is separate from the coefficient’s left/right turns."
-            : `a${term} = ${coefficients[term]} · ${run.direction} run · ${run.completed} of ${run.expected} flips completed${BigInt(run.generated) < run.expected ? ` (${run.generated} generated so far)` : ""}.`}
-        {state.mode === "follow" &&
-          term > 0 &&
-          run.expected === 0n &&
-          " This coefficient has no flip after the boundary offsets."}
-      </p>
-      <div
-        className="tangle-controls"
-        role="group"
-        aria-label="Flip path transport"
-      >
-        <button onClick={() => navigate(0)}>Restart flips</button>
-        {props.transport ?? (
-          <>
-            <button
-              disabled={!state.cursor}
-              onClick={() => {
-                setPlaying(false);
-                navigate(state.cursor - 1);
-              }}
-            >
-              Previous flip step
-            </button>
-            <button
-              disabled={state.cursor >= state.steps.length}
-              onClick={() => navigate(state.cursor + 1)}
-            >
-              Next flip step
-            </button>
-            <button
-              disabled={state.cursor >= state.steps.length && !playing}
-              onClick={() => setPlaying(!playing)}
-            >
-              {playing ? "Pause flips" : "Play flips"}
-            </button>
-          </>
-        )}
-      </div>
-      {state.mode === "follow" && !props.transport && (
-        <div className="tangle-controls flip-coefficient-controls">
-          <button
-            disabled={!coefficientPosition}
-            aria-label="Go to selected coefficient"
-            onClick={() => {
-              setPlaying(false);
-              props.onSeekCoefficient(term);
-            }}
-          >
-            Go to a{term} = {String(coefficients[term] ?? "∞")}
-          </button>
-          <label>
-            <input
-              type="checkbox"
-              checked={props.followCoefficient}
-              disabled={!coefficients.length}
-              onChange={(e) => {
-                setPlaying(false);
-                props.onFollowCoefficient(e.target.checked);
-                if (e.target.checked) props.onSeekCoefficient(term);
-              }}
-            />
-            Follow selected coefficient
-          </label>
-        </div>
+            {state.cursor === 0 && term === 0
+              ? `a₀ = ${coefficients[0] ?? "∞"} sets the starting bracket; it is not a left/right run.`
+              : term === 0
+                ? "Initial crossing into the Farey bracket. This first flip is separate from the coefficient’s left/right turns."
+                : `a${term} = ${coefficients[term]} · ${run.direction} run · ${run.completed} of ${run.expected} flips completed${BigInt(run.generated) < run.expected ? ` (${run.generated} generated so far)` : ""}.`}
+            {state.mode === "follow" &&
+              term > 0 &&
+              run.expected === 0n &&
+              " This coefficient has no flip after the boundary offsets."}
+          </p>
+        </>
       )}
       <div className="triangulation-grid">
         <div hidden={view !== "square"}>
@@ -319,10 +272,6 @@ export function MarkedTriangulation(props: Props) {
                 />
                 Show a hole at the shared corner
               </label>
-              <span className="topology-note">
-                All four corners are one identified point on the torus. This
-                marks that point as a puncture.
-              </span>
             </div>
           )}
         </div>
@@ -336,6 +285,7 @@ export function MarkedTriangulation(props: Props) {
               path={path}
               state={state}
               term={term}
+              selectedEdge={selected}
               edgeAction={edgeAction}
               selectEdge={selectEdge}
             />
@@ -355,128 +305,186 @@ export function MarkedTriangulation(props: Props) {
             aria-pressed={selected === i}
             onClick={() => setSelected(i)}
           >
-            {label(r)}
+            {label(r)} <small>{rationalRole(r, coefficients)}</small>
           </button>
         ))}
       </div>
-      <div className="tangle-controls">
-        <button
-          aria-label={`Use slope ${label(tri[selected])} as target`}
-          onClick={() => onTarget(tri[selected])}
-        >
-          Use {short(tri[selected])} as α
-        </button>
-      </div>
-      {hasOperation && (
-        <p className="flip-operation" data-testid="flip-operation-caption">
-          {state.cursor === 0 ? "Next flip: " : "Current flip: "}
-          Retain {operation.retained.map(label).join(" and ")}; replace{" "}
-          {label(operation.removed)} with {label(operation.inserted)}.
-        </p>
-      )}
-      <p className="topology-note" role="status" data-testid="flip-status">
-        Step {state.cursor} / {state.steps.length}. {activeStatus}
-      </p>
-      {state.mode === "follow" &&
-        !props.transport &&
-        coefficients.length > 0 && (
-          <p className="topology-note">
-            {!coefficientPosition
-              ? "This coefficient is beyond the generated flip path. Extend the itinerary in Flip history."
-              : term === 0
-                ? "a₀ sets the starting bracket. Go to a₀ returns to the start."
-                : run.expected === 0n
-                  ? `a${term} has no flips after the initial/terminal offsets; seeking selects its boundary triangle.`
-                  : `a${term} selects a ${run.direction} run of ${run.expected} flip${run.expected === 1n ? "" : "s"}. Go to it, or enable following to seek when you click a coefficient above.`}
-          </p>
-        )}
-      <div className="tangle-controls" role="group" aria-label="Target path">
-        <span className="small-tag">Following α automatically</span>
-      </div>
-      <details className="flip-details">
-        <summary>Flip history</summary>
+      {!props.compact && (
         <div className="tangle-controls">
           <button
-            disabled={!props.canUndo}
-            onClick={() => {
-              setPlaying(false);
-              props.onUndo();
-            }}
+            aria-label={`Use slope ${label(tri[selected])} as target`}
+            onClick={() => onTarget(tri[selected])}
           >
-            Undo shared edit
+            Use {short(tri[selected])} as α
           </button>
-          <button
-            disabled={!props.canRedo}
-            onClick={() => {
-              setPlaying(false);
-              props.onRedo();
-            }}
+        </div>
+      )}
+      {!props.compact && (
+        <>
+          <div
+            className="tangle-controls"
+            role="group"
+            aria-label="Flip path transport"
           >
-            Redo shared edit
-          </button>
-          {state.mode === "follow" && !completePath && (
-            <button
-              disabled={state.horizon >= 24 || state.steps.length >= 512}
-              onClick={() => {
-                const next = targetItinerary(
-                  spec,
-                  Math.min(24, state.horizon + 4),
-                );
-                commit({
-                  ...next,
-                  cursor: Math.min(state.cursor, next.steps.length),
-                });
-              }}
-            >
-              Extend flip itinerary
-            </button>
+            <button onClick={() => navigate(0)}>Restart flips</button>
+            {props.transport ?? (
+              <>
+                <button
+                  disabled={!state.cursor}
+                  onClick={() => {
+                    setPlaying(false);
+                    navigate(state.cursor - 1);
+                  }}
+                >
+                  Previous flip step
+                </button>
+                <button
+                  disabled={state.cursor >= state.steps.length}
+                  onClick={() => navigate(state.cursor + 1)}
+                >
+                  Next flip step
+                </button>
+                <button
+                  disabled={state.cursor >= state.steps.length && !playing}
+                  onClick={() => setPlaying(!playing)}
+                >
+                  {playing ? "Pause flips" : "Play flips"}
+                </button>
+              </>
+            )}
+          </div>
+          {state.mode === "follow" && !props.transport && (
+            <div className="tangle-controls flip-coefficient-controls">
+              <button
+                disabled={!coefficientPosition}
+                aria-label="Go to selected coefficient"
+                onClick={() => {
+                  setPlaying(false);
+                  props.onSeekCoefficient(term);
+                }}
+              >
+                Go to a{term} = {String(coefficients[term] ?? "∞")}
+              </button>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={props.followCoefficient}
+                  disabled={!coefficients.length}
+                  onChange={(e) => {
+                    setPlaying(false);
+                    props.onFollowCoefficient(e.target.checked);
+                    if (e.target.checked) props.onSeekCoefficient(term);
+                  }}
+                />
+                Follow selected coefficient
+              </label>
+            </div>
           )}
-        </div>
-        <div className="flip-history" aria-label="Recorded flip path">
-          <button
-            aria-current={state.cursor === 0 ? "step" : undefined}
-            onClick={() => {
-              setPlaying(false);
-              navigate(0);
-            }}
-          >
-            Start: {triangleKey(state.start)}
-          </button>
-          {state.steps.map((s, i) => (
-            <button
-              key={i}
-              aria-current={state.cursor === i + 1 ? "step" : undefined}
-              onClick={() => {
-                setPlaying(false);
-                navigate(i + 1);
-              }}
-            >
-              {i + 1}. {label(path[i][s.edge])} → {label(path[i + 1][s.edge])}
-              {s.term !== undefined ? ` · a${s.term}` : ""}
-            </button>
-          ))}
-        </div>
-        <p className="topology-note">
-          Changing α rebuilds this path. Path navigation retains later steps and
-          never changes α. Shared undo/redo restores the number and its playback
-          position together. Saved scenes retain the exact target itinerary.
-        </p>
-      </details>
-      <details className="flip-details">
-        <summary>How coefficients count flips</summary>
-        <p>
-          a₀ translates the initial bracket. The first crossing enters that
-          bracket. Then turns alternate L/R: a₁−1, followed by the interior
-          coefficients; a rational’s final run also subtracts one. If there is
-          just one fractional coefficient, both offsets apply. A zero-length run
-          creates no extra flip.
-        </p>
-        <p>
-          A torus edge slope is a Farey vertex; its three slopes form a Farey
-          triangle. Crossing one side replaces the opposite slope. This marked
-          torus is distinct from the six-sheet modular cover.
-        </p>
-      </details>
+
+          {hasOperation && (
+            <p className="flip-operation" data-testid="flip-operation-caption">
+              {state.cursor === 0 ? "Next flip: " : "Current flip: "}
+              Retain {operation.retained.map(label).join(" and ")}; replace{" "}
+              {label(operation.removed)} with {label(operation.inserted)}.
+            </p>
+          )}
+          <p className="topology-note" role="status" data-testid="flip-status">
+            Step {state.cursor} / {state.steps.length}. {activeStatus}
+          </p>
+          {!coefficientPosition && coefficients.length > 0 && (
+            <p className="topology-note">
+              This coefficient is beyond the generated flip path. Extend the
+              itinerary below.
+            </p>
+          )}
+          <details className="flip-details">
+            <summary>Flip history</summary>
+            <div className="tangle-controls">
+              <button
+                disabled={!props.canUndo}
+                onClick={() => {
+                  setPlaying(false);
+                  props.onUndo();
+                }}
+              >
+                Undo shared edit
+              </button>
+              <button
+                disabled={!props.canRedo}
+                onClick={() => {
+                  setPlaying(false);
+                  props.onRedo();
+                }}
+              >
+                Redo shared edit
+              </button>
+              {state.mode === "follow" && !completePath && (
+                <button
+                  disabled={state.horizon >= 24 || state.steps.length >= 512}
+                  onClick={() => {
+                    const next = targetItinerary(
+                      spec,
+                      Math.min(24, state.horizon + 4),
+                    );
+                    commit({
+                      ...next,
+                      cursor: Math.min(state.cursor, next.steps.length),
+                    });
+                  }}
+                >
+                  Extend flip itinerary
+                </button>
+              )}
+            </div>
+            <div className="flip-history" aria-label="Recorded flip path">
+              <button
+                aria-current={state.cursor === 0 ? "step" : undefined}
+                onClick={() => {
+                  setPlaying(false);
+                  navigate(0);
+                }}
+              >
+                Start: {triangleKey(state.start)}
+              </button>
+              {state.steps.map((s, i) => (
+                <button
+                  key={i}
+                  aria-current={state.cursor === i + 1 ? "step" : undefined}
+                  onClick={() => {
+                    setPlaying(false);
+                    navigate(i + 1);
+                  }}
+                >
+                  {i + 1}. {label(path[i][s.edge])} →{" "}
+                  {label(path[i + 1][s.edge])}
+                  {s.term !== undefined ? ` · a${s.term}` : ""}
+                </button>
+              ))}
+            </div>
+            <p className="topology-note">
+              Changing α rebuilds this path. Path navigation retains later steps
+              and never changes α. Shared undo/redo restores the number and its
+              playback position together. Saved scenes retain the exact target
+              itinerary.
+            </p>
+          </details>
+          <details className="flip-details">
+            <summary>How coefficients count flips</summary>
+            <p>
+              a₀ translates the initial bracket. The first crossing enters that
+              bracket. Then turns alternate L/R: a₁−1, followed by the interior
+              coefficients; a rational’s final run also subtracts one. If there
+              is just one fractional coefficient, both offsets apply. A
+              zero-length run creates no extra flip.
+            </p>
+            <p>
+              A torus edge slope is a Farey vertex; its three slopes form a
+              Farey triangle. Crossing one side replaces the opposite slope.
+              This marked torus is distinct from the six-sheet modular cover.
+            </p>
+          </details>
+        </>
+      )}
     </section>
   );
 }

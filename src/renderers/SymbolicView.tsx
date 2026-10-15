@@ -17,6 +17,7 @@ import { stageColor } from "./dissectionColors";
 import type { Crossing } from "../math/farey";
 
 export function SymbolicView({
+  sharedControls = false,
   spec,
   coefficients,
   selected,
@@ -25,6 +26,7 @@ export function SymbolicView({
   crossings,
   onExtend,
 }: {
+  sharedControls?: boolean;
   spec: NumberSpec;
   coefficients: bigint[];
   selected: number;
@@ -169,26 +171,28 @@ export function SymbolicView({
           <span className="data-label">Convergent</span>
           <strong>{r ? label(r) : "—"}</strong>
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onEdit(draft);
-          }}
-        >
-          <label htmlFor={`${id}-coefficient`}>Edit a{selected}</label>
-          <div className="input-group">
-            <input
-              id={`${id}-coefficient`}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              inputMode="numeric"
-              disabled={alternative}
-            />
-            <button type="submit" disabled={alternative}>
-              Apply coefficient
-            </button>
-          </div>
-        </form>
+        {!sharedControls && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onEdit(draft);
+            }}
+          >
+            <label htmlFor={`${id}-coefficient`}>Edit a{selected}</label>
+            <div className="input-group">
+              <input
+                id={`${id}-coefficient`}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                inputMode="numeric"
+                disabled={alternative}
+              />
+              <button type="submit" disabled={alternative}>
+                Apply coefficient
+              </button>
+            </div>
+          </form>
+        )}
       </div>
       <div className="workspace-actions">
         <button

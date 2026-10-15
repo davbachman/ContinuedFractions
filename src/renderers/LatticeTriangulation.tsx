@@ -171,12 +171,15 @@ export function LatticeTriangulation({
           central area = 1
         </text>
       </svg>
-      <p className="flip-diagram-caption">
-        The darker parallelogram is one torus fundamental domain; opposite sides
-        are identified. Its translates tile the Euclidean plane. The fixed axes
-        do not rotate or shear; the camera fits the entire domain. Three edge
-        colors match the three slope labels in the hyperbolic view.
-      </p>
+      <details className="workspace-details">
+        <summary>Lattice & marking</summary>
+        <p className="flip-diagram-caption">
+          The darker parallelogram is one torus fundamental domain; opposite
+          sides are identified. Its translates tile the Euclidean plane. The
+          fixed axes do not rotate or shear; the camera fits the entire domain.
+          Three edge colors match the three slope labels in the hyperbolic view.
+        </p>
+      </details>
       {background.limited && (
         <p className="topology-limit" role="status">
           Thin-domain detail: background line families less than two pixels

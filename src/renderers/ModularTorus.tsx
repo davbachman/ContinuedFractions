@@ -1,3 +1,4 @@
+import type { DomainFocus } from "./domainFocus";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { rollCameraPoint } from "./geometry";
 import type { SelectedRun } from "./selectedRun";
@@ -51,6 +52,7 @@ export function ModularTorus({
   lift,
   onLiftChange,
   selectedRun,
+  domainFocus,
 }: {
   alpha: number;
   time: number;
@@ -60,6 +62,7 @@ export function ModularTorus({
   lift: number;
   onLiftChange: (lift: number) => void;
   selectedRun?: SelectedRun;
+  domainFocus?: DomainFocus;
 }) {
   const [mode, setMode] = useState<"flat" | "surface">("flat"),
     [rotation, setRotation] = useState(-0.6),
@@ -152,6 +155,36 @@ export function ModularTorus({
       }),
     })),
   ];
+  const activeBoundary: SurfaceLine[] = [0, 1, 2, 3].map((edge) => {
+    const a = hexVertex(sheet),
+      b = hexVertex(sheet + 1);
+    const corners = [
+      { x: 0.045 * a.x, y: 0.045 * a.y },
+      a,
+      b,
+      { x: 0.045 * b.x, y: 0.045 * b.y },
+    ];
+    const u = corners[edge],
+      v = corners[(edge + 1) % 4];
+    const side = edge === 3 ? undefined : edge === 1 ? "S" : "T";
+    return {
+      color:
+        side && domainFocus?.seam === side ? domainEdgeColor[side] : "#344d43",
+      width: side && domainFocus?.seam === side ? 5 : 2.5,
+      points: Array.from({ length: 49 }, (_, i) =>
+        surfaceProjection(
+          embeddedTorus(
+            hexCoordinates({
+              x: u.x + ((v.x - u.x) * i) / 48,
+              y: u.y + ((v.y - u.y) * i) / 48,
+            }),
+          ),
+          rotation,
+          roll,
+        ),
+      ),
+    };
+  });
   const surfaceTrail: SurfaceLine[] = segments.map((s) => {
     const points = s.points.filter((p) => p.time <= time),
       j = coverSheet(s.matrix, lift);
@@ -238,6 +271,8 @@ export function ModularTorus({
             : "Schematic six-sheet punctured torus"
         }
         data-sheet={sheet}
+        data-current-domain={domainFocus?.key}
+        data-seam={domainFocus?.seam}
         data-trail-segments={
           trail ? segments.filter((s) => s.start <= time).length : 0
         }
@@ -253,7 +288,9 @@ export function ModularTorus({
                   d={`M190 190 L${190 + 155 * a.x} ${190 - 155 * a.y} L${190 + 155 * b.x} ${190 - 155 * b.y} Z`}
                   fill={torusDomainColor(j)}
                   fillOpacity={0.32}
-                  stroke="none"
+                  data-active-sheet={j === sheet}
+                  stroke={j === sheet ? "#344d43" : "none"}
+                  strokeWidth={2.5}
                 />
               );
             })}
@@ -267,13 +304,20 @@ export function ModularTorus({
                       data-domain-side="T"
                       d={`M${190 + 7 * a.x} ${190 - 7 * a.y} L${190 + 155 * a.x} ${190 - 155 * a.y}`}
                       stroke={domainEdgeColor.T}
-                      strokeWidth={2}
+                      strokeWidth={
+                        domainFocus?.seam === "T" &&
+                        (j === sheet || j === (sheet + 1) % 6)
+                          ? 5
+                          : 2
+                      }
                     />
                     <path
                       data-domain-side="S"
                       d={`M${190 + 155 * a.x} ${190 - 155 * a.y} L${190 + 155 * b.x} ${190 - 155 * b.y}`}
                       stroke={domainEdgeColor.S}
-                      strokeWidth={2}
+                      strokeWidth={
+                        domainFocus?.seam === "S" && j === sheet ? 5 : 2
+                      }
                     />
                   </g>
                 );
@@ -315,6 +359,7 @@ export function ModularTorus({
               }))}
               lines={[
                 ...(edges ? surfaceEdges : []),
+                ...activeBoundary,
                 ...(trail ? surfaceTrail : []),
                 ...(selectedRun?.segments.map((s) => ({
                   points: s.points.map((p) =>
@@ -331,9 +376,6 @@ export function ModularTorus({
                 })) ?? []),
               ]}
             />
-            <text x={190} y={25} textAnchor="middle" className="svg-muted">
-              TRANSLUCENT SURFACE · CUSP CUTAWAY
-            </text>
           </>
         )}
         {labels &&
@@ -404,24 +446,49 @@ export function ModularTorus({
           stroke="white"
           strokeWidth={2}
         />
+        {selectedRun && (
+          <text
+            x={14}
+            y={18}
+            fill={selectedRun.color}
+            fontSize={11}
+            stroke="#fbfbf6"
+            strokeWidth={3}
+            paintOrder="stroke"
+            data-run-label={selectedRun.term}
+          >
+            {selectedRun.segments.length
+              ? `a${selectedRun.term} · selected run`
+              : selectedRun.term === 0
+                ? "a₀ · starting bracket"
+                : `a${selectedRun.term} · no displayed crossings`}
+          </text>
+        )}
       </svg>
       {mode === "surface" && <p className="rotation-hint">{rotationHint}</p>}
       {edges && <DomainEdgeLegend />}
       <p className="quotient-caption">
-        Sheet {sheet} · χ(T)=1, χ(S)=3 · one cusp of width 6 · genus 1.{" "}
-        {limited
-          ? "Trajectory stops at the existing precision cutoff."
-          : "Same H² trajectory; reverse and seeking preserve its lift."}
+        Sheet {sheet} · outlined domain contains the moving point.
+        {domainFocus?.seam ? ` ${domainFocus.seam} seam.` : ""}
       </p>
-      <p className="quotient-caption">
-        Opposite outer hexagon edges are identified. This is the commutator
-        cover, not Γ(2). Six full modular domains; twelve reflection triangles.
-        Schematic geometry, not an isometric embedding.
-      </p>
-      <p className="quotient-caption">
-        The endpoint α is not a homology slope on this torus. A cusp-to-cusp
-        trajectory is not automatically simple or closed.
-      </p>
+      <details className="workspace-details">
+        <summary>About this cover</summary>
+        <p className="quotient-caption">
+          Sheet {sheet} · χ(T)=1, χ(S)=3 · one cusp of width 6 · genus 1.{" "}
+          {limited
+            ? "Trajectory stops at the existing precision cutoff."
+            : "Same H² trajectory; reverse and seeking preserve its lift."}
+        </p>
+        <p className="quotient-caption">
+          Opposite outer hexagon edges are identified. This is the commutator
+          cover, not Γ(2). Six full modular domains; twelve reflection
+          triangles. Schematic geometry, not an isometric embedding.
+        </p>
+        <p className="quotient-caption">
+          The endpoint α is not a homology slope on this torus. A cusp-to-cusp
+          trajectory is not automatically simple or closed.
+        </p>
+      </details>
     </>
   );
 }

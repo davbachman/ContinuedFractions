@@ -265,6 +265,7 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
     "zero twists",
   );
   await expect(right.locator('path[data-active-region="true"]')).toHaveCount(0);
+  await right.locator(".tangle-expression summary").click();
   await right
     .getByRole("button", { name: "Add +1 endpoint twist", exact: true })
     .click();

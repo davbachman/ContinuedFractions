@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { fromCF, specLabel, type NumberSpec } from "../math/continuedFraction";
 import { label, type Rational } from "../math/rational";
 import { cfBraidDiagram, BRAID_X } from "../math/cfBraid";
@@ -7,6 +7,8 @@ import { closureName } from "../math/tangles";
 import { stageColor } from "./dissectionColors";
 
 type Props = {
+  sharedControls?: boolean;
+  approximationIndex?: number;
   spec: NumberSpec;
   coefficients: readonly bigint[];
   selected: number;
@@ -18,6 +20,8 @@ type Props = {
 const short = (n: bigint) =>
   String(n).length > 12 ? String(n).slice(0, 7) + "…" : String(n);
 export function CFBraid({
+  sharedControls = false,
+  approximationIndex,
   spec,
   coefficients,
   selected,
@@ -28,9 +32,12 @@ export function CFBraid({
 }: Props) {
   const infinite = spec.kind === "rational" && !spec.value.q;
   const irrational = spec.kind === "periodic";
+  const approximation = approximationIndex ?? selected;
+  const scrollRef = useRef<HTMLDivElement>(null);
   const shownCoefficients = useMemo(
-    () => (irrational ? coefficients.slice(0, selected + 1) : coefficients),
-    [irrational, coefficients, selected],
+    () =>
+      irrational ? coefficients.slice(0, approximation + 1) : coefficients,
+    [irrational, coefficients, approximation],
   );
   const diagram = useMemo(
     () => cfBraidDiagram(shownCoefficients, infinite),
@@ -43,6 +50,19 @@ export function CFBraid({
     () => setDraft(String(coefficients[selected] ?? 0n)),
     [coefficients, selected],
   );
+  useEffect(() => {
+    const viewport =
+      scrollRef.current?.closest(".pane-body") ?? scrollRef.current;
+    const group = scrollRef.current?.querySelector(
+      '[data-braid-coefficient="' + selected + '"]',
+    );
+    if (!fitWhole && viewport && group) {
+      const box = group.getBoundingClientRect(),
+        frame = viewport.getBoundingClientRect();
+      if (box.top < frame.top || box.bottom > frame.bottom)
+        viewport.scrollTop += box.top - frame.top - 18;
+    }
+  }, [selected, fitWhole]);
   const curve = (index: number) => {
     const e = diagram.edges[index],
       a = diagram.nodes[e.from],
@@ -101,7 +121,7 @@ export function CFBraid({
           </>
         )}
       </p>
-      {irrational && (
+      {irrational && !sharedControls && (
         <div className="tangle-approximation" role="status">
           Finite rational approximation: C{selected} = {label(diagram.fraction)}
           . This braid does not represent the exact irrational α.
@@ -127,10 +147,7 @@ export function CFBraid({
           </button>
         </div>
       )}
-      <p className="braid-instruction">
-        Read downwards: twist strands 1–2, then 2–3, and repeat. R is the return
-        strand; the curved end caps form the plat closure.
-      </p>
+
       {infinite && (
         <p className="topology-note" role="status">
           ∞ has no finite CF twist sequence. The crossing-free diagram uses
@@ -145,12 +162,8 @@ export function CFBraid({
           Inspect twists
         </button>
       </div>
-      {!fitWhole && (
-        <p className="braid-instruction">
-          Scroll down to inspect the twists and bottom closure.
-        </p>
-      )}
-      <div className="braid-scroll" data-fit={fitWhole}>
+
+      <div ref={scrollRef} className="braid-scroll" data-fit={fitWhole}>
         <svg
           viewBox={`0 0 ${diagram.width} ${diagram.height}`}
           style={{ aspectRatio: `${diagram.width} / ${diagram.height}` }}
@@ -294,6 +307,7 @@ export function CFBraid({
               <path
                 key={i}
                 data-plat-cap="true"
+                strokeDasharray="7 4"
                 d={d}
                 stroke="#526c5c"
                 strokeWidth={3.5}
@@ -356,30 +370,26 @@ export function CFBraid({
               Next coefficient
             </button>
           </div>
-          <form
-            className="braid-edit"
-            onSubmit={(e) => {
-              e.preventDefault();
-              onEdit(draft);
-            }}
-          >
-            <label>
-              Edit a{selected}
-              <input
-                aria-label={`Braid coefficient a${selected}`}
-                inputMode="numeric"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-              />
-            </label>
-            <button type="submit">Apply braid coefficient</button>
-          </form>
-          <p className="topology-note">
-            Selecting a box highlights its CF coefficient in both panes. Editing
-            changes the shared α
-            {irrational ? " while preserving its periodic tail" : ""}; shared
-            Undo restores it.
-          </p>
+          {!sharedControls && (
+            <form
+              className="braid-edit"
+              onSubmit={(e) => {
+                e.preventDefault();
+                onEdit(draft);
+              }}
+            >
+              <label>
+                Edit a{selected}
+                <input
+                  aria-label={`Braid coefficient a${selected}`}
+                  inputMode="numeric"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                />
+              </label>
+              <button type="submit">Apply braid coefficient</button>
+            </form>
+          )}
         </>
       )}
       <details className="braid-convention">

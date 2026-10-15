@@ -1,3 +1,4 @@
+import type { DomainFocus } from "./domainFocus";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import type { SelectedRun } from "./selectedRun";
 import { useMemo, useState, useId, type MouseEvent } from "react";
@@ -11,6 +12,7 @@ import {
 } from "./TranslucentSurface";
 import { schematicPoint, project3d } from "./geometry";
 type Props = {
+  domainFocus?: DomainFocus;
   selectedRun?: SelectedRun;
   alpha: number;
   time: number;
@@ -25,6 +27,7 @@ export function Quotient({
   onSeek,
   limited,
   selectedRun,
+  domainFocus,
 }: Props) {
   const id = useId();
   const [mode, setMode] = useState<"folded" | "schematic">("folded"),
@@ -158,6 +161,8 @@ export function Quotient({
       <div className="quotient-plot">
         <svg
           {...rotationControls}
+          data-current-domain={domainFocus?.key}
+          data-seam={domainFocus?.seam}
           viewBox="0 0 380 370"
           role="img"
           aria-label={
@@ -191,7 +196,7 @@ export function Quotient({
                 d="M72.5 20V328 M307.5 20V328"
                 stroke={domainEdgeColor.T}
                 data-domain-side="T"
-                strokeWidth="2"
+                strokeWidth={domainFocus?.seam === "T" ? 5 : 2}
                 strokeDasharray="6 4"
                 fill="none"
               />
@@ -199,7 +204,7 @@ export function Quotient({
                 d={path(circle)}
                 stroke={domainEdgeColor.S}
                 data-domain-side="S"
-                strokeWidth="2"
+                strokeWidth={domainFocus?.seam === "S" ? 5 : 2}
                 fill="none"
               />
               <text x="190" y="32" className="svg-muted" textAnchor="middle">
@@ -311,13 +316,13 @@ export function Quotient({
             </>
           ) : (
             <>
-              <text x="190" y="28" className="svg-muted" textAnchor="middle">
-                SCHEMATIC GEOMETRY
-              </text>
               <TranslucentSurface
                 faces={surface.faces}
                 lines={[
-                  ...surface.edges,
+                  ...surface.edges.map((edge) => ({
+                    ...edge,
+                    width: domainFocus?.seam === edge.side ? 5 : edge.width,
+                  })),
                   ...(selectedRun?.segments.map((s) => ({
                     points: s.points.map(schematic),
                     color: selectedRun.color,
@@ -371,6 +376,24 @@ export function Quotient({
                 cusp
               </text>
             </>
+          )}
+          {selectedRun && (
+            <text
+              x={14}
+              y={18}
+              fill={selectedRun.color}
+              fontSize={11}
+              stroke="#fbfbf6"
+              strokeWidth={3}
+              paintOrder="stroke"
+              data-run-label={selectedRun.term}
+            >
+              {selectedRun.segments.length
+                ? `a${selectedRun.term} · selected run`
+                : selectedRun.term === 0
+                  ? "a₀ · starting bracket"
+                  : `a${selectedRun.term} · no displayed crossings`}
+            </text>
           )}
         </svg>
       </div>

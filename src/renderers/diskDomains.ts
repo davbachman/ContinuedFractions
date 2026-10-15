@@ -1,6 +1,10 @@
 import { rational } from "../math/rational";
 import { triangulationMatrix, type Triangulation } from "../math/triangulation";
-import { domainSectors, domainSectorSheets } from "./torusDomains";
+import {
+  domainSectors,
+  domainSectorSheets,
+  domainSectorKeys,
+} from "./torusDomains";
 import { idealImage } from "./modularGeometry";
 import {
   diskProjection,
@@ -18,6 +22,7 @@ export function diskDomains(tri: Triangulation, camera: DiskCamera, lift = 0) {
     mappedDiskPoint(m, rational(1n, 2n), rational(3n, 4n)),
   );
   const sheets = domainSectorSheets(m, lift);
+  const keys = domainSectorKeys(m);
   return domainSectors.map((s, i) => {
     const midpoint = projection.point(
       mappedDiskPoint(
@@ -30,6 +35,7 @@ export function diskDomains(tri: Triangulation, camera: DiskCamera, lift = 0) {
     const line = (p: { x: number; y: number }) =>
       `M${center.x} ${center.y}` + diskGeodesic(center, p);
     return {
+      key: keys[i],
       fill: diskPolygon([center, midpoint, cusp]),
       sheet: sheets[i],
       s: i % 2 === 0 ? line(midpoint) : undefined,
