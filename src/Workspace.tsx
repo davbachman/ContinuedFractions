@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import {
   comparisonPresets,
   correspondence,
@@ -17,6 +17,7 @@ import {
   currentTriangulation,
   initialTriangulation,
   appendFlip,
+  targetItinerary,
 } from "./math/triangulation";
 import type { TangleExpression } from "./math/tangles";
 import { HalfPlane } from "./renderers/HalfPlane";
@@ -103,6 +104,37 @@ function initialPanes(): Pane[] {
 }
 export function Workspace(props: WorkspaceProps) {
   const [panes, setPanes] = useState(initialPanes);
+  const [flipPlaying, setFlipPlaying] = useState(false);
+  const flipState = props.scene.triangulation ?? initialTriangulation;
+  const previousFlip = useRef(flipState);
+  useEffect(() => {
+    if (
+      previousFlip.current.steps !== flipState.steps ||
+      flipState.cursor < previousFlip.current.cursor
+    )
+      setFlipPlaying(false);
+    previousFlip.current = flipState;
+  }, [flipState]);
+  useEffect(() => setFlipPlaying(false), [props.scene.spec, flipState.mode]);
+  useEffect(() => {
+    if (props.triangulation.externalPlaying) setFlipPlaying(false);
+  }, [props.triangulation.externalPlaying]);
+  useEffect(() => {
+    if (!flipPlaying) return;
+    if (flipState.cursor >= flipState.steps.length) {
+      setFlipPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const step = flipState.steps[flipState.cursor];
+      props.triangulation.onChange(
+        { ...flipState, cursor: flipState.cursor + 1 },
+        flipState.mode === "follow" ? step.time : undefined,
+        flipState.mode === "follow" ? step.term : undefined,
+      );
+    }, 1400 / props.scene.speed);
+    return () => clearTimeout(timer);
+  }, [flipPlaying, flipState, props.scene.speed, props.triangulation.onChange]);
   const [activePane, setActivePane] = useState<string | null>(null);
   const [coefficientDraft, setCoefficientDraft] = useState("");
   useEffect(
@@ -124,6 +156,7 @@ export function Workspace(props: WorkspaceProps) {
   }, [panes]);
   const setKind = (id: string, kind: Representation) => {
     setActivePane(null);
+    setFlipPlaying(false);
     props.onPause();
     setPanes((p) => p.map((v) => (v.id === id ? { ...v, kind } : v)));
   };
@@ -145,6 +178,13 @@ export function Workspace(props: WorkspaceProps) {
               const preset = comparisonPresets[Number(e.target.value)];
               if (!preset) return;
               props.onPause();
+              setFlipPlaying(false);
+              if (preset.follow)
+                props.triangulation.onChange(
+                  targetItinerary(props.scene.spec, flipState.horizon),
+                  0,
+                  0,
+                );
               setActivePane(null);
               setPanes((p) =>
                 p.map((v, i) => ({ ...v, kind: preset.pair[i] })),
@@ -233,7 +273,20 @@ export function Workspace(props: WorkspaceProps) {
             other={panes[1 - i]}
             active={activePane === pane.id}
             onActivate={() => setActivePane(pane.id)}
-            shared={props}
+            shared={{
+              ...props,
+              triangulation: {
+                ...props.triangulation,
+                playback: {
+                  playing: flipPlaying,
+                  onChange: (playing) => {
+                    if (playing) props.onPause();
+                    setFlipPlaying(playing);
+                  },
+                },
+                coefficient: props.selected,
+              },
+            }}
             onKind={(kind) => setKind(pane.id, kind)}
             onLift={(lift) =>
               setPanes((p) =>
@@ -382,7 +435,8 @@ function ComparisonPane({
   const [inspect, setInspect] = useState<Rational | null>(null);
   const [showTriangulation, setShowTriangulation] = useState(false);
   const infinite = p.scene.spec.kind === "rational" && !p.scene.spec.value.q;
-  const triangleVisible = showTriangulation || other.kind === "triangulation";
+  const triangleVisible =
+    showTriangulation || ["triangulation", "farey"].includes(other.kind);
   const triState = p.scene.triangulation ?? initialTriangulation;
   const stage = p.rectangle.stages[p.selected];
   const linkRun = isCoefficientView(other.kind);
@@ -603,7 +657,7 @@ function ComparisonPane({
                   <input
                     type="checkbox"
                     checked={triangleVisible}
-                    disabled={other.kind === "triangulation"}
+                    disabled={["triangulation", "farey"].includes(other.kind)}
                     onChange={(e) => setShowTriangulation(e.target.checked)}
                   />
                   Marked triangulation
@@ -711,10 +765,11 @@ function ComparisonPane({
             <TrajectoryControls shared={p} />
           </>
         )}
-        {pane.kind === "triangulation" && (
+        {(pane.kind === "triangulation" || pane.kind === "farey") && (
           <MarkedTriangulation
             {...p.triangulation}
-            externalPlaying={p.triangulation.externalPlaying || !active}
+            externalPlaying={p.triangulation.externalPlaying}
+            view={pane.kind === "farey" ? "farey" : "square"}
             showPlane={triangleVisible}
             onShowPlane={setShowTriangulation}
           />

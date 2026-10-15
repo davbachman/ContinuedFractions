@@ -223,3 +223,32 @@ export function wrappedEdge(r: Rational, budget = 160) {
   if (!r.q) segments.push(segments[0].map((p) => ({ ...p, x: rational(1n) })));
   return { segments, limited: false };
 }
+
+/** Coefficient run lengths use the same entry/terminal offsets as fareyCrossings.
+ * Generated counts are a display window, never the mathematical run length. */
+export function coefficientFlipRun(
+  spec: NumberSpec,
+  state: TriangulationState,
+  term: number,
+) {
+  const cf = spec.kind === "rational" && !spec.value.q ? [] : terms(spec, 96);
+  let expected =
+    term > 0 && cf[term] !== undefined
+      ? cf[term] -
+        (term === 1 ? 1n : 0n) -
+        (spec.kind === "rational" && term === cf.length - 1 ? 1n : 0n)
+      : 0n;
+  if (expected < 0n) expected = 0n;
+  return {
+    direction: term === 0 ? "initial" : term % 2 ? "L" : "R",
+    expected,
+    generated:
+      term === 0 ? 0 : state.steps.filter((step) => step.term === term).length,
+    completed:
+      term === 0
+        ? 0
+        : state.steps
+            .slice(0, state.cursor)
+            .filter((step) => step.term === term).length,
+  };
+}

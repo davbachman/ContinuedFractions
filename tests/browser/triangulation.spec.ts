@@ -7,6 +7,9 @@ const button = (page: any, name: string) =>
 test.beforeEach(async ({ page }) => {
   await page.goto("/?layout=atlas");
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page
+    .getByText("Edge actions, history & display options", { exact: true })
+    .click();
 });
 test("all edge classes and Farey neighbors flip bidirectionally without replacing the target", async ({
   page,
@@ -14,10 +17,12 @@ test("all edge classes and Farey neighbors flip bidirectionally without replacin
   const torus = page.getByRole("group", {
       name: "Marked torus triangulation",
       exact: true,
+      includeHidden: true,
     }),
     farey = page.getByRole("group", {
       name: "Interactive Farey triangles",
       exact: true,
+      includeHidden: true,
     });
   await button(page, "Flip edge 1").click();
   await expect(torus).toHaveAttribute("data-slopes", "0 | ∞ | -1");
@@ -53,7 +58,9 @@ test("all edge classes and Farey neighbors flip bidirectionally without replacin
   await page.keyboard.press("Enter");
   await expect(torus).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
   await button(page, "Reset triangulation").click();
+  await button(page, "Farey triangles").click();
   await button(page, "Flip via Farey triangle replacing 1 with -1").click();
+  await button(page, "Marked square").click();
   await expect(torus).toHaveAttribute("data-slopes", "0 | ∞ | -1");
   await expect(page.getByTestId("flip-operation-caption")).toContainText(
     "replace 1 with -1",
@@ -82,6 +89,7 @@ test("the existing H² viewer selects a neighboring Farey triangle", async ({
     page.getByRole("group", {
       name: "Marked torus triangulation",
       exact: true,
+      includeHidden: true,
     }),
   ).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
@@ -146,11 +154,14 @@ test("wrapped edges, model and camera changes, path navigation and persistence p
   const torus = page.getByRole("group", {
     name: "Marked torus triangulation",
     exact: true,
+    includeHidden: true,
   });
   for (const slope of ["0", "∞", "1", "2"])
     await button(page, `Flip edge ${slope}`).click();
   await expect(torus).toHaveAttribute("data-slopes", "8/5 | 3/2 | 5/3");
   await page.getByLabel("Puncture at vertex", { exact: true }).check();
+  await button(page, "Explain this flip").click();
+  await page.getByLabel("Tiled-plane inset", { exact: true }).check();
   await page.getByLabel("Tiled-plane inset", { exact: true }).uncheck();
   await button(page, "Center Farey triangle").click();
   await button(page, "Fixed-basis patch").click();
@@ -163,9 +174,11 @@ test("wrapped edges, model and camera changes, path navigation and persistence p
   await button(page, "Previous flip step").click();
   await button(page, "Next flip step").click();
   await expect(torus).toHaveAttribute("data-slopes", "8/5 | 3/2 | 5/3");
+  await button(page, "Back to diagram").click();
   await page
     .locator(".triangulation-grid")
     .screenshot({ path: `test-results/${info.project.name}-marked-flips.png` });
+  await button(page, "Explain this flip").click();
   await page.getByLabel("Tiled-plane inset", { exact: true }).check();
   await page
     .locator(".flip-patch")
@@ -203,19 +216,17 @@ test("large exact slopes disclose wrap limits while keyboard flip controls remai
       ] as const,
     },
   };
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "large-triangulation.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(serialize(scene)),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "large-triangulation.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(serialize(scene)),
+  });
   await expect(page.locator(".triangulation-panel")).toContainText(
     "Wrap display limit",
   );
   await button(page, "Center Farey triangle").click();
   await expect(page.getByTestId("triangulation-slope-0")).toHaveText(String(n));
-  await page.locator(".flip-edge-controls button").first().focus();
+  await page.locator(".flip-slope-strip button").first().focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("triangulation-slope-0")).not.toHaveText(
     String(n),
@@ -248,6 +259,7 @@ test("flip animation highlights the old incident triangles before revealing the 
     page.getByRole("group", {
       name: "Marked torus triangulation",
       exact: true,
+      includeHidden: true,
     }),
   ).toHaveAttribute("data-slopes", "0 | ∞ | 1");
 });

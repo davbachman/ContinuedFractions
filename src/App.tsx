@@ -1606,6 +1606,7 @@ export default function App() {
               )}
             </section>
             <MarkedTriangulation
+              coefficient={selectedTerm}
               externalPlaying={playing || rectanglePlaying}
               spec={scene.spec}
               state={scene.triangulation}
@@ -1916,6 +1917,18 @@ export default function App() {
           pillowcase panel is the branched cover of a rational tangle. Its slope
           is (q,p); it does not assign a homology slope to the modular-torus
           ray.
+        </p>
+        <h3>From continued fractions to flips</h3>
+        <p>
+          Choose “Continued fractions → flips” to pair the Farey diagram with
+          the marked square. Each crossed Farey side flips one edge. Follow
+          target groups left/right turns by coefficient, with the initial and
+          terminal offsets shown explicitly. Selecting a coefficient highlights
+          its run; “Go to selected run” seeks it. Manual flips preserve α.
+          “Explain this flip” replaces the diagram with its unfolded
+          quadrilateral. H² playback also advances the follow-target path at its
+          crossing times; flip steps seek those times. Rectangle stages keep
+          their own clock.
         </p>
         <h3>Marked tangles</h3>
         <p>

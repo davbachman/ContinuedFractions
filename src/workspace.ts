@@ -6,6 +6,7 @@ export const representations = {
   h2: "H² · Farey and Ford",
   orbifold: "Modular surface",
   torus: "Punctured modular torus",
+  farey: "Farey triangles · flip path",
   triangulation: "Marked torus · edge flips",
   tangle: "Marked rational tangle",
   pillowcase: "Marked torus / pillowcase",
@@ -24,12 +25,17 @@ export const isTangle = (s: Representation) =>
 export const comparisonPresets: {
   label: string;
   pair: [Representation, Representation];
+  follow?: boolean;
 }[] = [
   { label: "Understand the algorithm", pair: ["symbolic", "rectangle"] },
   { label: "See approximation", pair: ["symbolic", "h2"] },
   { label: "Watch the quotient", pair: ["h2", "orbifold"] },
   { label: "Lift to the torus", pair: ["h2", "torus"] },
-  { label: "Explore flips", pair: ["h2", "triangulation"] },
+  {
+    label: "Continued fractions → flips",
+    pair: ["farey", "triangulation"],
+    follow: true,
+  },
   { label: "Build a tangle", pair: ["symbolic", "tangle"] },
   { label: "Tangle and its cover", pair: ["tangle", "pillowcase"] },
   { label: "Read the matrix product", pair: ["symbolic", "matrices"] },
@@ -45,7 +51,7 @@ export function correspondence(
       kind: "Same trajectory",
       text: "The point and trail share hyperbolic time through the quotient and covering maps. Cameras are independent; the torus lift is explicit.",
     };
-  if (has("h2") && has("triangulation"))
+  if ((has("h2") || has("farey")) && has("triangulation"))
     return {
       kind: "Farey triangles ↔ flips",
       text: "A Farey triangle gives the three marked edge slopes. Click a neighboring triangle or a torus edge to flip. Manual flips preserve the target α; Follow target uses its Farey itinerary.",
@@ -54,6 +60,19 @@ export function correspondence(
     return {
       kind: "Same mathematical state",
       text: "Compare two displays of the same state with independent camera and display settings.",
+    };
+  if (
+    (has("farey") || has("triangulation")) &&
+    isCoefficientView(a === "farey" || a === "triangulation" ? b : a)
+  )
+    return {
+      kind: "Coefficients → runs of flips",
+      text: "Follow target groups the left/right Farey turns by continued-fraction coefficient. Each crossed side flips one torus edge. The initial entry and first/last run offsets are shown explicitly. Selecting a coefficient highlights its run; Go to selected run seeks it.",
+    };
+  if (has("farey") && isTrajectory(a === "farey" ? b : a))
+    return {
+      kind: "Farey crossing → triangle step",
+      text: "Follow target records the vertical ray’s Farey crossings as adjacent triangles. Manual exploration has its own path and leaves the target unchanged. This marked triangulation does not assign a homology slope to the modular cover.",
     };
   if (isPrefixView(a) || isPrefixView(b)) {
     if (isCoefficientView(a) && isCoefficientView(b))

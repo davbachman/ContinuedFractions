@@ -86,3 +86,35 @@ it("target following uses exactly the existing Farey crossing and coefficient ma
   ).toContain("ray lies on a Farey edge");
   expect(targetItinerary(parseInput("infinity")).steps).toHaveLength(0);
 });
+
+import { coefficientFlipRun } from "../src/math/triangulation";
+it("explains coefficient runs with entry and rational terminal offsets", () => {
+  const spec = parseInput("5/13");
+  const state = targetItinerary(spec, 12);
+  expect(state.steps).toHaveLength(5);
+  for (let term = 1; term <= 4; term++) {
+    const run = coefficientFlipRun(spec, { ...state, cursor: 5 }, term);
+    expect(run.expected).toBe(1n);
+    expect(run.generated).toBe(1);
+    expect(run.completed).toBe(1);
+    expect(run.direction).toBe(term % 2 ? "L" : "R");
+  }
+  const half = parseInput("1/2"),
+    halfPath = targetItinerary(half);
+  expect(halfPath.steps).toHaveLength(1); // entry only
+  expect(coefficientFlipRun(half, halfPath, 1).expected).toBe(0n);
+  const sqrt = parseInput("sqrt2"),
+    sqrtPath = targetItinerary(sqrt);
+  expect(coefficientFlipRun(sqrt, sqrtPath, 1).expected).toBe(1n);
+  expect(coefficientFlipRun(sqrt, sqrtPath, 2).expected).toBe(2n);
+  const large = parseInput("1/10000"),
+    limited = targetItinerary(large, 4);
+  const run = coefficientFlipRun(large, limited, 1);
+  expect(run.expected).toBe(9998n);
+  expect(BigInt(run.generated)).toBeLessThan(run.expected);
+});
+
+it("keeps infinity available without requesting a finite CF", () => {
+  const spec = parseInput("infinity");
+  expect(coefficientFlipRun(spec, targetItinerary(spec), 0).expected).toBe(0n);
+});

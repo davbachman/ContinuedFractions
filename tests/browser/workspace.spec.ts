@@ -242,7 +242,8 @@ test("canonical tangle selection links coefficients, custom words and irrational
 test("Farey flips preserve the target, shared undo works, and layouts survive reload and atlas switching", async ({
   page,
 }) => {
-  await page.getByLabel("Comparison preset", { exact: true }).selectOption("4");
+  await choose(page, "Left", "h2");
+  await choose(page, "Right", "triangulation");
   await right(page)
     .getByRole("button", { name: "Flip edge 1", exact: true })
     .click();
