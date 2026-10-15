@@ -332,12 +332,14 @@ export function MarkedTriangulation(props: Props) {
         >
           Follow target
         </button>
-        <button
-          aria-pressed={inspectFlip}
-          onClick={() => setInspectFlip(!inspectFlip)}
-        >
-          {inspectFlip ? "Back to diagram" : "Explain this flip"}
-        </button>
+        {view === "square" && (
+          <button
+            aria-pressed={inspectFlip}
+            onClick={() => setInspectFlip(!inspectFlip)}
+          >
+            {inspectFlip ? "Back to diagram" : "Explain this flip"}
+          </button>
+        )}
       </div>
       <p
         className="flip-run-caption"
@@ -360,7 +362,10 @@ export function MarkedTriangulation(props: Props) {
         Retain {operation.retained.map(label).join(" and ")}; replace{" "}
         {label(operation.removed)} with {label(operation.inserted)}.
       </p>
-      <div className="triangulation-grid" hidden={inspectFlip}>
+      <div
+        className="triangulation-grid"
+        hidden={view === "square" && inspectFlip}
+      >
         <div hidden={view !== "square"}>
           <svg
             viewBox="0 0 380 370"
@@ -648,114 +653,119 @@ export function MarkedTriangulation(props: Props) {
           </p>
         </div>
       </div>
-      <div className="flip-patch" hidden={!inspectFlip}>
-        <h3>Why this flip works</h3>
-        <p>
-          Unfold the two incident triangles. Keep the quadrilateral’s boundary
-          and exchange its diagonal.
-        </p>
-        <label>
-          <input
-            type="checkbox"
-            checked={tiled}
-            onChange={(e) => setTiled(e.target.checked)}
-          />
-          Tiled-plane inset
-        </label>
-        <div className="tangle-controls">
-          <button aria-pressed={affine} onClick={() => setAffine(true)}>
-            Affine patch close-up
-          </button>
-          <button aria-pressed={!affine} onClick={() => setAffine(false)}>
-            Fixed-basis patch
-          </button>
-        </div>
-        <p className="topology-note">
-          {affine
-            ? "Affine close-up in the two retained-edge directions; vertex labels and the tiled grid retain their original coordinates. This changes only the display, not the torus marking."
-            : "Unfolded patch in the fixed meridian–longitude coordinates; deep flips can produce very thin quadrilaterals."}
-        </p>
-        <svg
-          viewBox={patchView}
-          role="img"
-          aria-label="Universal-cover flip quadrilateral"
-          className={transition ? "flip-animating" : ""}
-          key={triangleKey(operation.before) + operation.edge + state.cursor}
-        >
-          {tiled &&
-            extent <= 12n &&
-            Array.from({ length: 49 }, (_, i) => i - 24).flatMap((i) => {
-              const n = BigInt(i);
-              return [
-                <path
-                  key={`x${i}`}
-                  d={svgPath([qp({ x: n, y: -24n }), qp({ x: n, y: 24n })])}
-                  stroke="#d9dfd1"
-                />,
-                <path
-                  key={`y${i}`}
-                  d={svgPath([qp({ x: -24n, y: n }), qp({ x: 24n, y: n })])}
-                  stroke="#d9dfd1"
-                />,
-              ];
-            })}
-          {operation.triangles.map((t, i) => (
-            <path
-              key={i}
-              d={svgPath(t.map(qp)) + "Z"}
-              fill={i ? "#e8cea6b0" : "#bcd8b9b0"}
-              stroke="#60755f"
+      {view === "square" && (
+        <div className="flip-patch" hidden={!inspectFlip}>
+          <h3>Why this flip works</h3>
+          <p>
+            Unfold the two incident triangles. Keep the quadrilateral’s boundary
+            and exchange its diagonal.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={tiled}
+              onChange={(e) => setTiled(e.target.checked)}
             />
-          ))}
-          {operation.quad.map((w, i) => {
-            const retainedSlots = [0, 1, 2].filter((j) => j !== operation.edge);
-            return (
+            Tiled-plane inset
+          </label>
+          <div className="tangle-controls">
+            <button aria-pressed={affine} onClick={() => setAffine(true)}>
+              Affine patch close-up
+            </button>
+            <button aria-pressed={!affine} onClick={() => setAffine(false)}>
+              Fixed-basis patch
+            </button>
+          </div>
+          <p className="topology-note">
+            {affine
+              ? "Affine close-up in the two retained-edge directions; vertex labels and the tiled grid retain their original coordinates. This changes only the display, not the torus marking."
+              : "Unfolded patch in the fixed meridian–longitude coordinates; deep flips can produce very thin quadrilaterals."}
+          </p>
+          <svg
+            viewBox={patchView}
+            role="img"
+            aria-label="Universal-cover flip quadrilateral"
+            className={transition ? "flip-animating" : ""}
+            key={triangleKey(operation.before) + operation.edge + state.cursor}
+          >
+            {tiled &&
+              extent <= 12n &&
+              Array.from({ length: 49 }, (_, i) => i - 24).flatMap((i) => {
+                const n = BigInt(i);
+                return [
+                  <path
+                    key={`x${i}`}
+                    d={svgPath([qp({ x: n, y: -24n }), qp({ x: n, y: 24n })])}
+                    stroke="#d9dfd1"
+                  />,
+                  <path
+                    key={`y${i}`}
+                    d={svgPath([qp({ x: -24n, y: n }), qp({ x: 24n, y: n })])}
+                    stroke="#d9dfd1"
+                  />,
+                ];
+              })}
+            {operation.triangles.map((t, i) => (
               <path
-                key={`edge${i}`}
-                d={svgPath([qp(w), qp(operation.quad[(i + 1) % 4])])}
-                stroke={flipColors[retainedSlots[i % 2]]}
-                strokeWidth={2}
-                fill="none"
+                key={i}
+                d={svgPath(t.map(qp)) + "Z"}
+                fill={i ? "#e8cea6b0" : "#bcd8b9b0"}
+                stroke="#60755f"
               />
-            );
-          })}
-          <path
-            className="old-flip-diagonal"
-            d={svgPath(operation.oldDiagonal.map(qp))}
-            stroke={flipColors[operation.edge]}
-            strokeWidth={3}
-            strokeDasharray="6 4"
-            fill="none"
-          />
-          <path
-            className="new-flip-diagonal"
-            d={svgPath(operation.newDiagonal.map(qp))}
-            stroke={flipColors[operation.edge]}
-            strokeWidth={3}
-            fill="none"
-          />
-          {operation.quad.map((v, i) => {
-            const p = qp(v);
-            return (
-              <g key={i}>
-                <circle cx={p.x} cy={p.y} r={3} fill="#425b48" />
-                <text x={p.x + 4} y={p.y - 7} fontSize={10}>
-                  ({String(v.x).length > 10 ? "large" : String(v.x)},{" "}
-                  {String(v.y).length > 10 ? "large" : String(v.y)})
-                  <title>
-                    ({String(v.x)}, {String(v.y)})
-                  </title>
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-        <p className="topology-note">
-          Dashed: old diagonal. Solid: replacement. The quadrilateral is
-          reconstructed upstairs, even when its edges wrap across several copies
-          of the square. Apparent boundary meetings need not be new vertices.
-        </p>
-      </div>
+            ))}
+            {operation.quad.map((w, i) => {
+              const retainedSlots = [0, 1, 2].filter(
+                (j) => j !== operation.edge,
+              );
+              return (
+                <path
+                  key={`edge${i}`}
+                  d={svgPath([qp(w), qp(operation.quad[(i + 1) % 4])])}
+                  stroke={flipColors[retainedSlots[i % 2]]}
+                  strokeWidth={2}
+                  fill="none"
+                />
+              );
+            })}
+            <path
+              className="old-flip-diagonal"
+              d={svgPath(operation.oldDiagonal.map(qp))}
+              stroke={flipColors[operation.edge]}
+              strokeWidth={3}
+              strokeDasharray="6 4"
+              fill="none"
+            />
+            <path
+              className="new-flip-diagonal"
+              d={svgPath(operation.newDiagonal.map(qp))}
+              stroke={flipColors[operation.edge]}
+              strokeWidth={3}
+              fill="none"
+            />
+            {operation.quad.map((v, i) => {
+              const p = qp(v);
+              return (
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r={3} fill="#425b48" />
+                  <text x={p.x + 4} y={p.y - 7} fontSize={10}>
+                    ({String(v.x).length > 10 ? "large" : String(v.x)},{" "}
+                    {String(v.y).length > 10 ? "large" : String(v.y)})
+                    <title>
+                      ({String(v.x)}, {String(v.y)})
+                    </title>
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          <p className="topology-note">
+            Dashed: old diagonal. Solid: replacement. The quadrilateral is
+            reconstructed upstairs, even when its edges wrap across several
+            copies of the square. Apparent boundary meetings need not be new
+            vertices.
+          </p>
+        </div>
+      )}
       <div
         className="flip-slope-strip"
         aria-label="Current triangulation slopes"
