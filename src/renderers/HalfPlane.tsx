@@ -170,7 +170,7 @@ export function HalfPlane({
     ctx.beginPath();
     ctx.rect(0, 0, size.width, bottom);
     ctx.clip();
-    ctx.globalAlpha = 0.18;
+    ctx.globalAlpha = 0.26;
     for (const tile of tiles) {
       ctx.beginPath();
       tile.boundaries.forEach((boundary, i) => {

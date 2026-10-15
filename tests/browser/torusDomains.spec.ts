@@ -50,7 +50,7 @@ test("H² domain fills match both torus models and the selected cover lift", asy
   original
     .slice(0, 3)
     .forEach((v, i) => expect(Math.abs(v - expected[i])).toBeLessThan(4));
-  expect(original[3]).toBeCloseTo(46, 0);
+  expect(original[3]).toBeCloseTo(66, 0);
   await page
     .getByRole("checkbox", { name: "Modular domains", exact: true })
     .check();
