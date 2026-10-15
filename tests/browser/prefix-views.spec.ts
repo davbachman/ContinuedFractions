@@ -16,11 +16,11 @@ const prefix = (page: Page, index: number, side = "Left") =>
     .getByRole("slider", { name: "Selected prefix", exact: true })
     .fill(String(index));
 test.beforeEach(async ({ page }) => {
-  await page.goto("/?left=matrices&right=errors");
+  await page.goto("/?left=matrices&right=matrices");
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
 
-test("matrix and error selections share coefficient editing and undo", async ({
+test("matrix selections share coefficient editing and undo", async ({
   page,
 }) => {
   await prefix(page, 1);
@@ -44,11 +44,11 @@ test("matrix and error selections share coefficient editing and undo", async ({
   );
 });
 
-test("matrix columns and errors track selections, exact zero is outside the logarithmic plot", async ({
+test("matrix columns track selections in both panes", async ({
   page,
 }, info) => {
   await choose(page, "matrices");
-  await choose(page, "errors", "Right");
+  await choose(page, "matrices", "Right");
   await number(page, "13/5");
   await pane(page)
     .getByRole("button", { name: "Select matrix factor a3", exact: true })
@@ -59,43 +59,28 @@ test("matrix columns and errors track selections, exact zero is outside the loga
   await expect(pane(page).getByTestId("matrix-details")).toContainText(
     "(5, 2)",
   );
-  await expect(pane(page, "Right").getByTestId("error-details")).toContainText(
-    "0 — exact rational endpoint",
+  await expect(pane(page, "Right").getByTestId("matrix-details")).toContainText(
+    "(13, 5)",
   );
-  await expect(
-    pane(page, "Right").locator('[data-exact-zero="true"]'),
-  ).toHaveCount(1);
   await pane(page, "Right")
-    .getByRole("button", { name: "Select error a2", exact: true })
+    .getByRole("button", { name: "Select matrix factor a2", exact: true })
     .focus();
   await page.keyboard.press("Enter");
   await expect(
     pane(page).getByRole("slider", { name: "Selected prefix" }),
   ).toHaveValue("2");
-  await pane(page, "Right")
-    .getByText("Exact error fraction", { exact: true })
-    .click();
-  await expect(pane(page, "Right").getByTestId("error-details")).toContainText(
-    "1/10",
-  );
-  await pane(page, "Right")
-    .getByRole("button", { name: "q² × error", exact: true })
-    .click();
-  await expect(pane(page, "Right").getByTestId("error-details")).toContainText(
-    "2/5",
-  );
   await expect(pane(page).getByTestId("matrix-details")).toContainText("= -1");
   await page.locator(".comparison-grid").screenshot({
-    path: `test-results/${info.project.name}-matrices-errors.png`,
+    path: `test-results/${info.project.name}-matrices.png`,
   });
 });
 
-test("deep irrational prefixes remain nonzero and can be explicitly applied and undone", async ({
+test("deep irrational prefixes remain exact and can be explicitly applied and undone", async ({
   page,
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await choose(page, "errors", "Right");
+  await choose(page, "matrices", "Right");
   await page.getByRole("button", { name: "φ", exact: true }).click();
   const extend = pane(page).getByRole("button", {
     name: "Extend prefixes",
@@ -117,41 +102,38 @@ test("deep irrational prefixes remain nonzero and can be explicitly applied and 
   await expect(
     pane(page).getByText(/96 prefixes displayed; infinite expansion continues/),
   ).toBeVisible();
-  await expect(pane(page, "Right").getByTestId("error-details")).toContainText(
-    "irrational error is nonzero",
-  );
-  await expect(
-    pane(page, "Right").locator('[data-exact-zero="true"]'),
-  ).toHaveCount(0);
-  const firstError = await pane(page, "Right")
-    .getByTestId("error-details")
+  const firstConvergent = await pane(page, "Right")
+    .locator(".prefix-selection > strong")
     .textContent();
+  await expect(
+    pane(page, "Right").getByRole("slider", { name: "Selected prefix" }),
+  ).toHaveValue("95");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
   await page.locator(".comparison-grid").screenshot({
-    path: `test-results/${info.project.name}-deep-matrices-errors.png`,
+    path: `test-results/${info.project.name}-deep-matrices.png`,
   });
   await pane(page)
     .getByRole("button", { name: "Use convergent as target", exact: true })
     .click();
   await expect(page.getByLabel("ENDPOINT α")).not.toHaveValue("φ");
-  await expect(pane(page, "Right").getByTestId("error-details")).toContainText(
-    "exact rational endpoint",
-  );
+  await expect(
+    pane(page, "Right").locator(".prefix-selection > strong"),
+  ).toHaveText(firstConvergent!);
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
   await prefix(page, 95);
-  await expect(pane(page, "Right").getByTestId("error-details")).toHaveText(
-    firstError!,
-  );
+  await expect(
+    pane(page, "Right").locator(".prefix-selection > strong"),
+  ).toHaveText(firstConvergent!);
   expect(errors).toEqual([]);
 });
 
-test("matrix and error views handle integers, negatives, zero, infinity, and independent metrics", async ({
+test("matrix views handle integers, negatives, zero, infinity, and keyboard navigation", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  for (const kind of ["matrices", "errors"]) {
+  for (const kind of ["matrices"]) {
     await choose(page, kind);
     await choose(page, kind, "Right");
     for (const value of ["0", "-13/5", "3", "1/2", "sqrt2", "infinity"]) {
@@ -177,27 +159,7 @@ test("matrix and error views handle integers, negatives, zero, infinity, and ind
     }
   }
   await number(page, "5/13");
-  await choose(page, "errors");
-  await choose(page, "errors", "Right");
-  await pane(page)
-    .getByRole("button", { name: "q² × error", exact: true })
-    .click();
-  await expect(
-    pane(page).getByRole("button", { name: "q² × error", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    pane(page, "Right").getByRole("button", {
-      name: "q² × error",
-      exact: true,
-    }),
-  ).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Swap sides ⇄" }).click();
-  await expect(
-    pane(page, "Right").getByRole("button", {
-      name: "q² × error",
-      exact: true,
-    }),
-  ).toHaveAttribute("aria-pressed", "true");
   await prefix(page, 0);
   await pane(page).focus();
   await page.keyboard.press("ArrowRight");
@@ -237,7 +199,7 @@ test("large coefficients keep exact data without invalid SVG geometry or page ov
 }) => {
   await number(page, `1/${"1" + "0".repeat(60)}`);
   await prefix(page, 1);
-  for (const kind of ["matrices", "errors"]) {
+  for (const kind of ["matrices"]) {
     await choose(page, kind);
     await expect(pane(page).locator(".prefix-selection > strong")).toHaveText(
       `1/${"1" + "0".repeat(60)}`,

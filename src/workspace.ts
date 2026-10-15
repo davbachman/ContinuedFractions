@@ -2,7 +2,6 @@ export const representations = {
   symbolic: "Symbolic continued fraction",
   rectangle: "Rectangle dissection",
   matrices: "Matrix products",
-  errors: "Approximation errors",
   h2: "H² · Farey and Ford",
   orbifold: "Modular surface",
   torus: "Punctured modular torus",
@@ -16,8 +15,8 @@ export const isRepresentation = (s: unknown): s is Representation =>
   typeof s === "string" && Object.hasOwn(representations, s);
 export const isTrajectory = (s: Representation) =>
   ["h2", "orbifold", "torus"].includes(s);
-export const isPrefixView = (s: Representation): s is "matrices" | "errors" =>
-  ["matrices", "errors"].includes(s);
+export const isPrefixView = (s: Representation): s is "matrices" =>
+  s === "matrices";
 export const isCoefficientView = (s: Representation) =>
   s === "symbolic" || s === "rectangle" || isPrefixView(s);
 export const isTangle = (s: Representation) =>
@@ -39,7 +38,6 @@ export const comparisonPresets: {
   { label: "Build a tangle", pair: ["symbolic", "tangle"] },
   { label: "Tangle and its cover", pair: ["tangle", "pillowcase"] },
   { label: "Read the matrix product", pair: ["symbolic", "matrices"] },
-  { label: "Measure approximation", pair: ["matrices", "errors"] },
 ];
 export function correspondence(
   a: Representation,
@@ -78,7 +76,7 @@ export function correspondence(
     if (isCoefficientView(a) && isCoefficientView(b))
       return {
         kind: "Same prefix · different representations",
-        text: "Selecting aₙ links the matrix product through A(aₙ) and its convergent error. Rectangle groups use the same coefficient index. Selection leaves α unchanged.",
+        text: "Selecting aₙ links the matrix product through A(aₙ) and its convergent. Rectangle groups use the same coefficient index. Selection leaves α unchanged.",
       };
     if (isTrajectory(a) || isTrajectory(b))
       return {

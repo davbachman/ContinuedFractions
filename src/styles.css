@@ -2960,26 +2960,6 @@ footer,
   color: #67785f;
   line-height: 1.7;
 }
-.prefix-chart {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: #fcfcf6;
-  touch-action: pan-y;
-}
-.prefix-chart text {
-  fill: #43583b;
-  font-family: inherit;
-}
-.prefix-chart [role="button"] {
-  cursor: pointer;
-  outline: none;
-}
-.prefix-chart [role="button"]:focus-visible > rect,
-.prefix-chart [role="button"]:focus-visible > circle {
-  stroke: #304e3f;
-  stroke-width: 3px;
-}
 .prefix-facts {
   padding: 8px 18px 16px;
   overflow-wrap: anywhere;
@@ -3107,9 +3087,6 @@ footer,
   }
   .prefix-intro label {
     min-height: 44px;
-  }
-  .prefix-chart {
-    min-height: 230px;
   }
 }
 
@@ -3322,15 +3299,6 @@ svg[data-rotation] * {
   color: #52634b;
   white-space: nowrap;
 }
-.error-step-trace {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-  animation: error-trace 650ms ease-out;
-  pointer-events: none;
-}
-.error-selection-ring {
-  animation: coefficient-enter 500ms ease-out;
-}
 .tangle-run-focus {
   border-left: 4px solid;
   padding: 8px 12px;
@@ -3363,14 +3331,6 @@ svg[data-rotation] * {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-@keyframes error-trace {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
   }
 }
 @media (max-width: 640px) {

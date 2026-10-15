@@ -1896,10 +1896,8 @@ export default function App() {
         </p>
         <h3>Inspect a prefix</h3>
         <p>
-          Matrix products and approximation errors share the selected prefix.
-          Step or select a matrix factor or error point to compare the exact
-          product and convergent error. Irrational error bounds remain nonzero
-          at deep prefixes; a rational zero is outside the log plot. “Use
+          Matrix products follow the selected prefix. Step or select a matrix
+          factor to inspect the exact product and its convergent columns. “Use
           convergent as target” explicitly changes the number and can be undone.
           Left/Right steps a focused prefix pane.
         </p>

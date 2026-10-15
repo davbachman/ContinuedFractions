@@ -103,7 +103,7 @@ function initialPanes(): Pane[] {
           ? "tangle"
           : raw === "intervals"
             ? "symbolic"
-            : raw === "lattice"
+            : raw === "lattice" || raw === "errors"
               ? "matrices"
               : fallback,
       lift: Number.isInteger(lift) && lift >= 0 && lift < 6 ? lift : 0,
@@ -721,7 +721,6 @@ function ComparisonPane({
         {isPrefixView(pane.kind) && (
           <PrefixExplorer
             key={pane.kind}
-            kind={pane.kind}
             spec={p.scene.spec}
             coefficients={p.coefficients}
             selected={p.selected}

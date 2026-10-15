@@ -1,27 +1,15 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { specLabel, toCF, type NumberSpec } from "../math/continuedFraction";
-import { label, rational, type Rational } from "../math/rational";
+import { label, type Rational } from "../math/rational";
 import { determinant, type Matrix } from "../math/modular";
 import {
   coefficientMatrix,
-  convergentError,
-  logRational,
-  scientificRational,
   prefixData,
-  targetBounds,
   type Prefix,
 } from "../math/approximations";
 import { stageColor } from "./dissectionColors";
 
-export type PrefixView = "matrices" | "errors";
 type Props = {
-  kind: PrefixView;
   spec: NumberSpec;
   coefficients: bigint[];
   selected: number;
@@ -32,29 +20,13 @@ type Props = {
 type DiagramProps = {
   data: Prefix[];
   selected: number;
-  bounds: readonly [Rational, Rational];
   onSelect: Props["onSelect"];
 };
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-const short = (s: string, max = 24) =>
-  s.length <= max ? s : `${s.slice(0, 10)}…${s.slice(-8)}`;
-const activate = (event: KeyboardEvent, action: () => void) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    event.stopPropagation();
-    action();
-  }
-};
-
 export function PrefixExplorer(props: Props) {
-  const { kind, spec, coefficients, selected, onSelect, onExtend, onNumber } =
-    props;
+  const { spec, coefficients, selected, onSelect, onExtend, onNumber } = props;
   const data = useMemo(() => prefixData(coefficients), [coefficients]);
-  const bounds = useMemo(
-    () => (data.length ? targetBounds(spec, data.length) : null),
-    [spec, data],
-  );
-  if (!bounds || !data.length)
+  if (!data.length)
     return (
       <p className="view-unavailable" role="status">
         ∞ has no finite regular continued-fraction prefix. This view needs a
@@ -63,10 +35,10 @@ export function PrefixExplorer(props: Props) {
     );
   const index = clamp(selected, 0, data.length - 1),
     prefix = data[index];
-  const diagram = { data, selected: index, bounds, onSelect };
+  const diagram = { data, selected: index, onSelect };
   return (
     <div
-      className={`prefix-explorer prefix-${kind}`}
+      className="prefix-explorer prefix-matrices"
       data-selected-prefix={index}
     >
       <div className="prefix-navigation">
@@ -105,8 +77,7 @@ export function PrefixExplorer(props: Props) {
             : `${data.length} terms; exact rational expansion.`}
         </p>
       </div>
-      {kind === "matrices" && <Matrices {...diagram} />}
-      {kind === "errors" && <Errors {...diagram} spec={spec} />}
+      <Matrices {...diagram} />
       <div className="prefix-selection" aria-live="polite">
         <span className="eyebrow">
           Selected convergent · a{index} = {String(prefix.coefficient)}
@@ -267,241 +238,6 @@ function Matrices({ data, selected, onSelect }: DiagramProps) {
             endpoints.
           </p>
         </details>
-      </div>
-    </>
-  );
-}
-
-function Errors({
-  data,
-  selected,
-  bounds,
-  onSelect,
-  spec,
-}: DiagramProps & { spec: NumberSpec }) {
-  const [scaled, setScaled] = useState(false);
-  const rows = useMemo(
-    () =>
-      data.map((p) => ({
-        ...p,
-        error: convergentError(spec, p.convergent, bounds),
-      })),
-    [data, spec, bounds],
-  );
-  const current = rows[selected],
-    nonzero = rows.filter((p) => !p.error.zero);
-  const ordinate = (p: typeof current) =>
-    logRational((scaled ? p.error.scaled : p.error.absolute)[0]);
-  const ys = nonzero.map(ordinate),
-    minY = Math.floor(Math.min(0, ...ys)),
-    maxY = Math.ceil(Math.max(0, ...ys));
-  const maxX = Math.max(
-    1,
-    ...rows.map((p) => logRational(rational(p.convergent.q))),
-  );
-  const x = (p: typeof current) =>
-    70 + (460 * logRational(rational(p.convergent.q))) / maxX;
-  const y = (p: typeof current) =>
-    40 + (240 * (maxY - ordinate(p))) / Math.max(1, maxY - minY);
-  const ticks = Array.from(
-    { length: 5 },
-    (_, i) => maxY - (i * Math.max(1, maxY - minY)) / 4,
-  );
-  const range = scaled ? current.error.scaled : current.error.absolute;
-  return (
-    <>
-      <div className="prefix-intro">
-        <h3>How much accuracy does a denominator buy?</h3>
-        <p>
-          Each point is a convergent pₙ/qₙ. Select a point to inspect its prefix
-          in both panes.
-        </p>
-        <div className="workspace-actions">
-          <button aria-pressed={!scaled} onClick={() => setScaled(false)}>
-            Absolute error
-          </button>
-          <button aria-pressed={scaled} onClick={() => setScaled(true)}>
-            q² × error
-          </button>
-        </div>
-      </div>
-      <svg
-        className="prefix-chart error-chart"
-        viewBox="0 0 580 365"
-        role="group"
-        aria-label="Convergent approximation errors"
-        data-metric={scaled ? "scaled" : "absolute"}
-      >
-        {ticks.map((t, i) => (
-          <g key={i}>
-            <line
-              x1="70"
-              x2="530"
-              y1={40 + i * 60}
-              y2={40 + i * 60}
-              stroke="#dfe4d6"
-            />
-            <text x="60" y={44 + i * 60} textAnchor="end" fontSize="11">
-              {t.toFixed(1)}
-            </text>
-          </g>
-        ))}
-        <text x="70" y="20" fontSize="12">
-          log₁₀ {scaled ? "(q² |α − p/q|)" : "|α − p/q|"}
-        </text>
-        <line x1="70" x2="530" y1="280" y2="280" stroke="#8d9b82" />
-        {[0, 1, 2, 3, 4].map((i) => (
-          <text
-            key={i}
-            x={70 + i * 115}
-            y="300"
-            textAnchor="middle"
-            fontSize="11"
-          >
-            {((maxX * i) / 4).toFixed(1)}
-          </text>
-        ))}
-        <text x="300" y="323" textAnchor="middle" fontSize="12">
-          log₁₀ denominator q
-        </text>
-        <polyline
-          points={nonzero.map((p) => `${x(p)},${y(p)}`).join(" ")}
-          fill="none"
-          stroke="#b6c4ac"
-          strokeWidth="1.5"
-        />
-        <polyline
-          data-testid="completed-error-trace"
-          data-through-prefix={selected}
-          points={nonzero
-            .filter((p) => p.index <= selected)
-            .map((p) => `${x(p)},${y(p)}`)
-            .join(" ")}
-          fill="none"
-          stroke="#426b63"
-          strokeWidth="2.5"
-        />
-        {selected > 0 &&
-          !current.error.zero &&
-          !rows[selected - 1].error.zero && (
-            <path
-              key={`${selected}-${scaled}`}
-              className="error-step-trace"
-              data-testid="current-error-step"
-              d={`M${x(rows[selected - 1])},${y(rows[selected - 1])}L${x(current)},${y(current)}`}
-              fill="none"
-              stroke={stageColor(selected)}
-              strokeWidth="4"
-              pathLength="1"
-            />
-          )}
-        <circle
-          key={`cursor-${selected}-${scaled}`}
-          className="error-selection-ring"
-          cx={x(current)}
-          cy={current.error.zero ? 346 : y(current)}
-          r="12"
-          fill="none"
-          stroke={stageColor(selected)}
-          strokeWidth="2"
-          pointerEvents="none"
-        />
-        {rows.map((p) => (
-          <g
-            key={p.index}
-            role="button"
-            tabIndex={0}
-            aria-label={`Select error a${p.index}`}
-            aria-pressed={p.index === selected}
-            onClick={() => onSelect(p.index)}
-            onKeyDown={(e) => activate(e, () => onSelect(p.index))}
-            data-exact-zero={p.error.zero}
-          >
-            <title>{`a${p.index}: ${label(p.convergent)}; ${p.error.zero ? "exact zero error" : scientificRational((scaled ? p.error.scaled : p.error.absolute)[0])}`}</title>
-            <circle
-              cx={x(p)}
-              cy={p.error.zero ? 346 : y(p)}
-              r="22"
-              fill="transparent"
-            />
-            <circle
-              cx={x(p)}
-              cy={p.error.zero ? 346 : y(p)}
-              r={p.index === selected ? 7 : 4.5}
-              fill={stageColor(p.index)}
-              stroke={p.index === selected ? "#253c30" : "#fff"}
-              strokeWidth="1.5"
-              opacity={p.index > selected ? 0.4 : 1}
-            />
-          </g>
-        ))}
-        {rows.some((p) => p.error.zero) && (
-          <text x="70" y="350" fontSize="11">
-            Exact zero (outside log axis)
-          </text>
-        )}
-      </svg>
-      <p className="prefix-note">
-        Solid trace: prefixes through a{selected}. The colored segment tracks
-        the selected step; intermediate positions are a visual guide, not
-        additional convergents. Exact zero stays outside the logarithmic axis.
-      </p>
-      <div className="prefix-facts" data-testid="error-details">
-        <p>
-          <b>
-            {scaled ? "q² × absolute error" : "Absolute error"} at a{selected}
-          </b>
-        </p>
-        <p className="exact-expression">
-          {current.error.zero
-            ? "0 — exact rational endpoint"
-            : `≈ ${scientificRational(range[0])}`}
-        </p>
-        <p>
-          {current.error.zero
-            ? "The rational expansion terminates here."
-            : current.error.signed[0].p > 0n
-              ? "The convergent is below α."
-              : "The convergent is above α."}
-        </p>
-        <p className="prefix-note">
-          {spec.kind === "periodic"
-            ? "The irrational error is nonzero. Plotted decimals use a deeper exact prefix enclosure; they are approximations, not a termination test."
-            : "Errors are computed by exact rational subtraction. Zero is shown separately because it has no finite logarithm."}{" "}
-          Both axes use base-10 logarithms. Lines connect successive prefixes,
-          not a continuous error function.
-        </p>
-        <details>
-          <summary>
-            {current.error.exact
-              ? "Exact error fraction"
-              : "Certified rational error bounds"}
-          </summary>
-          <p className="exact-expression">
-            {current.error.exact
-              ? label(range[0])
-              : `${label(range[0])} < ${scaled ? "q² |α − p/q|" : "|α − p/q|"} < ${label(range[1])}`}
-          </p>
-          {!current.error.exact && (
-            <p>
-              Bounds come from a strictly deeper prefix of the exact periodic
-              expansion. No floating-point subtraction determines their sign.
-            </p>
-          )}
-        </details>
-      </div>
-      <div className="prefix-point-list" aria-label="Select a convergent error">
-        {rows.map((p) => (
-          <button
-            key={p.index}
-            aria-pressed={p.index === selected}
-            onClick={() => onSelect(p.index)}
-            style={{ borderBottomColor: stageColor(p.index) }}
-          >
-            a{p.index}: {short(label(p.convergent))}
-            {p.error.zero ? " · exact" : ""}
-          </button>
-        ))}
       </div>
     </>
   );

@@ -342,6 +342,19 @@ test("removed views disappear and old links and saved layouts retain the shared 
   await expect(left(page)).toHaveAttribute("data-representation", "tangle");
   await expect(right(page)).toHaveAttribute("data-representation", "symbolic");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "cf-atlas-comparison",
+      JSON.stringify([{ kind: "errors" }, { kind: "errors" }]),
+    ),
+  );
+  await page.goto("/");
+  await expect(left(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(right(page)).toHaveAttribute("data-representation", "matrices");
+  await page.goto("/?left=errors&right=errors");
+  await expect(left(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(right(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
   for (const name of [
     "Left representation",
     "Right representation",
@@ -351,7 +364,9 @@ test("removed views disappear and old links and saved layouts retain the shared 
       .getByLabel(name, { exact: true })
       .locator("option")
       .allTextContents();
-    expect(options.join(" ")).not.toMatch(/2-bridge|knot|interval|lattice/i);
+    expect(options.join(" ")).not.toMatch(
+      /2-bridge|knot|interval|lattice|approximation errors|measure approximation/i,
+    );
   }
   await expect(
     page.getByLabel("Numerator closure", { exact: true }),
