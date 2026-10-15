@@ -25,6 +25,7 @@ import {
 import { PrefixExplorer } from "./renderers/PrefixExplorer";
 import { SymbolicView } from "./renderers/SymbolicView";
 import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
+import { CFBraid } from "./renderers/CFBraid";
 import { TanglePanel } from "./renderers/TanglePanel";
 import { stageColor } from "./renderers/dissectionColors";
 import { DomainEdgeLegend } from "./renderers/domainEdges";
@@ -721,6 +722,17 @@ function ComparisonPane({
             onSelect={p.onSelect}
             onExtend={p.onExtendTerms}
             onNumber={p.onNumber}
+          />
+        )}
+        {pane.kind === "braid" && (
+          <CFBraid
+            spec={p.scene.spec}
+            coefficients={p.coefficients}
+            selected={p.selected}
+            onSelect={p.onSelect}
+            onEdit={p.onEditCoefficient}
+            onNumber={p.onNumber}
+            onExtend={p.onExtendTerms}
           />
         )}
         {pane.kind === "rectangle" && (

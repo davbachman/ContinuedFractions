@@ -6,7 +6,7 @@ An interactive mathematical instrument connecting continued fractions, the Farey
 
 ## Compare two representations
 
-The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, matrix products, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Farey triangles, marked torus flips, rational tangle, or marked torus/pillowcase. The same representation can appear twice. **Swap sides** moves each pane with its current camera and display settings.
+The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, matrix products, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Farey triangles, marked torus flips, CF braid / 4-plat, rational tangle, or marked torus/pillowcase. The same representation can appear twice. **Swap sides** moves each pane with its current camera and display settings.
 
 - Use **Start with a connection** for curated comparisons. The connection caption states whether the panes share a trajectory, coefficient, marked construction, or only the target number. It does not invent a common clock or identify the distinct torus markings.
 - The compact shared coefficient strip selects and edits terms in every pairing. Selecting a term highlights a rectangle group, Farey run, or canonical tangle twist region where defined. Symbolic views offer nested fractions, coefficient lists, exact editing, convergents, approximation error, prefix cylinders, and optional alternate endings.
@@ -27,6 +27,18 @@ The optional link groups the existing exact Farey itinerary by coefficient. Each
 - Initial and rational terminal offsets determine the L/R counts. A zero-crossing run, such as the final stage of 1/2, holds the hyperbolic point while showing its rectangle group. An integer ray lies on a Farey edge and generates no automatic flips.
 - Rational playback stops at the last group and a triangle incident to the target cusp; it never claims to reach the ideal endpoint in finite time. Irrational or incomplete rational runs stop at the displayed time/crossing limit with an incomplete-run label. Extend depth and relink to continue where possible. The 512-crossing cap includes the initial entry.
 - Enabling the link seeks the selected coefficient run as one undoable operation. Playback frames do not fill the undo history. Selecting a coefficient while linked seeks its stage. Editing, undo, or switching representations pauses and releases the link; re-enable it when ready. Cameras and the exact target remain independent of playback. The link is a temporary workspace setting, not serialized scene data.
+
+## CF braid / 4-plat
+
+Choose **CF braid · 4-plat** in either pane, or use **Read the CF braid** to place it beside the symbolic fraction. This is the vertical three-active-strand presentation: boxes alternate between strands **1–2** and **2–3**, with the return strand **R** and curved plat caps visible. **Tangle and its plat closure** compares it with the marked rational tangle.
+
+- Read the colored boxes downward in coefficient order. Click or keyboard-select a box to highlight its coefficient in both panes. **Previous/Next coefficient** navigates the shared selection; rectangle and Farey playback also highlight the matching boxes.
+- **Apply braid coefficient** edits α through the existing shared commands; Undo restores the number and its other views. Canonicalization may change the final CF ending.
+- A standard plat needs an odd number of boxes. For an even-length CF, the view shows the equivalent ending `[…, a−1, 1]`; both boxes retain the original coefficient’s color and selection. The zero box for α < 1 is explicit.
+- Irrational α uses an explicitly labeled selected convergent. Selecting an earlier box selects a shorter prefix. Editing a coefficient changes the exact irrational CF and preserves its periodic tail; **Use braid convergent as α** explicitly switches to a rational.
+- The diagram reports the closed knot/link fixture and component count. Huge twist counts become labeled bundles with exact connectivity. The presentation is 2D, with smooth strands and visible over/under gaps; it is distinct from the rotatable tangle diagram.
+
+The [documented convention](docs/MATHEMATICS.md#continued-fraction-braid--four-plat) fixes signs, word order, caps, and zero/infinity cases. It follows [Kauffman–Lambropoulou, Figures 9–10](https://arxiv.org/pdf/math/0212011). Closed knots do not uniquely determine α; custom signed tangle words retain their operations separately from this CF presentation.
 
 ## Matrix products
 

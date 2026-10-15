@@ -176,18 +176,22 @@ test("irrational tangles label selected convergents and editing explicitly makes
   page,
 }) => {
   await button(page, "φ").click();
-  await expect(page.locator(".tangle-approximation")).toContainText(
-    "does not represent the exact irrational",
-  );
+  await expect(
+    page.locator(".tangle-panel .tangle-approximation"),
+  ).toContainText("does not represent the exact irrational");
   await page.getByLabel("Tangle convergent", { exact: true }).selectOption("4");
   await expect(page.getByTestId("tangle-fraction")).toHaveText("8/5");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
   await button(page, "Add +1 endpoint twist").click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
-  await expect(page.locator(".tangle-approximation")).toHaveCount(0);
+  await expect(page.locator(".tangle-panel .tangle-approximation")).toHaveCount(
+    0,
+  );
   await button(page, "Undo number edit").click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("φ");
-  await expect(page.locator(".tangle-approximation")).toBeVisible();
+  await expect(
+    page.locator(".tangle-panel .tangle-approximation"),
+  ).toBeVisible();
 });
 
 test("large twist groups and marked slopes disclose display limits without expanding crossings", async ({

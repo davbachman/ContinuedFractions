@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { DomainEdgeLegend } from "./renderers/domainEdges";
 import { HalfPlane } from "./renderers/HalfPlane";
+import { CFBraid } from "./renderers/CFBraid";
 import { TanglePanel } from "./renderers/TanglePanel";
 import type { TangleExpression } from "./math/tangles";
 import { ModularTorus } from "./renderers/ModularTorus";
@@ -1661,6 +1662,19 @@ export default function App() {
               canRedo={history.future.length > 0}
               showPlane={showTriangulation}
               onShowPlane={setShowTriangulation}
+            />
+            <CFBraid
+              spec={scene.spec}
+              coefficients={cf}
+              selected={selectedTerm}
+              onSelect={selectTerm}
+              onEdit={editCoefficient}
+              onNumber={(r) => changeNumber({ kind: "rational", value: r })}
+              onExtend={() =>
+                setRectangleDepth((d) =>
+                  Math.min(96, Math.max(d, cf.length) + 8),
+                )
+              }
             />
             <TanglePanel
               spec={scene.spec}

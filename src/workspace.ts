@@ -8,6 +8,7 @@ export const representations = {
   farey: "Farey triangles · flip path",
   triangulation: "Marked torus · edge flips",
   tangle: "Marked rational tangle",
+  braid: "CF braid · 4-plat",
   pillowcase: "Marked torus / pillowcase",
 } as const;
 export type Representation = keyof typeof representations;
@@ -18,7 +19,7 @@ export const isTrajectory = (s: Representation) =>
 export const isPrefixView = (s: Representation): s is "matrices" =>
   s === "matrices";
 export const isCoefficientView = (s: Representation) =>
-  s === "symbolic" || s === "rectangle" || isPrefixView(s);
+  s === "symbolic" || s === "rectangle" || s === "braid" || isPrefixView(s);
 export const isTangle = (s: Representation) =>
   ["tangle", "pillowcase"].includes(s);
 export const comparisonPresets: {
@@ -35,6 +36,8 @@ export const comparisonPresets: {
     pair: ["farey", "triangulation"],
     follow: true,
   },
+  { label: "Read the CF braid", pair: ["symbolic", "braid"] },
+  { label: "Tangle and its plat closure", pair: ["tangle", "braid"] },
   { label: "Build a tangle", pair: ["symbolic", "tangle"] },
   { label: "Tangle and its cover", pair: ["tangle", "pillowcase"] },
   { label: "Read the matrix product", pair: ["symbolic", "matrices"] },
@@ -72,6 +75,16 @@ export function correspondence(
       kind: "Farey crossing → triangle step",
       text: "The selected α determines the vertical ray and its path through adjacent Farey triangles. Both views share the same crossing times. This marked triangulation does not assign a homology slope to the modular cover.",
     };
+  if (has("braid") && (has("tangle") || has("pillowcase")))
+    return {
+      kind: "Rational tangle ↔ four-plat closure",
+      text: "The CF braid presents the numerator closure of the same rational tangle using three active strands and a return strand. Custom tangle words retain their operations. Irrational inputs use the selected convergent; a closed knot does not uniquely determine α or a marking.",
+    };
+  if (has("braid") && (has("symbolic") || has("rectangle") || has("matrices")))
+    return {
+      kind: "Coefficients ↔ braid twist boxes",
+      text: "Read the boxes downwards in CF order, alternating strands 1–2 and 2–3. Selecting a box highlights its coefficient; rectangle playback highlights successive groups. An even-length CF uses a split final ending, with both boxes linked to the same coefficient. For irrational α, the braid shows the selected convergent.",
+    };
   if (isPrefixView(a) || isPrefixView(b)) {
     if (isCoefficientView(a) && isCoefficientView(b))
       return {
@@ -104,7 +117,7 @@ export function correspondence(
       text: "Each coefficient is a Euclidean quotient. Select a term or square group to highlight the same stage; editing either changes the exact shared number.",
     };
   if (
-    (has("symbolic") || has("rectangle")) &&
+    (has("symbolic") || has("rectangle") || has("braid")) &&
     (isTrajectory(a) || isTrajectory(b))
   )
     return {

@@ -3349,3 +3349,122 @@ svg[data-rotation] * {
     grid-row: 1;
   }
 }
+
+/* Vertical CF braid: three active slots and a visible return strand. */
+.cf-braid-panel {
+  margin-top: 22px;
+  min-width: 0;
+}
+.braid-value,
+.braid-instruction,
+.braid-closure {
+  margin: 12px 20px;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.braid-value strong {
+  font-family: Georgia, serif;
+}
+.braid-scroll {
+  max-height: 510px;
+  overflow: auto;
+  background: #fbfbf6;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+}
+.braid-scroll svg {
+  display: block;
+  width: 100%;
+  max-width: 490px;
+  height: auto;
+  margin: auto;
+}
+.braid-scroll [role="button"] {
+  cursor: pointer;
+  outline: none;
+}
+.braid-scroll [role="button"]:focus-visible rect[data-twist-pair] {
+  stroke: #273f31;
+  stroke-width: 3;
+  stroke-dasharray: 5 2;
+}
+.braid-strand-label {
+  font: 600 13px sans-serif;
+  fill: #526c5c;
+}
+.braid-box-label {
+  font: 11px sans-serif;
+}
+.braid-controls,
+.braid-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 20px;
+  align-items: end;
+}
+.braid-controls button,
+.braid-edit button,
+.cf-braid-panel .tangle-approximation button {
+  min-height: 40px;
+}
+.braid-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+}
+.braid-edit input {
+  width: 110px;
+  min-height: 40px;
+}
+.braid-convention {
+  border-top: 1px solid #dbe3cf;
+  padding: 14px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.braid-convention summary {
+  cursor: pointer;
+}
+.cf-braid-panel .tangle-approximation select {
+  min-width: 0;
+  max-width: 100%;
+}
+.pane-body .cf-braid-panel {
+  margin-top: 0;
+}
+@media (max-width: 720px) {
+  .cf-braid-panel .panel-heading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .braid-scroll {
+    max-height: 520px;
+  }
+  .braid-controls button,
+  .braid-edit button {
+    min-height: 44px;
+  }
+}
+
+.cf-braid-panel button {
+  padding: 8px 11px;
+  border: 1px solid #d1dac8;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #fbfcf7;
+}
+.cf-braid-panel button:hover:not(:disabled) {
+  background: #eaf0e2;
+  border-color: #9bac8d;
+}
+.braid-edit input {
+  border: 1px solid #cad4bd;
+  border-radius: 4px;
+  padding: 7px;
+}
+.cf-braid-panel .tangle-approximation button {
+  margin: 8px 8px 0 0;
+}
