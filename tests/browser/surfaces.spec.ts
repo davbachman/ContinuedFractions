@@ -117,3 +117,49 @@ test("domain colors agree across the half-plane and filled translucent quotient 
   await expect(torus.locator("[data-domain-side]")).toHaveCount(0);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
 });
+
+test("3D dragging does not select labels or start a native image drag", async ({
+  page,
+}) => {
+  await page.goto("/?left=orbifold&right=symbolic");
+  const pane = page.getByRole("region", {
+    name: "Left representation",
+    exact: true,
+  });
+  await pane.getByRole("button", { name: "Schematic 3D", exact: true }).click();
+  const surface = pane.getByRole("img", { name: /Schematic punctured sphere/ });
+  const label = surface.locator("text").filter({ hasText: /^cusp$/ });
+  await label.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.getSelection()?.removeAllRanges());
+  const box = (await label.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    box.x + box.width / 2 + 35,
+    box.y + box.height / 2 + 30,
+    { steps: 5 },
+  );
+  await page.mouse.up();
+  await expect(surface).not.toHaveAttribute("data-roll", "0");
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+  expect(
+    await label.evaluate((el) =>
+      getComputedStyle(el).getPropertyValue("-webkit-user-select"),
+    ),
+  ).toBe("none");
+  expect(
+    await surface.evaluate((el) => {
+      const event = new Event("dragstart", { bubbles: true, cancelable: true });
+      el.dispatchEvent(event);
+      return event.defaultPrevented;
+    }),
+  ).toBe(true);
+  await expect(surface).toBeFocused();
+  await surface.press("Home");
+  await expect(surface).toHaveAttribute("data-roll", "0");
+  await expect(surface).toHaveAttribute("data-rotation", "-0.4");
+  const outside = pane.locator(".rotation-hint");
+  expect(
+    await outside.evaluate((el) => getComputedStyle(el).userSelect),
+  ).not.toBe("none");
+});

@@ -39,9 +39,14 @@ export function useSurfaceRotation(
       cursor: dragging ? "grabbing" : "grab",
       touchAction: "none",
       userSelect: "none",
+      WebkitUserSelect: "none",
+      WebkitTapHighlightColor: "transparent",
     },
     onPointerDown(event) {
       if (!event.isPrimary || event.button !== 0 || gesture.current) return;
+      // Stop Safari starting a native SVG/text selection before pointer capture.
+      // Focus explicitly below, preserving keyboard navigation and click-to-seek.
+      event.preventDefault();
       dragged.current = false;
       gesture.current = {
         id: event.pointerId,
@@ -53,6 +58,9 @@ export function useSurfaceRotation(
         width: event.currentTarget.getBoundingClientRect().width,
       };
       event.currentTarget.focus({ preventScroll: true });
+    },
+    onDragStart(event) {
+      event.preventDefault();
     },
     onPointerMove(event) {
       const start = gesture.current;
