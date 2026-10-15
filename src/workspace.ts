@@ -8,7 +8,6 @@ export const representations = {
   triangulation: "Marked torus · edge flips",
   tangle: "Marked rational tangle",
   braid: "CF braid · 4-plat",
-  pillowcase: "Marked torus / pillowcase",
 } as const;
 export type Representation = keyof typeof representations;
 export const isRepresentation = (s: unknown): s is Representation =>
@@ -17,5 +16,4 @@ export const isTrajectory = (s: Representation) =>
   ["h2", "farey", "orbifold", "torus"].includes(s);
 export const isCoefficientView = (s: Representation) =>
   s === "symbolic" || s === "rectangle" || s === "braid";
-export const isTangle = (s: Representation) =>
-  ["tangle", "pillowcase"].includes(s);
+export const isTangle = (s: Representation) => s === "tangle";

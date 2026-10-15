@@ -2,7 +2,7 @@
 
 ## Scope and exact numbers
 
-The original quotient is the modular orbifold (one cusp, cone orders 2 and 3). The expanded application also implements its schematic atlas, the six-sheet commutator torus, marked rational tangles, and the separate branched-cover torus/pillowcase. Their conventions, checked source sections, and derivations are documented in [TOPOLOGY.md](TOPOLOGY.md). Marked two-triangle torus flips are now implemented with the fixed-basis conventions in that document. Lens-space labels and tetrahedron layering are not implemented.
+The original quotient is the modular orbifold (one cusp, cone orders 2 and 3). The expanded application also implements its schematic atlas, the six-sheet commutator torus, and marked rational tangles. The separate branched-cover torus/pillowcase view is currently removed pending redesign. Their conventions, checked source sections, and derivations are documented in [TOPOLOGY.md](TOPOLOGY.md). Marked two-triangle torus flips are now implemented with the fixed-basis conventions in that document. Lens-space labels and tetrahedron layering are not implemented.
 
 Rationals are normalized BigInt pairs with positive denominator. Infinity is the single projective value 1/0, supported by the kernel but not a finite vertical endpoint. Negative continued fractions use floor division. Finite regular expressions have positive tail coefficients and are canonicalized to a final term > 1. An alternate ending preserves value. Decimal input is an exact decimal rational, never an inferred irrational. A finite prefix either terminates or is explicitly completed with an infinite tail of ones. Presets φ=[1;overline(1)] and √2=[1;overline(2)] retain their periodic specifications.
 
@@ -78,7 +78,6 @@ The renderer evaluates symbolic differences before converting to screen coordina
 
 Rectangle stage indices are canonical continued-fraction coefficient indices. The existing Farey coding map selects the corresponding run in H²; rectangle playback neither advances hyperbolic time nor associates a stage with a Ford contact.
 
-
 ## Prefix enclosures, integer lattice, matrix products, and errors
 
 For each regular prefix `[a₀; …, aₙ]`, let `cₙ = pₙ/qₙ` with seeds `p₋₂=0, p₋₁=1, q₋₂=1, q₋₁=0`. These exact arithmetic identities support convergent calculations; matrix products, interval, lattice, and error plots are not standalone views in the app. Define
@@ -109,7 +108,7 @@ Coordinate ratios use leading integer digits after exact rational arithmetic; lo
 
 The dedicated braid view reads the regular continued fraction from top to bottom. Its four vertical slots are `R, 1, 2, 3`; only the last three participate in crossings. Blocks alternate between slots `1–2` and `2–3`. The top and bottom caps pair `R–1` and `2–3`. This is a plat closure, not the ordinary closure of a three-strand braid. It gives the unoriented numerator-closure knot/link of the displayed rational tangle.
 
-We use the three-active-strand presentation and terminal ambiguity in Kauffman–Lambropoulou, *On the Classification of Rational Knots*, [Figures 9–10 and Remark 1](https://arxiv.org/pdf/math/0212011), with their coefficient numbering shifted to start at `a₀`. An even number of CF terms is changed **for this display only** to an odd number using `[…, a] = […, a−1, 1]`. Both resulting boxes carry the original final coefficient index and color. Zero boxes remain visible. Negative α uses its regular CF, which need not give an alternating diagram.
+We use the three-active-strand presentation and terminal ambiguity in Kauffman–Lambropoulou, _On the Classification of Rational Knots_, [Figures 9–10 and Remark 1](https://arxiv.org/pdf/math/0212011), with their coefficient numbering shifted to start at `a₀`. An even number of CF terms is changed **for this display only** to an odd number using `[…, a] = […, a−1, 1]`. Both resulting boxes carry the original final coefficient index and color. Zero boxes remain visible. Negative α uses its regular CF, which need not give an alternating diagram.
 
 The frozen local convention is: read downwards, with positive local exponent meaning **top-right over top-left**. Exponents alternate `a₀, −a₁, a₂, …` on the alternating pairs. For input Fox colors `(u,v)`, one such crossing outputs `(v,2v−u)`. To propagate upward through an entire block of exponent `n`, apply `(u,v) ↦ (u+n(u−v), v+n(u−v))`. Starting with bottom cap colors `(0,0,1,1)` and undoing the braid word in reverse produces top colors `(0,−p,q−p,q)`. Thus the displayed marked fraction is `(c₀−c₁)/(c₃−c₀) = p/q`. This recovers α independently of evaluating its CF. The exposed caps impose the numerator-closure relation; a closed knot alone does not determine this marked fraction.
 

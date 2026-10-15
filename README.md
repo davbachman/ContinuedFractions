@@ -6,7 +6,7 @@ An interactive mathematical instrument connecting continued fractions, the Farey
 
 ## Compare two representations
 
-The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Poincare Disk, marked torus flips, CF braid / 4-plat, rational tangle, or marked torus/pillowcase. The same representation can appear twice.
+The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Poincare Disk, marked torus flips, CF braid / 4-plat, or rational tangle. The same representation can appear twice.
 
 - Edit **α** beside the shared coefficient strip and press Enter or the arrow to apply. Fractions, decimals, continued fractions, `phi`, and `sqrt2` use the same exact input parser and undo history. **Input options** controls finite or infinite-tail completion. Undo/redo, scene files, and sharing are in the top-right header.
 - The compact shared coefficient strip selects and edits terms in every pairing. Selecting a term highlights a rectangle group, Farey run, or canonical tangle twist region where defined. Symbolic views offer nested fractions, coefficient lists, exact editing, convergents, approximation error, prefix cylinders, and optional alternate endings.
@@ -77,15 +77,14 @@ In the quotient panel choose **Punctured torus**, then **Flat hexagon** or **Tor
 
 The existing H² Play, reverse, and scrub controls move the lifted point and trail. **Cover lift** chooses one of six lifts; it does not edit α. Drag the 3D view to rotate it; toggle domain edges, labels, and trail. Trails split at coordinate-chart changes and their seam endpoints agree on the surface. The mesh is a schematic topological atlas with a small cusp cutaway and a depth-tested trail visible through its translucent surface, not an isometric embedding. No homology slope is assigned to the lifted hyperbolic ray.
 
-## Rational tangles and the pillowcase
+## Rational tangles
 
 The **Marked rational tangle** panel shares the exact number and undo history with the continued fraction, H², and rectangle views.
 
 - Start with **Zero tangle** (horizontal arcs) or **Infinity tangle** (vertical arcs). Endpoints stay marked NW, NE, SW, SE. **Add +1 / −1 endpoint twist** acts at the right pair and changes x to x±1. **Quarter-turn ↺ / ↻** rotates the actual diagram and changes x to −1/x; **Mirror crossings** sends x to −x.
 - Select a signed twist region in the expression, or click its diagram crossings, then edit its count. The chronological expression remains separate from the regular continued fraction, including cancelling twists and rotations. **Remove last operation** reverses the last recorded construction step. Undo/redo restores the expression and shared number together. Editing the continued fraction or endpoint generates a new canonical diagram expression.
 - **Lifted tangle 3D** draws each twist region as two strands winding around a shared axis: each signed half-twist adds a half-turn, and its sign controls the helix handedness. Smooth transitions join different twist axes. Drag to rotate the model, or click a strand to select its twist region. The primary 2D view shows gaps at underpasses. Zoom and scroll to inspect a long construction. Regions above 24 twists, or beyond the total 160-crossing detail budget, use boxes with exact signed counts and connectivity. Detailed 3D requires at most 180 edges and no aggregate boxes. Operation words are capped at 512, with up to 1,024 digits per twist count and a 100 KB operation budget, within the existing number/display validation limits.
-- For φ, √2, or another exact periodic input, explicitly choose a **Tangle convergent**. The panel labels it as an approximation. Editing this tangle or its marked slope switches the shared value to the resulting rational; undo restores the exact irrational.
-- Choose **Branched-cover torus / pillowcase** to see the two parallel meridians and their common separating curve on the four-marked sphere. This is a separate construction from the six-sheet hyperbolic cover. Edit **Marked slope**, apply **Dehn twist ±1**, or **Lift quarter-turn**; the verified marking sends these to the corresponding tangle operations. The torus shows fixed, arrowed coordinate loops **U (around the hole)** and **V (around the tube)**, alongside exact winding counts q and p. Highlight **Loop A** or **Loop B**, and use **Trace one circuit of loop A** to follow corresponding points on both lifts and their common pillowcase image. Negative counts indicate reversed winding; zero and infinity retain their exact counts. Tracing, highlighting, and rotating the torus do not edit the number. Curves and tracing are available when |p|+q≤512; larger slopes retain exact counts and controls with a limit notice. The donut is a schematic boundary display; the displayed lifted curves specify the meridians of the solid-torus filling.
+- For φ, √2, or another exact periodic input, explicitly choose a **Tangle convergent**. The panel labels it as an approximation. Editing this tangle switches the shared value to the resulting rational; undo restores the exact irrational.
 
 View choices, diagram zoom, and camera angles are session UI settings. Scene JSON and shared links preserve the exact number and signed operation word, including zero and infinity. No external diagrams or mesh assets are required.
 
@@ -151,13 +150,13 @@ The exact kernel uses native BigInt. Rendering uses double precision with visibl
 
 Farey crossings, coefficient runs, Ford contacts, and modular seams are **different events**. Initial and terminal run offsets are derived in [MATHEMATICS.md](docs/MATHEMATICS.md) and tested independently. The modular quotient has one cusp and cone points of orders 2 and 3; it is not a torus. Its folded view uses logarithmic screen height. The 3D display is a tested topological atlas, not an isometric embedding or a claim about Euclidean geodesics.
 
-**Implemented:** the original number/Farey/Ford views, modular orbifold atlas, rectangle dissection, six-sheet commutator cover, marked rational tangles, and the separate branched-cover torus/pillowcase. Marked two-triangle torus flips are also implemented. Lens-space labels and tetrahedron layering are not included. The verified conventions, derivations, and source sections are in [TOPOLOGY.md](docs/TOPOLOGY.md).
+**Implemented:** the original number/Farey/Ford views, modular orbifold atlas, rectangle dissection, six-sheet commutator cover, marked rational tangles. The marked torus/pillowcase view has been removed pending a clearer visual design. Marked two-triangle torus flips are also implemented. Lens-space labels and tetrahedron layering are not included. The verified conventions, derivations, and source sections are in [TOPOLOGY.md](docs/TOPOLOGY.md).
 
 ## Project map
 
 - `src/math/`: rational arithmetic, exact renderer-independent rectangle dissection, continued fractions, Farey traversal, Ford contacts, modular matrices/reduction, and a deterministic event timeline.
 - `src/state.ts`: typed number/tangle/load commands, undo/redo, validation, and versioned persistence.
-- `src/renderers/`: Canvas upper-half-plane, SVG rectangle dissection and folded quotient, six-sheet torus atlas, marked tangles, and pillowcase.
+- `src/renderers/`: Canvas upper-half-plane, SVG rectangle dissection and folded quotient, six-sheet torus atlas, and marked tangles.
 - `tests/`: exact fixtures, generated rational tests, seam/atlas tests, state checks, browser checks, and benchmarks.
 
 ## Credits and license

@@ -353,13 +353,17 @@ test("removed views disappear and old links and saved layouts retain the shared 
   await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
   await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  await page.goto("/?left=pillowcase&right=pillowcase");
+  await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
   for (const name of ["Left representation", "Right representation"]) {
     const options = await page
       .getByLabel(name, { exact: true })
       .locator("option")
       .allTextContents();
     expect(options.join(" ")).not.toMatch(
-      /2-bridge|knot|interval|lattice|approximation errors|measure approximation|matrix/i,
+      /2-bridge|knot|interval|lattice|approximation errors|measure approximation|matrix|pillowcase/i,
     );
   }
   await expect(

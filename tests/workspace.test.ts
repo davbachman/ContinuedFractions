@@ -17,6 +17,7 @@ it("rejects removed and invalid representations", () => {
     "lattice",
     "errors",
     "matrices",
+    "pillowcase",
   ])
     expect(isRepresentation(removed)).toBe(false);
   expect(isRepresentation("__proto__")).toBe(false);

@@ -117,9 +117,7 @@ test("signed tangle edits, inverse operations, infinity, and undo synchronize sh
   expect(errors).toEqual([]);
 });
 
-test("tangle diagrams, 3D rotation, marked slopes and Dehn twists", async ({
-  page,
-}, info) => {
+test("tangle diagrams and 3D rotation", async ({ page }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await number(page, "5/2");
@@ -142,28 +140,6 @@ test("tangle diagrams, 3D rotation, marked slopes and Dehn twists", async ({
     .getByRole("img", { name: "Lifted 3D rational tangle" })
     .screenshot({ path: `test-results/${info.project.name}-tangle-3d.png` });
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/2");
-  await button(page, "Branched-cover torus / pillowcase").click();
-  await page.getByLabel("Marked torus slope", { exact: true }).fill("2/3");
-  await button(page, "Apply marked slope").click();
-  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("2/3");
-  const markedTorus = page.getByRole("img", {
-    name: "Marked branched-cover torus with two parallel meridians",
-  });
-  const angle = await dragSurface(
-    page,
-    markedTorus,
-    info.project.name === "mobile",
-  );
-  await button(page, "Dehn twist +1").click();
-  await expect(page.getByTestId("tangle-fraction")).toHaveText("5/3");
-  await expect(markedTorus).toHaveAttribute("data-rotation", angle);
-  await button(page, "Lift quarter-turn").click();
-  await expect(page.getByTestId("tangle-fraction")).toHaveText("-3/5");
-  await button(page, "Undo number edit").click();
-  await expect(page.getByTestId("tangle-fraction")).toHaveText("5/3");
-  await page
-    .locator(".tangle-panel")
-    .screenshot({ path: `test-results/${info.project.name}-pillowcase.png` });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
@@ -195,7 +171,7 @@ test("irrational tangles label selected convergents and editing explicitly makes
   ).toBeVisible();
 });
 
-test("large twist groups and marked slopes disclose display limits without expanding crossings", async ({
+test("large twist groups disclose display limits without expanding crossings", async ({
   page,
 }) => {
   await number(page, "1/1000000000000");
@@ -204,10 +180,6 @@ test("large twist groups and marked slopes disclose display limits without expan
   });
   await expect(diagram).toHaveAttribute("data-boxes", "1");
   await expect(button(page, "Lifted tangle 3D")).toBeDisabled();
-  await button(page, "Branched-cover torus / pillowcase").click();
-  await expect(page.locator(".pillowcase-panel .topology-limit")).toContainText(
-    "Curve display limit",
-  );
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("1/1000000000000");
   expect(
     await page.evaluate(

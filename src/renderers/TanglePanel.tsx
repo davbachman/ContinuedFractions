@@ -14,11 +14,9 @@ import {
 import { tangleDiagram } from "../math/tangleDiagram";
 import { tangleCurves } from "./tangleCurves";
 import { tangleHelices } from "./tangleHelices";
-import { Pillowcase } from "./Pillowcase";
 import { svgPath } from "./ModularTorus";
 import { stageColor } from "./dissectionColors";
 type Props = {
-  view?: "tangle" | "pillowcase";
   linkCoefficients?: boolean;
   spec: NumberSpec;
   expression?: TangleExpression;
@@ -36,7 +34,6 @@ export function TanglePanel({
   onSelect,
   onChange,
   onError,
-  view,
   linkCoefficients = false,
 }: Props) {
   const target = spec.kind === "rational" ? spec.value : convergents[selected];
@@ -50,18 +47,12 @@ export function TanglePanel({
   const diagram = useMemo(() => tangleDiagram(ops), [ops]);
   const curves = useMemo(() => tangleCurves(diagram), [diagram]);
   const fraction = useMemo(() => tangleFraction(ops), [ops]);
-  const [localMode, setMode] = useState<"tangle" | "pillowcase">("tangle"),
-    [three, setThree] = useState(false),
+  const [three, setThree] = useState(false),
     [rotation, setRotation] = useState(-0.45),
     [roll, setRoll] = useState(0),
     [zoom, setZoom] = useState(1),
     [region, setRegion] = useState(-1),
     [draft, setDraft] = useState("1");
-  const mode = view
-    ? view === "pillowcase"
-      ? "pillowcase"
-      : "tangle"
-    : localMode;
   const scrollRef = useRef<HTMLDivElement>(null);
   const zoomAnchor = useRef({ x: 0.5, y: 0.5 });
   const changeZoom = (value: number) => {
@@ -84,7 +75,7 @@ export function TanglePanel({
       zoomAnchor.current.x * svg.clientWidth - viewport.clientWidth / 2;
     viewport.scrollTop =
       zoomAnchor.current.y * svg.clientHeight - viewport.clientHeight / 2;
-  }, [zoom, mode]);
+  }, [zoom]);
   const coefficientMap = useMemo(
     () =>
       linkCoefficients && spec.kind === "rational"
@@ -196,36 +187,12 @@ export function TanglePanel({
       <div className="panel-heading">
         <div>
           <span className="panel-number">04</span>
-          <h2>
-            {view === "pillowcase"
-              ? "Marked torus / pillowcase"
-              : "Marked rational tangle"}
-          </h2>
+          <h2>Marked rational tangle</h2>
         </div>
         <strong className="tangle-fraction" data-testid="tangle-fraction">
           {label(fraction)}
         </strong>
       </div>
-      {!view && (
-        <div
-          className="topology-options"
-          role="group"
-          aria-label="Tangle and branched cover"
-        >
-          <button
-            aria-pressed={mode === "tangle"}
-            onClick={() => setMode("tangle")}
-          >
-            Rational tangle
-          </button>
-          <button
-            aria-pressed={mode === "pillowcase"}
-            onClick={() => setMode("pillowcase")}
-          >
-            Branched-cover torus / pillowcase
-          </button>
-        </div>
-      )}
       {linkCoefficients && spec.kind === "rational" && (
         <p className="pane-note">
           {coefficientMap
@@ -233,7 +200,7 @@ export function TanglePanel({
             : "Custom signed construction · the rational value is linked; its operation regions are independent of the regular continued-fraction coefficients."}
         </p>
       )}
-      {coefficientMap && mode === "tangle" && (
+      {coefficientMap && (
         <p
           key={selected}
           className="tangle-run-focus"
@@ -279,257 +246,246 @@ export function TanglePanel({
           </label>
         </div>
       )}
-      {mode === "pillowcase" ? (
-        <Pillowcase
-          fraction={fraction}
-          onSlope={(r) => commit(expressionFor(r))}
-          onTwist={twist}
-          onRotate={() => rotate(1)}
-          onError={onError}
-        />
-      ) : (
-        <>
-          <div className="tangle-controls">
-            <button onClick={() => twist(1n)}>Add +1 endpoint twist</button>
-            <button onClick={() => twist(-1n)}>Add −1 endpoint twist</button>
-            <button onClick={() => rotate(1)}>Quarter-turn ↺</button>
-            <button onClick={() => rotate(-1)}>Quarter-turn ↻</button>
-            <button onClick={() => commit(mirrorExpression(ops))}>
-              Mirror crossings
-            </button>
-          </div>
-          <div className="topology-options">
-            <button aria-pressed={!three} onClick={() => setThree(false)}>
-              2D diagram
-            </button>
-            <button
-              aria-pressed={three}
-              disabled={!canThree}
-              onClick={() => setThree(true)}
-            >
-              Lifted tangle 3D
-            </button>
-            <label>
-              Diagram zoom
-              <input
-                aria-label="Tangle diagram zoom"
-                type="range"
-                min={1}
-                max={4}
-                step={0.1}
-                value={zoom}
-                onChange={(e) => changeZoom(Number(e.target.value))}
-              />
-            </label>
-          </div>
-          <div
-            ref={scrollRef}
-            className="tangle-scroll"
-            tabIndex={0}
-            role="region"
-            aria-label="Scrollable marked tangle diagram"
+      <>
+        <div className="tangle-controls">
+          <button onClick={() => twist(1n)}>Add +1 endpoint twist</button>
+          <button onClick={() => twist(-1n)}>Add −1 endpoint twist</button>
+          <button onClick={() => rotate(1)}>Quarter-turn ↺</button>
+          <button onClick={() => rotate(-1)}>Quarter-turn ↻</button>
+          <button onClick={() => commit(mirrorExpression(ops))}>
+            Mirror crossings
+          </button>
+        </div>
+        <div className="topology-options">
+          <button aria-pressed={!three} onClick={() => setThree(false)}>
+            2D diagram
+          </button>
+          <button
+            aria-pressed={three}
+            disabled={!canThree}
+            onClick={() => setThree(true)}
           >
-            <svg
-              {...rotationControls}
-              viewBox={
-                bounds
-                  ? `${bounds.left} ${bounds.top} ${bounds.right - bounds.left} ${bounds.bottom - bounds.top}`
-                  : `-55 -65 ${diagram.width + 110} ${diagram.height + 130}`
-              }
-              style={{
-                ...rotationControls.style,
-                width: `${100 * zoom}%`,
-                height: 360 * zoom,
-              }}
-              role="img"
-              aria-label={
-                lifted
-                  ? "Lifted 3D rational tangle"
-                  : "Over-under rational tangle diagram"
-              }
-              data-crossings={diagram.crossings.length}
-              data-boxes={diagram.boxes.length}
-              data-operations={ops.length}
-            >
-              {!lifted && (
-                <rect
-                  x={-8}
-                  y={-8}
-                  width={diagram.width + 16}
-                  height={diagram.height + 16}
+            Lifted tangle 3D
+          </button>
+          <label>
+            Diagram zoom
+            <input
+              aria-label="Tangle diagram zoom"
+              type="range"
+              min={1}
+              max={4}
+              step={0.1}
+              value={zoom}
+              onChange={(e) => changeZoom(Number(e.target.value))}
+            />
+          </label>
+        </div>
+        <div
+          ref={scrollRef}
+          className="tangle-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="Scrollable marked tangle diagram"
+        >
+          <svg
+            {...rotationControls}
+            viewBox={
+              bounds
+                ? `${bounds.left} ${bounds.top} ${bounds.right - bounds.left} ${bounds.bottom - bounds.top}`
+                : `-55 -65 ${diagram.width + 110} ${diagram.height + 130}`
+            }
+            style={{
+              ...rotationControls.style,
+              width: `${100 * zoom}%`,
+              height: 360 * zoom,
+            }}
+            role="img"
+            aria-label={
+              lifted
+                ? "Lifted 3D rational tangle"
+                : "Over-under rational tangle diagram"
+            }
+            data-crossings={diagram.crossings.length}
+            data-boxes={diagram.boxes.length}
+            data-operations={ops.length}
+          >
+            {!lifted && (
+              <rect
+                x={-8}
+                y={-8}
+                width={diagram.width + 16}
+                height={diagram.height + 16}
+                fill="none"
+                stroke="#b5c1ad"
+                strokeDasharray="5 5"
+              />
+            )}
+            {lifted ? (
+              pieces.map((piece, i) => (
+                <path
+                  key={i}
+                  className="tangle-strand"
+                  data-active-region={
+                    highlightRegion >= 0 &&
+                    diagram.edges[piece.id].region === highlightRegion
+                  }
+                  opacity={1}
+                  d={svgPath(piece.points)}
                   fill="none"
-                  stroke="#b5c1ad"
-                  strokeDasharray="5 5"
+                  stroke={
+                    coefficientMap &&
+                    highlightRegion >= 0 &&
+                    diagram.edges[piece.id].region !== highlightRegion
+                      ? mutedColor(piece.id)
+                      : color(piece.id)
+                  }
+                  strokeWidth={
+                    highlightRegion >= 0 &&
+                    diagram.edges[piece.id].region === highlightRegion
+                      ? 4.5
+                      : 3.5
+                  }
+                  strokeLinecap="round"
+                  onClick={() => chooseRegion(diagram.edges[piece.id].region)}
                 />
-              )}
-              {lifted ? (
-                pieces.map((piece, i) => (
+              ))
+            ) : (
+              <>
+                {diagram.edges.map((edge, i) => (
                   <path
                     key={i}
                     className="tangle-strand"
                     data-active-region={
-                      highlightRegion >= 0 &&
-                      diagram.edges[piece.id].region === highlightRegion
+                      highlightRegion >= 0 && edge.region === highlightRegion
                     }
-                    opacity={1}
-                    d={svgPath(piece.points)}
-                    fill="none"
-                    stroke={
+                    opacity={
                       coefficientMap &&
                       highlightRegion >= 0 &&
-                      diagram.edges[piece.id].region !== highlightRegion
-                        ? mutedColor(piece.id)
-                        : color(piece.id)
+                      edge.region !== highlightRegion
+                        ? 0.35
+                        : 1
                     }
+                    d={curves[i].path}
+                    fill="none"
+                    stroke={color(i)}
                     strokeWidth={
-                      highlightRegion >= 0 &&
-                      diagram.edges[piece.id].region === highlightRegion
+                      highlightRegion >= 0 && edge.region === highlightRegion
                         ? 4.5
-                        : 3.5
+                        : 3.2
                     }
                     strokeLinecap="round"
-                    onClick={() => chooseRegion(diagram.edges[piece.id].region)}
+                    onClick={() => chooseRegion(edge.region)}
                   />
-                ))
-              ) : (
-                <>
-                  {diagram.edges.map((edge, i) => (
-                    <path
+                ))}
+                {diagram.crossings.map((c, i) => {
+                  const edge = diagram.edges[c.over],
+                    a = point(edge.from),
+                    b = point(edge.to),
+                    d = Math.hypot(b.x - a.x, b.y - a.y),
+                    gap = Math.min(0.22, 9 / d);
+                  const points = [0.5 - gap, 0.5 + gap].map((t) => ({
+                    x: a.x + (b.x - a.x) * t,
+                    y: a.y + (b.y - a.y) * t,
+                  }));
+                  return (
+                    <g
                       key={i}
-                      className="tangle-strand"
-                      data-active-region={
-                        highlightRegion >= 0 && edge.region === highlightRegion
-                      }
-                      opacity={
-                        coefficientMap &&
-                        highlightRegion >= 0 &&
-                        edge.region !== highlightRegion
-                          ? 0.35
-                          : 1
-                      }
-                      d={curves[i].path}
-                      fill="none"
-                      stroke={color(i)}
-                      strokeWidth={
-                        highlightRegion >= 0 && edge.region === highlightRegion
-                          ? 4.5
-                          : 3.2
-                      }
-                      strokeLinecap="round"
-                      onClick={() => chooseRegion(edge.region)}
-                    />
-                  ))}
-                  {diagram.crossings.map((c, i) => {
-                    const edge = diagram.edges[c.over],
-                      a = point(edge.from),
-                      b = point(edge.to),
-                      d = Math.hypot(b.x - a.x, b.y - a.y),
-                      gap = Math.min(0.22, 9 / d);
-                    const points = [0.5 - gap, 0.5 + gap].map((t) => ({
-                      x: a.x + (b.x - a.x) * t,
-                      y: a.y + (b.y - a.y) * t,
-                    }));
-                    return (
-                      <g
-                        key={i}
-                        data-region={c.region}
-                        onClick={() => chooseRegion(c.region)}
-                      >
-                        <path
-                          d={svgPath(points)}
-                          fill="none"
-                          stroke="#fbfbf6"
-                          strokeWidth={10}
-                        />
-                        <path
-                          d={svgPath(points)}
-                          fill="none"
-                          stroke={color(c.over)}
-                          className="tangle-strand"
-                          opacity={
-                            coefficientMap &&
-                            highlightRegion >= 0 &&
-                            c.region !== highlightRegion
-                              ? 0.35
-                              : 1
-                          }
-                          strokeWidth={
-                            highlightRegion >= 0 && c.region === highlightRegion
-                              ? 4.5
-                              : 3.2
-                          }
-                        />
-                      </g>
-                    );
-                  })}
-                  {diagram.boxes.map((box, i) => {
-                    const points = box.corners.map(point),
-                      xs = points.map((p) => p.x),
-                      ys = points.map((p) => p.y),
-                      x = (Math.min(...xs) + Math.max(...xs)) / 2,
-                      y = (Math.min(...ys) + Math.max(...ys)) / 2;
-                    return (
-                      <g key={i} onClick={() => chooseRegion(box.region)}>
-                        <path
-                          d={svgPath(points) + "Z"}
-                          fill="#e6eada"
-                          stroke="#6d8064"
-                        />
-                        <text x={x} y={y} fontSize={12} textAnchor="middle">
-                          H(
-                          {String(box.count).length < 15
-                            ? String(box.count)
-                            : "large"}
-                          )
-                        </text>
-                        <title>
-                          {String(box.count)} signed half-twists; connectivity
-                          and fraction are exact
-                        </title>
-                      </g>
-                    );
-                  })}
-                </>
-              )}
-              {diagram.ends.map((id, i) => {
-                const p = lifted ? project(point(id)) : point(id);
-                return (
-                  <g key={i}>
-                    <circle cx={p.x} cy={p.y} r={4} fill="#264a3f" />
-                    <text
-                      x={p.x + (i % 2 ? 12 : -12)}
-                      y={p.y + (i < 2 ? -14 : 22)}
-                      textAnchor={i % 2 ? "start" : "end"}
-                      fontSize={13}
+                      data-region={c.region}
+                      onClick={() => chooseRegion(c.region)}
                     >
-                      {endpointNames[i]}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-          {lifted && <p className="rotation-hint">{rotationHint}</p>}
-          <p className="topology-note">
-            Open marked tangle · endpoints NW, NE, SW, SE are fixed.
+                      <path
+                        d={svgPath(points)}
+                        fill="none"
+                        stroke="#fbfbf6"
+                        strokeWidth={10}
+                      />
+                      <path
+                        d={svgPath(points)}
+                        fill="none"
+                        stroke={color(c.over)}
+                        className="tangle-strand"
+                        opacity={
+                          coefficientMap &&
+                          highlightRegion >= 0 &&
+                          c.region !== highlightRegion
+                            ? 0.35
+                            : 1
+                        }
+                        strokeWidth={
+                          highlightRegion >= 0 && c.region === highlightRegion
+                            ? 4.5
+                            : 3.2
+                        }
+                      />
+                    </g>
+                  );
+                })}
+                {diagram.boxes.map((box, i) => {
+                  const points = box.corners.map(point),
+                    xs = points.map((p) => p.x),
+                    ys = points.map((p) => p.y),
+                    x = (Math.min(...xs) + Math.max(...xs)) / 2,
+                    y = (Math.min(...ys) + Math.max(...ys)) / 2;
+                  return (
+                    <g key={i} onClick={() => chooseRegion(box.region)}>
+                      <path
+                        d={svgPath(points) + "Z"}
+                        fill="#e6eada"
+                        stroke="#6d8064"
+                      />
+                      <text x={x} y={y} fontSize={12} textAnchor="middle">
+                        H(
+                        {String(box.count).length < 15
+                          ? String(box.count)
+                          : "large"}
+                        )
+                      </text>
+                      <title>
+                        {String(box.count)} signed half-twists; connectivity and
+                        fraction are exact
+                      </title>
+                    </g>
+                  );
+                })}
+              </>
+            )}
+            {diagram.ends.map((id, i) => {
+              const p = lifted ? project(point(id)) : point(id);
+              return (
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r={4} fill="#264a3f" />
+                  <text
+                    x={p.x + (i % 2 ? 12 : -12)}
+                    y={p.y + (i < 2 ? -14 : 22)}
+                    textAnchor={i % 2 ? "start" : "end"}
+                    fontSize={13}
+                  >
+                    {endpointNames[i]}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+        {lifted && <p className="rotation-hint">{rotationHint}</p>}
+        <p className="topology-note">
+          Open marked tangle · endpoints NW, NE, SW, SE are fixed.
+        </p>
+        <p className="topology-note">
+          +1 twists the right endpoint pair; its NW→SE branch passes over.
+          Quarter-turn is active and sends x to −1/x. Mirror switches crossings.{" "}
+          {lifted
+            ? "Each signed half-twist is a half-turn of a double helix. Paired strands wind around a shared axis; reversing the sign reverses handedness."
+            : "Gaps mark underpasses."}
+        </p>
+        {!canThree && (
+          <p className="topology-limit">
+            Detailed 3D is limited to 180 diagram edges with no aggregate twist
+            boxes. The 2D diagram retains exact counts and endpoint
+            connectivity.
           </p>
-          <p className="topology-note">
-            +1 twists the right endpoint pair; its NW→SE branch passes over.
-            Quarter-turn is active and sends x to −1/x. Mirror switches
-            crossings.{" "}
-            {lifted
-              ? "Each signed half-twist is a half-turn of a double helix. Paired strands wind around a shared axis; reversing the sign reverses handedness."
-              : "Gaps mark underpasses."}
-          </p>
-          {!canThree && (
-            <p className="topology-limit">
-              Detailed 3D is limited to 180 diagram edges with no aggregate
-              twist boxes. The 2D diagram retains exact counts and endpoint
-              connectivity.
-            </p>
-          )}
-        </>
-      )}
+        )}
+      </>
       <details className="tangle-expression" open>
         <summary>
           Signed twist expression · chronological operations from 0

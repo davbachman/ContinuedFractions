@@ -1053,7 +1053,7 @@ export default function App() {
                 {infinite ? (
                   <div className="view-unavailable" role="status">
                     The H² vertical-ray viewer is unavailable at ∞. The exact
-                    shared value is retained for tangles and marked slopes.
+                    shared value is retained for tangles.
                   </div>
                 ) : (
                   <HalfPlane
@@ -1973,14 +1973,13 @@ export default function App() {
           orders 2 and 3. It is neither a torus nor an isometric embedding. The
           vertical trajectory of a quadratic irrational is not closed.
         </p>
-        <h3>Two different tori</h3>
+        <h3>The punctured modular torus</h3>
         <p>
           Punctured torus shows the six-sheet commutator cover of the modular
           orbifold. Its lifted point follows the H² timeline, with identified
-          seams and one cusp of width six. The separate marked torus /
-          pillowcase panel is the branched cover of a rational tangle. Its slope
-          is (q,p); it does not assign a homology slope to the modular-torus
-          ray.
+          seams and one cusp of width six. This is separate from the marked
+          triangulations in the edge-flip view; no homology slope is assigned to
+          the lifted modular-torus ray.
         </p>
         <h3>From continued fractions to flips</h3>
         <p>

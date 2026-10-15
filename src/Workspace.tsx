@@ -975,10 +975,9 @@ function ComparisonPane({
             view="square"
           />
         )}
-        {(["tangle", "pillowcase"] as string[]).includes(pane.kind) && (
+        {pane.kind === "tangle" && (
           <TanglePanel
             key={pane.kind}
-            view={pane.kind as "tangle" | "pillowcase"}
             linkCoefficients
             spec={p.scene.spec}
             expression={p.scene.tangle}
