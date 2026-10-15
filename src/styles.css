@@ -2189,3 +2189,23 @@ footer,
 [hidden] {
   display: none !important;
 }
+
+.domain-edge-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 10px 20px;
+  font-size: 11px;
+  color: #526655;
+}
+.domain-edge-legend span {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+.domain-edge-legend i {
+  display: inline-block;
+  width: 22px;
+  height: 3px;
+  border-radius: 2px;
+}

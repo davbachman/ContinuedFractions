@@ -1,6 +1,12 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { type Segment, apply, tangent, reduce } from "../math/modular";
 import { heightAt } from "../math/trajectory";
+import { DomainEdgeLegend, domainEdgeColor } from "./domainEdges";
+import {
+  TranslucentSurface,
+  type SurfaceFace,
+  type SurfaceLine,
+} from "./TranslucentSurface";
 import { schematicPoint, project3d } from "./geometry";
 type Props = {
   alpha: number;
@@ -36,30 +42,42 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
       .join(" ");
   const schematic = (p: { x: number; y: number }) => {
     const q = project3d(schematicPoint(p), rotation);
-    return { x: 190 + q.x * 125, y: 250 - q.y * 130 };
+    return { x: 190 + q.x * 125, y: 250 - q.y * 130, depth: q.depth };
   };
-  const wires = useMemo(() => {
-    const list: { x: number; y: number }[][] = [];
-    for (let h = 0; h < 0.98; h += 0.08) {
-      const v = h / (1 - h);
-      list.push(
-        Array.from({ length: 81 }, (_, i) => {
-          const x = -0.5 + i / 80;
-          return { x, y: Math.sqrt(1 - x * x) * Math.exp(v) };
-        }),
-      );
-    }
-    for (let u = 0; u < 1; u += 1 / 12) {
+  const surface = useMemo(() => {
+    const at = (u: number, h: number) => {
       const x = u - 0.5;
-      list.push(
-        Array.from({ length: 60 }, (_, i) => {
-          const h = i / 62;
-          return { x, y: Math.sqrt(1 - x * x) * Math.exp(h / (1 - h)) };
-        }),
-      );
-    }
-    return list;
-  }, []);
+      return schematic({ x, y: Math.sqrt(1 - x * x) * Math.exp(h / (1 - h)) });
+    };
+    const faces: SurfaceFace[] = [];
+    for (let u = 0; u < 48; u++)
+      for (let h = 0; h < 28; h++) {
+        faces.push({
+          color: "#b6cbb2",
+          points: [
+            [u, h],
+            [u + 1, h],
+            [u + 1, h + 1],
+            [u, h + 1],
+          ].map(([u, h]) => at(u / 48, (0.975 * h) / 28)),
+        });
+      }
+    const edges: SurfaceLine[] = [
+      {
+        side: "T",
+        color: domainEdgeColor.T,
+        width: 2.4,
+        points: Array.from({ length: 81 }, (_, i) => at(0, (0.975 * i) / 80)),
+      },
+      {
+        side: "S",
+        color: domainEdgeColor.S,
+        width: 2.4,
+        points: Array.from({ length: 61 }, (_, i) => at(i / 120, 0)),
+      },
+    ];
+    return { faces, edges };
+  }, [rotation]);
   function selectTracePoint(
     event: MouseEvent<SVGPathElement>,
     points: readonly { x: number; y: number; time: number }[],
@@ -86,7 +104,12 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
   }
   const drawable = segments.map((seg) => ({
     seg,
-    points: seg.points.filter((p) => p.time <= time),
+    points: [
+      ...seg.points.filter((p) => p.time <= time),
+      ...(time >= seg.start && time <= seg.end
+        ? [{ ...apply(seg.matrix, z), time }]
+        : []),
+    ],
   }));
   return (
     <>
@@ -131,14 +154,16 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
               />
               <path
                 d="M72.5 20V328 M307.5 20V328"
-                stroke="#6b9787"
+                stroke={domainEdgeColor.T}
+                data-domain-side="T"
                 strokeWidth="2"
                 strokeDasharray="6 4"
                 fill="none"
               />
               <path
                 d={path(circle)}
-                stroke="#9e82a3"
+                stroke={domainEdgeColor.S}
+                data-domain-side="S"
                 strokeWidth="2"
                 fill="none"
               />
@@ -243,26 +268,21 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
               <text x="190" y="28" className="svg-muted" textAnchor="middle">
                 SCHEMATIC GEOMETRY
               </text>
-              {wires.map((wire, i) => (
-                <path
-                  key={i}
-                  d={path(wire.map(schematic))}
-                  stroke="#8aa292"
-                  opacity="0.4"
-                  fill="none"
-                  strokeWidth="0.8"
-                />
-              ))}
-              {drawable.map(({ seg, points }, i) => (
-                <path
-                  key={i}
-                  d={path(points.map(schematic))}
-                  stroke="#c7744d"
-                  strokeWidth="2"
-                  fill="none"
-                  onClick={(event) => selectTracePoint(event, points)}
-                />
-              ))}
+              <TranslucentSurface
+                faces={surface.faces}
+                lines={[
+                  ...surface.edges,
+                  ...drawable.map(({ points }) => ({
+                    points: points.map(schematic),
+                    color: "#b74d29",
+                    width: 2.5,
+                    trail: true,
+                    onSelect: () =>
+                      points.length &&
+                      onSeek(points[Math.floor(points.length / 2)].time),
+                  })),
+                ]}
+              />
               <circle
                 cx={schematic(p).x}
                 cy={schematic(p).y}
@@ -310,12 +330,13 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
           />
         </label>
       )}
+      <DomainEdgeLegend />
       <div className="quotient-caption">
         {limited
           ? "Precision limit: the verified trace ends before the requested cutoff."
           : mode === "folded"
             ? "Paired boundaries are the same points. The trace splits at every seam."
-            : "A topological display of the quotient. Its Euclidean shape is not the hyperbolic metric."}
+            : "Translucent surface: faint curve segments pass behind it. The Euclidean shape is schematic, not the hyperbolic metric."}
       </div>
       <details className="matrix-details">
         <summary>

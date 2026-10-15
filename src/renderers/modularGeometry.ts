@@ -2,9 +2,13 @@ import { type Edge } from "../math/farey";
 import { type Rational, rational, value } from "../math/rational";
 import { type Matrix, type Point, apply } from "../math/modular";
 
+import type { DomainSide } from "./domainEdges";
+
 export type ModularArc = Readonly<
-  | { kind: "circle"; x: number; radius: number; low: number; high: number }
-  | { kind: "vertical"; x: number; low: number; high: number }
+  { side: DomainSide } & (
+    | { kind: "circle"; x: number; radius: number; low: number; high: number }
+    | { kind: "vertical"; x: number; low: number; high: number }
+  )
 >;
 
 export function idealImage(m: Matrix, r: Rational): Rational {
@@ -41,33 +45,58 @@ const pieces: readonly {
 ];
 
 export function modularTriangleArcs(matrix: Matrix): ModularArc[] {
-  return pieces.map((piece) => {
+  const vertex = apply(matrix, { x: 0.5, y: Math.sqrt(3) / 2 });
+  return pieces.flatMap((piece): ModularArc[] => {
     const a = idealImage(matrix, piece.support[0]),
       b = idealImage(matrix, piece.support[1]);
     const start = apply(matrix, piece.from),
       end = idealImage(matrix, piece.to);
+    // The finite midpoint-to-vertex segment is S-paired. Beyond the
+    // order-three vertex the same geodesic is a T-paired cusp edge.
     if (!a.q || !b.q) {
-      return {
-        kind: "vertical",
-        x: value(a.q ? a : b),
-        low: end.q ? 0 : start.y,
-        high: end.q ? start.y : Infinity,
-      };
+      const x = value(a.q ? a : b),
+        endHeight = end.q ? 0 : Infinity;
+      return [
+        {
+          side: "S",
+          kind: "vertical",
+          x,
+          low: Math.min(start.y, vertex.y),
+          high: Math.max(start.y, vertex.y),
+        },
+        {
+          side: "T",
+          kind: "vertical",
+          x,
+          low: Math.min(vertex.y, endHeight),
+          high: Math.max(vertex.y, endHeight),
+        },
+      ];
     }
-    // Compute the diameter with exact integers rather than subtracting nearly
-    // equal floating-point endpoints at deep zoom.
     const delta = Number(b.p * a.q - a.p * b.q) / Number(a.q * b.q);
     const x = value(a) + delta / 2,
       radius = Math.abs(delta) / 2;
-    const angle = Math.atan2(start.y, start.x - x);
-    const endpointAngle = value(end) < x ? Math.PI : 0;
-    return {
-      kind: "circle",
-      x,
-      radius,
-      low: Math.min(angle, endpointAngle),
-      high: Math.max(angle, endpointAngle),
-    };
+    const angle = Math.atan2(start.y, start.x - x),
+      middle = Math.atan2(vertex.y, vertex.x - x),
+      endpointAngle = value(end) < x ? Math.PI : 0;
+    return [
+      {
+        side: "S",
+        kind: "circle",
+        x,
+        radius,
+        low: Math.min(angle, middle),
+        high: Math.max(angle, middle),
+      },
+      {
+        side: "T",
+        kind: "circle",
+        x,
+        radius,
+        low: Math.min(middle, endpointAngle),
+        high: Math.max(middle, endpointAngle),
+      },
+    ];
   });
 }
 

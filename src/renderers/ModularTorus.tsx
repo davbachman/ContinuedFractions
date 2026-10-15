@@ -15,6 +15,12 @@ import {
   hexVertex,
 } from "../math/modularTorus";
 import { heightAt } from "../math/trajectory";
+import { DomainEdgeLegend, domainEdgeColor } from "./domainEdges";
+import {
+  TranslucentSurface,
+  type SurfacePoint,
+  type SurfaceLine,
+} from "./TranslucentSurface";
 import { stageColor } from "./dissectionColors";
 export function surfaceProjection(p: readonly number[], rotation: number) {
   const x = p[0] * Math.cos(rotation) - p[1] * Math.sin(rotation),
@@ -62,7 +68,7 @@ export function ModularTorus({
     moved = project({ x: p.x + v.x * 1e-5, y: p.y + v.y * 1e-5 }, sheet),
     norm = Math.hypot(moved.x - current.x, moved.y - current.y) || 1;
   const mesh = useMemo(() => {
-    const out: { j: number; points: Point[]; depth: number }[] = [];
+    const out: { j: number; points: SurfacePoint[]; depth: number }[] = [];
     for (let j = 0; j < 6; j++)
       for (let r = 0; r < 16; r++)
         for (let u = 0; u < 12; u++) {
@@ -94,6 +100,49 @@ export function ModularTorus({
         }
     return out.sort((a, b) => a.depth - b.depth);
   }, [rotation]);
+  const surfaceEdges: SurfaceLine[] = [
+    ...Array.from({ length: 6 }, (_, j) => ({
+      side: "T" as const,
+      color: domainEdgeColor.T,
+      width: 2.2,
+      points: Array.from({ length: 81 }, (_, i) =>
+        surfaceProjection(
+          coverSurface(
+            { x: -0.5, y: Math.sqrt(3) / 2 / (0.045 + (0.955 * i) / 80) },
+            j,
+          ),
+          rotation,
+        ),
+      ),
+    })),
+    ...Array.from({ length: 3 }, (_, j) => ({
+      side: "S" as const,
+      color: domainEdgeColor.S,
+      width: 2.2,
+      points: Array.from({ length: 81 }, (_, i) => {
+        const x = -0.5 + i / 80;
+        return surfaceProjection(
+          coverSurface({ x, y: Math.sqrt(1 - x * x) }, j),
+          rotation,
+        );
+      }),
+    })),
+  ];
+  const surfaceTrail: SurfaceLine[] = segments.map((s) => {
+    const points = s.points.filter((p) => p.time <= time),
+      j = coverSheet(s.matrix, lift);
+    if (time >= s.start && time <= s.end)
+      points.push({ ...apply(s.matrix, z), time });
+    return {
+      points: points.map((p) =>
+        surfaceProjection(coverSurface(p, j), rotation),
+      ),
+      color: "#ac4029",
+      width: 2.5,
+      trail: true,
+      onSelect: () => onSeek((s.start + Math.min(time, s.end)) / 2),
+    };
+  });
   return (
     <>
       <div
@@ -179,10 +228,31 @@ export function ModularTorus({
                   d={`M190 190 L${190 + 155 * a.x} ${190 - 155 * a.y} L${190 + 155 * b.x} ${190 - 155 * b.y} Z`}
                   fill={stageColor(j)}
                   fillOpacity={0.32}
-                  stroke={edges ? "#607568" : "none"}
+                  stroke="none"
                 />
               );
             })}
+            {edges &&
+              [0, 1, 2, 3, 4, 5].map((j) => {
+                const a = hexVertex(j),
+                  b = hexVertex(j + 1);
+                return (
+                  <g key={j}>
+                    <path
+                      data-domain-side="T"
+                      d={`M${190 + 7 * a.x} ${190 - 7 * a.y} L${190 + 155 * a.x} ${190 - 155 * a.y}`}
+                      stroke={domainEdgeColor.T}
+                      strokeWidth={2}
+                    />
+                    <path
+                      data-domain-side="S"
+                      d={`M${190 + 155 * a.x} ${190 - 155 * a.y} L${190 + 155 * b.x} ${190 - 155 * b.y}`}
+                      stroke={domainEdgeColor.S}
+                      strokeWidth={2}
+                    />
+                  </g>
+                );
+              })}
             <circle
               cx={190}
               cy={190}
@@ -213,38 +283,18 @@ export function ModularTorus({
           </>
         ) : (
           <>
-            {mesh.map((cell, i) => (
-              <path
-                key={i}
-                d={svgPath(cell.points) + "Z"}
-                fill={stageColor(cell.j)}
-                fillOpacity={0.68}
-                stroke={stageColor(cell.j)}
-                strokeWidth={0.3}
-              />
-            ))}
-            {edges &&
-              [0, 1, 2, 3, 4, 5].map((j) => (
-                <path
-                  key={j}
-                  d={svgPath(
-                    Array.from({ length: 65 }, (_, i) =>
-                      project(
-                        {
-                          x: -0.5,
-                          y: Math.sqrt(3) / 2 / (0.045 + (0.955 * i) / 64),
-                        },
-                        j,
-                      ),
-                    ),
-                  )}
-                  fill="none"
-                  stroke="#29483e"
-                  strokeWidth={1}
-                />
-              ))}
+            <TranslucentSurface
+              faces={mesh.map((cell) => ({
+                points: cell.points,
+                color: stageColor(cell.j),
+              }))}
+              lines={[
+                ...(edges ? surfaceEdges : []),
+                ...(trail ? surfaceTrail : []),
+              ]}
+            />
             <text x={190} y={25} textAnchor="middle" className="svg-muted">
-              SCHEMATIC · X-RAY TRAIL · CUSP CUTAWAY
+              TRANSLUCENT SURFACE · CUSP CUTAWAY
             </text>
           </>
         )}
@@ -264,7 +314,8 @@ export function ModularTorus({
               </text>
             );
           })}
-        {trail &&
+        {mode === "flat" &&
+          trail &&
           segments.map((s, i) => {
             const points = s.points.filter((p) => p.time <= time),
               j = coverSheet(s.matrix, lift);
@@ -316,6 +367,7 @@ export function ModularTorus({
           />
         </label>
       )}
+      {edges && <DomainEdgeLegend />}
       <p className="quotient-caption">
         Sheet {sheet} · χ(T)=1, χ(S)=3 · one cusp of width 6 · genus 1.{" "}
         {limited

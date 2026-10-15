@@ -19,6 +19,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { DomainEdgeLegend } from "./renderers/domainEdges";
 import { HalfPlane } from "./renderers/HalfPlane";
 import { TanglePanel } from "./renderers/TanglePanel";
 import type { TangleExpression } from "./math/tangles";
@@ -797,6 +798,7 @@ export default function App() {
                 onEndpointEnd={endEndpointDrag}
               />
             )}
+            {scene.overlays.modular && <DomainEdgeLegend />}
             <div className="plot-footer">
               <span>
                 <i className="legend-line" /> α = {specLabel(scene.spec)}

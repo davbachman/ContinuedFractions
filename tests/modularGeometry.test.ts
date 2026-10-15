@@ -31,15 +31,31 @@ describe("adaptive modular-domain boundaries", () => {
   });
   it("retains the genuine infinite cusp ray and the two quarter circles in the reference triangle", () => {
     const arcs = modularTriangleArcs(I);
-    expect(arcs).toEqual([
-      { kind: "circle", x: 0, radius: 1, low: 0, high: Math.PI / 2 },
-      { kind: "circle", x: 1, radius: 1, low: Math.PI / 2, high: Math.PI },
-      { kind: "vertical", x: 0.5, low: 0.5, high: Infinity },
-    ]);
-    expect(modularTriangleArcs(T)[2]).toEqual({
+    expect(arcs).toHaveLength(6);
+    expect(arcs.map((a) => a.side)).toEqual(["S", "T", "S", "T", "S", "T"]);
+    expect(arcs[0].kind).toBe("circle");
+    if (arcs[0].kind === "circle") expect(arcs[0].low).toBeCloseTo(Math.PI / 3);
+    if (arcs[1].kind === "circle")
+      expect(arcs[1].high).toBeCloseTo(Math.PI / 3);
+    expect(arcs[4]).toEqual({
+      side: "S",
+      kind: "vertical",
+      x: 0.5,
+      low: 0.5,
+      high: Math.sqrt(3) / 2,
+    });
+    expect(arcs[5]).toEqual({
+      side: "T",
+      kind: "vertical",
+      x: 0.5,
+      low: Math.sqrt(3) / 2,
+      high: Infinity,
+    });
+    expect(modularTriangleArcs(T)[5]).toEqual({
+      side: "T",
       kind: "vertical",
       x: 1.5,
-      low: 0.5,
+      low: Math.sqrt(3) / 2,
       high: Infinity,
     });
   });
@@ -108,7 +124,7 @@ describe("adaptive modular-domain boundaries", () => {
       { x: 0.5, y: 1 },
     ];
     arcs.forEach((a, i) => {
-      const p = apply(m, samples[i]);
+      const p = apply(m, samples[Math.floor(i / 2)]);
       if (a.kind === "circle")
         expect(Math.hypot(p.x - a.x, p.y) / a.radius).toBeCloseTo(1, 5);
     });

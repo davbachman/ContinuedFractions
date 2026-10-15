@@ -13,11 +13,14 @@ export function schematicPoint(p: Point): [number, number, number] {
     2 * h - 0.65,
   ];
 }
-export function project3d(p: readonly number[], rotation: number): Point {
+export function project3d(
+  p: readonly number[],
+  rotation: number,
+): Point & { depth: number } {
   const [x, y, z] = p,
     cos = Math.cos(rotation),
     sin = Math.sin(rotation),
     xx = x * cos - y * sin,
     yy = x * sin + y * cos;
-  return { x: xx, y: z * 0.88 - yy * 0.45 };
+  return { x: xx, y: z * 0.88 - yy * 0.45, depth: yy * 0.88 + z * 0.45 };
 }

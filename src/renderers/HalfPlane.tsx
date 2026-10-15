@@ -4,6 +4,7 @@ import { type Scene } from "../state";
 import { approximate, convergents, terms } from "../math/continuedFraction";
 import { visibleFarey, type Crossing } from "../math/farey";
 import { rational, label, value, type Rational, snap } from "../math/rational";
+import { domainEdgeColor } from "./domainEdges";
 import { visibleModularArcs } from "./modularGeometry";
 import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
 import { heightAt } from "../math/trajectory";
@@ -212,9 +213,9 @@ export function HalfPlane({
       ? visibleModularArcs(geometry, min, max, scale, bottom)
       : [];
     node.dataset.modularArcCount = String(modularArcs.length);
-    ctx.strokeStyle = "#9781ad99";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.35;
     for (const arc of modularArcs) {
+      ctx.strokeStyle = domainEdgeColor[arc.side];
       ctx.beginPath();
       if (arc.kind === "vertical") {
         ctx.moveTo(X(arc.x), Y(arc.low));
