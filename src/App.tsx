@@ -1909,13 +1909,6 @@ export default function App() {
           their own operations. A finite tangle for an irrational uses a labeled
           convergent. “Full atlas” restores the original layout.
         </p>
-        <h3>Inspect a prefix</h3>
-        <p>
-          Matrix products follow the selected prefix. Step or select a matrix
-          factor to inspect the exact product and its convergent columns. “Use
-          convergent as target” explicitly changes the number and can be undone.
-          Left/Right steps a focused prefix pane.
-        </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>
           Choose an endpoint α, then press Play or step between crossings. The

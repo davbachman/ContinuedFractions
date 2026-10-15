@@ -32,7 +32,7 @@ it("describes pairs symmetrically without inventing a common clock or homology m
   expect(correspondence("tangle", "pillowcase").text).toContain(
     "parallel meridians",
   );
-  for (const removed of ["closure", "intervals", "lattice", "errors"])
+  for (const removed of ["closure", "intervals", "lattice", "errors", "matrices"])
     expect(isRepresentation(removed)).toBe(false);
   expect(isRepresentation("__proto__")).toBe(false);
 });

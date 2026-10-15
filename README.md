@@ -6,7 +6,7 @@ An interactive mathematical instrument connecting continued fractions, the Farey
 
 ## Compare two representations
 
-The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, matrix products, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Farey triangles, marked torus flips, CF braid / 4-plat, rational tangle, or marked torus/pillowcase. The same representation can appear twice. **Swap sides** moves each pane with its current camera and display settings.
+The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Farey triangles, marked torus flips, CF braid / 4-plat, rational tangle, or marked torus/pillowcase. The same representation can appear twice. **Swap sides** moves each pane with its current camera and display settings.
 
 - Use **Start with a connection** for curated comparisons. The connection caption states whether the panes share a trajectory, coefficient, marked construction, or only the target number. It does not invent a common clock or identify the distinct torus markings.
 - The compact shared coefficient strip selects and edits terms in every pairing. Selecting a term highlights a rectangle group, Farey run, or canonical tangle twist region where defined. Symbolic views offer nested fractions, coefficient lists, exact editing, convergents, approximation error, prefix cylinders, and optional alternate endings.
@@ -39,18 +39,6 @@ Choose **CF braid · 4-plat** in either pane, or use **Read the CF braid** to pl
 - The diagram reports the closed knot/link fixture and component count. Huge twist counts become labeled bundles with exact connectivity. The presentation is 2D, with smooth strands and visible over/under gaps; it is distinct from the rotatable tangle diagram.
 
 The [documented convention](docs/MATHEMATICS.md#continued-fraction-braid--four-plat) fixes signs, word order, caps, and zero/infinity cases. It follows [Kauffman–Lambropoulou, Figures 9–10](https://arxiv.org/pdf/math/0212011). Closed knots do not uniquely determine α; custom signed tangle words retain their operations separately from this CF presentation.
-
-## Matrix products
-
-The matrix view is available in either comparison pane. Try **Read the matrix product** in the preset selector. Old approximation-error links and saved layouts now open matrix products while preserving the shared number.
-
-- **Matrix products** shows each factor `A(a) = [[a,1],[1,0]]`, multiplication on the right, and the selected exact product with columns `(pₙ,qₙ)` and `(pₙ₋₁,qₙ₋₁)`. Select a factor to inspect its prefix. Determinants alternate between −1 and +1; these are GL(2,ℤ) encodings, not all PSL(2,ℤ) transformations of H². Long matrix equations scroll horizontally.
-
-Rectangle, trajectory, and Follow-target flip playback already advance this view through the shared coefficient selection. The active matrix factor scrolls into view and its exact multiplication is emphasized. Canonical tangle diagrams emphasize the matching region’s strands in both 2D and 3D, label its actual signed twist count, and explicitly show zero twists. Custom signed constructions retain independent regions. Successive irrational tangle approximations are discrete diagrams, not an animated isotopy. All presentation transitions respect reduced-motion preferences.
-
-**Previous/Next prefix**, the prefix slider, and the shared coefficient strip synchronize selection. Focus a prefix pane and use Left/Right to step; Enter or Space activates a focused matrix factor. Selection leaves the target and hyperbolic clock unchanged. **Use convergent as target** explicitly switches to that exact rational using the existing undo history, and selects its canonical final term (a trailing 1 may shorten the expansion). Undo/redo restores the exact number; coefficient selection is an inspection setting, not part of scene history. Edits through the shared strip recompute all views.
-
-Periodic expansions extend on demand to the existing **96-prefix** display budget and remain labeled infinite. Rational expansions retain the **128-term** input budget. Matrix calculations use BigInt. Zero, integers, and negative finite numbers are supported. Infinity keeps its exact shared value and shows an unavailable explanation.
 
 ## Explore
 

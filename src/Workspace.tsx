@@ -4,7 +4,6 @@ import {
   correspondence,
   isRepresentation,
   isTrajectory,
-  isPrefixView,
   isCoefficientView,
   representations,
   type Representation,
@@ -22,7 +21,6 @@ import {
   RectangleDissection,
   DissectionExplanation,
 } from "./renderers/RectangleDissection";
-import { PrefixExplorer } from "./renderers/PrefixExplorer";
 import { SymbolicView } from "./renderers/SymbolicView";
 import { MarkedTriangulation } from "./renderers/MarkedTriangulation";
 import { CFBraid } from "./renderers/CFBraid";
@@ -99,9 +97,7 @@ function initialPanes(): Pane[] {
           ? "tangle"
           : raw === "intervals"
             ? "symbolic"
-            : raw === "lattice" || raw === "errors"
-              ? "matrices"
-              : fallback,
+            : fallback,
       lift: Number.isInteger(lift) && lift >= 0 && lift < 6 ? lift : 0,
     };
   });
@@ -638,7 +634,7 @@ function ComparisonPane({
   const onKey = (e: React.KeyboardEvent) => {
     if (
       (e.target as Element).closest(
-        'button,input,select,textarea,[role="button"],.stacked-scroll,.tangle-scroll,.matrix-equation',
+        'button,input,select,textarea,[role="button"],.stacked-scroll,.tangle-scroll',
       )
     )
       return;
@@ -656,18 +652,6 @@ function ComparisonPane({
       e.stopPropagation();
       if (e.code === "Space") p.onToggleTrajectory();
       else p.onStepTrajectory(e.code === "ArrowRight" ? 1 : -1);
-    } else if (isPrefixView(pane.kind) && !infinite && e.code !== "Space") {
-      e.preventDefault();
-      e.stopPropagation();
-      p.onSelect(
-        Math.max(
-          0,
-          Math.min(
-            p.coefficients.length - 1,
-            p.selected + (e.code === "ArrowRight" ? 1 : -1),
-          ),
-        ),
-      );
     } else if (pane.kind === "rectangle" && !p.rectangle.unavailable) {
       e.preventDefault();
       e.stopPropagation();
@@ -711,17 +695,6 @@ function ComparisonPane({
             onEdit={p.onEditCoefficient}
             crossings={p.math.farey.crossings}
             onExtend={p.onExtendTerms}
-          />
-        )}
-        {isPrefixView(pane.kind) && (
-          <PrefixExplorer
-            key={pane.kind}
-            spec={p.scene.spec}
-            coefficients={p.coefficients}
-            selected={p.selected}
-            onSelect={p.onSelect}
-            onExtend={p.onExtendTerms}
-            onNumber={p.onNumber}
           />
         )}
         {pane.kind === "braid" && (

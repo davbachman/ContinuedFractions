@@ -75,7 +75,7 @@ Rectangle stage indices are canonical continued-fraction coefficient indices. Th
 
 ## Prefix enclosures, integer lattice, matrix products, and errors
 
-For each regular prefix `[a₀; …, aₙ]`, let `cₙ = pₙ/qₙ` with seeds `p₋₂=0, p₋₁=1, q₋₂=1, q₋₁=0`. The new views use the existing exact convergents and the shared canonical coefficient index. Define
+For each regular prefix `[a₀; …, aₙ]`, let `cₙ = pₙ/qₙ` with seeds `p₋₂=0, p₋₁=1, q₋₂=1, q₋₁=0`. These exact arithmetic identities support convergent calculations; matrix products, interval, lattice, and error plots are not standalone views in the app. Define
 
 `A(a) = [[a,1],[1,0]]`,
 

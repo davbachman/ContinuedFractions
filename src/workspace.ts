@@ -1,7 +1,6 @@
 export const representations = {
   symbolic: "Symbolic continued fraction",
   rectangle: "Rectangle dissection",
-  matrices: "Matrix products",
   h2: "H² · Farey and Ford",
   orbifold: "Modular surface",
   torus: "Punctured modular torus",
@@ -16,10 +15,8 @@ export const isRepresentation = (s: unknown): s is Representation =>
   typeof s === "string" && Object.hasOwn(representations, s);
 export const isTrajectory = (s: Representation) =>
   ["h2", "orbifold", "torus"].includes(s);
-export const isPrefixView = (s: Representation): s is "matrices" =>
-  s === "matrices";
 export const isCoefficientView = (s: Representation) =>
-  s === "symbolic" || s === "rectangle" || s === "braid" || isPrefixView(s);
+  s === "symbolic" || s === "rectangle" || s === "braid";
 export const isTangle = (s: Representation) =>
   ["tangle", "pillowcase"].includes(s);
 export const comparisonPresets: {
@@ -40,7 +37,6 @@ export const comparisonPresets: {
   { label: "Tangle and its plat closure", pair: ["tangle", "braid"] },
   { label: "Build a tangle", pair: ["symbolic", "tangle"] },
   { label: "Tangle and its cover", pair: ["tangle", "pillowcase"] },
-  { label: "Read the matrix product", pair: ["symbolic", "matrices"] },
 ];
 export function correspondence(
   a: Representation,
@@ -80,32 +76,11 @@ export function correspondence(
       kind: "Rational tangle ↔ four-plat closure",
       text: "The CF braid presents the numerator closure of the same rational tangle using three active strands and a return strand. Custom tangle words retain their operations. Irrational inputs use the selected convergent; a closed knot does not uniquely determine α or a marking.",
     };
-  if (has("braid") && (has("symbolic") || has("rectangle") || has("matrices")))
+  if (has("braid") && (has("symbolic") || has("rectangle")))
     return {
       kind: "Coefficients ↔ braid twist boxes",
       text: "Read the boxes downwards in CF order, alternating strands 1–2 and 2–3. Selecting a box highlights its coefficient; rectangle playback highlights successive groups. An even-length CF uses a split final ending, with both boxes linked to the same coefficient. For irrational α, the braid shows the selected convergent.",
     };
-  if (isPrefixView(a) || isPrefixView(b)) {
-    if (isCoefficientView(a) && isCoefficientView(b))
-      return {
-        kind: "Same prefix · different representations",
-        text: "Selecting aₙ links the matrix product through A(aₙ) and its convergent. Rectangle groups use the same coefficient index. Selection leaves α unchanged.",
-      };
-    if (isTrajectory(a) || isTrajectory(b))
-      return {
-        kind: "Convergents and Farey runs",
-        text: "The selected prefix determines a rational convergent and its coefficient’s Farey run, with the existing initial and terminal offsets. Prefix depth is not hyperbolic time. A convergent is not a homology marking on the six-sheet modular torus.",
-      };
-    if (isTangle(a) || isTangle(b))
-      return {
-        kind: "Shared value · explicit approximation",
-        text: "Prefixes describe the selected exact number. For an irrational, the tangle uses the selected prefix’s explicitly labeled convergent; each is a discrete rational approximation. Use convergent as target explicitly makes all views rational.",
-      };
-    return {
-      kind: "Target approximation · independent triangulation",
-      text: "The prefix describes the target α and its convergents. The marked triangulation has its own exact slope triple and flip history; selecting a prefix does not flip it or replace its marking.",
-    };
-  }
   if (isTangle(a) && isTangle(b))
     return {
       kind: "Marked rational construction",

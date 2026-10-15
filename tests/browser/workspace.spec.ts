@@ -336,7 +336,7 @@ test("removed views disappear and old links and saved layouts retain the shared 
   );
   await page.goto("/");
   await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
-  await expect(right(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
   await page.goto("/?left=closure&right=intervals");
   await expect(left(page)).toHaveAttribute("data-representation", "tangle");
@@ -349,11 +349,15 @@ test("removed views disappear and old links and saved layouts retain the shared 
     ),
   );
   await page.goto("/");
-  await expect(left(page)).toHaveAttribute("data-representation", "matrices");
-  await expect(right(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
   await page.goto("/?left=errors&right=errors");
-  await expect(left(page)).toHaveAttribute("data-representation", "matrices");
-  await expect(right(page)).toHaveAttribute("data-representation", "matrices");
+  await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
+  await page.goto("/?left=matrices&right=matrices");
+  await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
+  await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
   for (const name of [
     "Left representation",
@@ -365,7 +369,7 @@ test("removed views disappear and old links and saved layouts retain the shared 
       .locator("option")
       .allTextContents();
     expect(options.join(" ")).not.toMatch(
-      /2-bridge|knot|interval|lattice|approximation errors|measure approximation/i,
+      /2-bridge|knot|interval|lattice|approximation errors|measure approximation|matrix/i,
     );
   }
   await expect(

@@ -241,22 +241,13 @@ test("smooth run playback traverses multiple crossings and reverses without chan
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("1/7");
 });
 
-test("rectangle playback emphasizes matrix factors and canonical tangle regions", async ({
+test("rectangle playback emphasizes canonical tangle regions", async ({
   page,
 }, info) => {
-  await page.goto("/?left=rectangle&right=matrices");
+  await page.goto("/?left=rectangle&right=tangle");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
-  await expect(right.locator(".matrix-new-factor")).toContainText(
-    "Append A(a1)",
-  );
   await left.getByRole("button", { name: "Next stage", exact: true }).click();
-  await expect(right.locator(".matrix-new-product")).toContainText(
-    "Exact product M2",
-  );
-  await page
-    .locator(".comparison-grid")
-    .screenshot({ path: `test-results/${info.project.name}-matrix-step.png` });
   await left.getByRole("button", { name: "Next stage", exact: true }).click();
   await left.getByRole("button", { name: "Next stage", exact: true }).click();
   await page
