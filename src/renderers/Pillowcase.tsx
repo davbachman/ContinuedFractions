@@ -1,3 +1,4 @@
+import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useEffect, useMemo, useState } from "react";
 import { branchPoints, meridianCurves } from "../math/pillowcase";
 import { embeddedTorus } from "../math/modularTorus";
@@ -18,6 +19,12 @@ export function Pillowcase({
 }) {
   const [rotation, setRotation] = useState(-0.7),
     [slope, setSlope] = useState(label(fraction));
+  const rotationControls = useSurfaceRotation(
+    rotation,
+    setRotation,
+    true,
+    -0.7,
+  );
   useEffect(() => setSlope(label(fraction)), [fraction]);
   const data = useMemo(() => meridianCurves(fraction), [fraction]);
   const wires = useMemo(
@@ -52,6 +59,7 @@ export function Pillowcase({
             {String(fraction.p)})
           </h3>
           <svg
+            {...rotationControls}
             viewBox="0 0 380 380"
             className="topology-svg"
             role="img"
@@ -90,18 +98,7 @@ export function Pillowcase({
               qV − pU = ±¼ · schematic, transparent surface
             </text>
           </svg>
-          <label className="rotation">
-            Rotate marked torus
-            <input
-              aria-label="Rotate marked branched-cover torus"
-              type="range"
-              min={-3.14}
-              max={3.14}
-              step={0.01}
-              value={rotation}
-              onChange={(e) => setRotation(Number(e.target.value))}
-            />
-          </label>
+          <p className="rotation-hint">{rotationHint}</p>
         </div>
         <div>
           <h3>Downstairs · separating-disk boundary</h3>

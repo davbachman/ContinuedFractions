@@ -553,18 +553,16 @@ canvas {
   gap: 9px;
   overflow-wrap: anywhere;
 }
-.rotation {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 25px;
-  font-size: 10px;
-  color: #7b856f;
+.rotation-hint {
+  padding: 0 20px;
+  font-size: 11px;
+  color: #62735e;
+  text-align: center;
 }
-.rotation input {
-  flex: 1;
-  min-width: 0;
-  height: 8px;
+svg[data-rotation]:focus-visible {
+  outline: 2px solid var(--green, #405d49);
+  outline-offset: -3px;
+  border-radius: 5px;
 }
 .transport {
   margin-top: 18px;

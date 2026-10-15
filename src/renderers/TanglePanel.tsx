@@ -1,3 +1,4 @@
+import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useEffect, useMemo, useState } from "react";
 import { type NumberSpec, specLabel } from "../math/continuedFraction";
 import { label, type Rational } from "../math/rational";
@@ -69,6 +70,12 @@ export function TanglePanel({
   const point = (id: number) => diagram.nodes[id];
   const canThree = diagram.boxes.length === 0 && diagram.edges.length <= 180;
   const lifted = three && canThree;
+  const rotationControls = useSurfaceRotation(
+    rotation,
+    setRotation,
+    lifted,
+    0.45,
+  );
   const project = (p: { x: number; y: number }, z = 0) => {
     const x = p.x - diagram.width / 2,
       y = p.y - diagram.height / 2,
@@ -251,12 +258,14 @@ export function TanglePanel({
             aria-label="Scrollable marked tangle diagram"
           >
             <svg
+              {...rotationControls}
               viewBox={
                 bounds
                   ? `${bounds.left} ${bounds.top} ${bounds.right - bounds.left} ${bounds.bottom - bounds.top}`
                   : `-55 -65 ${diagram.width + 110} ${diagram.height + 130}`
               }
               style={{
+                ...rotationControls.style,
                 width: `${100 * zoom}%`,
                 minWidth: 400 * zoom,
                 height: 360 * zoom,
@@ -397,20 +406,7 @@ export function TanglePanel({
               })}
             </svg>
           </div>
-          {lifted && (
-            <label className="rotation">
-              Rotate lifted diagram
-              <input
-                aria-label="Rotate tangle 3D"
-                type="range"
-                min={-3.14}
-                max={3.14}
-                step={0.01}
-                value={rotation}
-                onChange={(e) => setRotation(Number(e.target.value))}
-              />
-            </label>
-          )}
+          {lifted && <p className="rotation-hint">{rotationHint}</p>}
           <p className="topology-note" data-testid="closure-classification">
             {closed
               ? `${closureName(fraction)} · ${closureComponents(fraction) === 1 ? "knot (one component)" : "two-component link"}. Purple dashed arcs are the numerator closure.`

@@ -1,4 +1,48 @@
 import { test, expect } from "@playwright/test";
+test("surface gestures preserve scene state, support keyboard reset and cancellation, and keep trail clicks", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  const time = page.getByRole("slider", { name: "Scrub trajectory" });
+  await time.fill("5");
+  if (info.project.name === "mobile")
+    await page
+      .getByRole("button", { name: "02 Modular quotient", exact: true })
+      .click();
+  await page.getByRole("button", { name: "Schematic 3D", exact: true }).click();
+  const surface = page.getByRole("img", { name: /Schematic punctured sphere/ });
+  await expect(page.getByRole("slider", { name: /Rotate/ })).toHaveCount(0);
+  await surface.press("ArrowRight");
+  expect(Number(await surface.getAttribute("data-rotation"))).toBeCloseTo(-0.3);
+  await expect(time).toHaveValue("5");
+  await surface.press("Home");
+  await expect(surface).toHaveAttribute("data-rotation", "-0.4");
+  await surface.scrollIntoViewIfNeeded();
+  const trail = surface
+    .locator('[data-surface-trail][data-surface-front="true"]')
+    .first();
+  const point = await trail.evaluate((element) => {
+    const path = element as SVGPathElement;
+    const p = path.getPointAtLength(path.getTotalLength() / 2);
+    const screen = new DOMPoint(p.x, p.y).matrixTransform(path.getScreenCTM()!);
+    return { x: screen.x, y: screen.y };
+  });
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down();
+  await page.mouse.move(point.x + 30, point.y, { steps: 3 });
+  await expect(surface).not.toHaveAttribute("data-rotation", "-0.4");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  await expect(surface).toHaveAttribute("data-rotation", "-0.4");
+  await expect(time).toHaveValue("5");
+  // A fresh click still seeks, even after a cancelled drag began on a curve.
+  await page.mouse.click(point.x, point.y);
+  await expect(time).not.toHaveValue("5");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await expect(
+    page.getByRole("button", { name: "Undo number edit" }),
+  ).toBeDisabled();
+});
 test("domain colors agree across the half-plane and filled translucent quotient surfaces", async ({
   page,
 }, info) => {
@@ -6,11 +50,9 @@ test("domain colors agree across the half-plane and filled translucent quotient 
   await page.getByRole("checkbox", { name: "Modular domains" }).check();
   await page.getByRole("checkbox", { name: "Ford circles" }).uncheck();
   await page.getByRole("slider", { name: "Scrub trajectory" }).fill("5");
-  await page
-    .getByRole("img", { name: /Upper half-plane/ })
-    .screenshot({
-      path: `test-results/${info.project.name}-colored-domains.png`,
-    });
+  await page.getByRole("img", { name: /Upper half-plane/ }).screenshot({
+    path: `test-results/${info.project.name}-colored-domains.png`,
+  });
   if (info.project.name === "mobile")
     await page
       .getByRole("button", { name: "02 Modular quotient", exact: true })

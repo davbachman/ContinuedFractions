@@ -1,3 +1,4 @@
+import { dragSurface } from "./rotation";
 import { test, expect } from "@playwright/test";
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -77,12 +78,11 @@ test("quotient, inspection, accessible guide, and no page overflow", async ({
   if (testInfo.project.name === "mobile")
     await page.getByRole("button", { name: "02 Modular quotient" }).click();
   await page.getByRole("button", { name: "Schematic 3D" }).click();
-  await expect(
-    page.getByRole("slider", { name: "Rotate schematic surface" }),
-  ).toBeVisible();
-  await page
-    .getByRole("slider", { name: "Rotate schematic surface" })
-    .fill("1.2");
+  await dragSurface(
+    page,
+    page.getByRole("img", { name: /Schematic punctured sphere/ }),
+    testInfo.project.name === "mobile",
+  );
   await page.getByRole("button", { name: "Folded domain" }).click();
   await page.getByText("Inspect transformation").click();
   await expect(page.getByText("z ↦ (az + b)/(cz + d)")).toBeVisible();

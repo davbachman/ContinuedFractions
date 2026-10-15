@@ -1,3 +1,4 @@
+import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useMemo, useState } from "react";
 import {
   apply,
@@ -54,6 +55,12 @@ export function ModularTorus({
     [edges, setEdges] = useState(true),
     [trail, setTrail] = useState(true),
     [labels, setLabels] = useState(true);
+  const rotationControls = useSurfaceRotation(
+    rotation,
+    setRotation,
+    mode === "surface",
+    -0.6,
+  );
   const active = segments.find((s) => time >= s.start && time <= s.end),
     z = { x: alpha, y: heightAt(time) },
     matrix = active?.matrix ?? reduce(z).matrix;
@@ -204,6 +211,7 @@ export function ModularTorus({
         </label>
       </div>
       <svg
+        {...rotationControls}
         className="topology-svg"
         viewBox="0 0 380 380"
         role="img"
@@ -353,20 +361,7 @@ export function ModularTorus({
           strokeWidth={2}
         />
       </svg>
-      {mode === "surface" && (
-        <label className="rotation">
-          Rotate torus
-          <input
-            aria-label="Rotate punctured torus"
-            type="range"
-            min={-3.14}
-            max={3.14}
-            step={0.01}
-            value={rotation}
-            onChange={(e) => setRotation(Number(e.target.value))}
-          />
-        </label>
-      )}
+      {mode === "surface" && <p className="rotation-hint">{rotationHint}</p>}
       {edges && <DomainEdgeLegend />}
       <p className="quotient-caption">
         Sheet {sheet} · χ(T)=1, χ(S)=3 · one cusp of width 6 · genus 1.{" "}

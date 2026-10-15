@@ -1,3 +1,4 @@
+import { dragSurface } from "./rotation";
 import { test, expect, type Page } from "@playwright/test";
 async function number(page: Page, value: string) {
   await page.getByLabel("ENDPOINT α").fill(value);
@@ -45,9 +46,7 @@ test("six-sheet cover follows forward and reverse time and survives view changes
   const torus = page.getByRole("img", {
     name: "Schematic six-sheet punctured torus",
   });
-  await page
-    .getByRole("slider", { name: "Rotate punctured torus" })
-    .fill("1.2");
+  await dragSurface(page, torus, info.project.name === "mobile");
   await expect(torus).toBeVisible();
   await torus.screenshot({
     path: `test-results/${info.project.name}-torus-3d.png`,
@@ -142,7 +141,11 @@ test("closure diagrams, 3D rotation, marked slopes and Dehn twists", async ({
     .locator(".tangle-panel")
     .screenshot({ path: `test-results/${info.project.name}-tangle.png` });
   await button(page, "Lifted tangle 3D").click();
-  await page.getByRole("slider", { name: "Rotate tangle 3D" }).fill("1.1");
+  await dragSurface(
+    page,
+    page.getByRole("img", { name: "Lifted 3D rational tangle" }),
+    info.project.name === "mobile",
+  );
   await page
     .getByRole("img", { name: "Lifted 3D rational tangle" })
     .screenshot({ path: `test-results/${info.project.name}-tangle-3d.png` });
@@ -151,14 +154,17 @@ test("closure diagrams, 3D rotation, marked slopes and Dehn twists", async ({
   await page.getByLabel("Marked torus slope", { exact: true }).fill("2/3");
   await button(page, "Apply marked slope").click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("2/3");
-  await page
-    .getByRole("slider", { name: "Rotate marked branched-cover torus" })
-    .fill("0.8");
+  const markedTorus = page.getByRole("img", {
+    name: "Marked branched-cover torus with two parallel meridians",
+  });
+  const angle = await dragSurface(
+    page,
+    markedTorus,
+    info.project.name === "mobile",
+  );
   await button(page, "Dehn twist +1").click();
   await expect(page.getByTestId("tangle-fraction")).toHaveText("5/3");
-  await expect(
-    page.getByRole("slider", { name: "Rotate marked branched-cover torus" }),
-  ).toHaveValue("0.8");
+  await expect(markedTorus).toHaveAttribute("data-rotation", angle);
   await button(page, "Lift quarter-turn").click();
   await expect(page.getByTestId("tangle-fraction")).toHaveText("-3/5");
   await button(page, "Undo number edit").click();

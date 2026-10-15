@@ -1,3 +1,4 @@
+import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useMemo, useState, type MouseEvent } from "react";
 import { type Segment, apply, tangent, reduce } from "../math/modular";
 import { heightAt } from "../math/trajectory";
@@ -18,6 +19,12 @@ type Props = {
 export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
   const [mode, setMode] = useState<"folded" | "schematic">("folded"),
     [rotation, setRotation] = useState(-0.4);
+  const rotationControls = useSurfaceRotation(
+    rotation,
+    setRotation,
+    mode === "schematic",
+    -0.4,
+  );
   const active = segments.find((s) => time >= s.start && time <= s.end),
     z = { x: alpha, y: heightAt(time) },
     reduced = active
@@ -129,6 +136,7 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
       </div>
       <div className="quotient-plot">
         <svg
+          {...rotationControls}
           viewBox="0 0 380 370"
           role="img"
           aria-label={
@@ -315,20 +323,7 @@ export function Quotient({ alpha, time, segments, onSeek, limited }: Props) {
           )}
         </svg>
       </div>
-      {mode === "schematic" && (
-        <label className="rotation">
-          Rotate surface
-          <input
-            aria-label="Rotate schematic surface"
-            type="range"
-            min="-3.14"
-            max="3.14"
-            step="0.01"
-            value={rotation}
-            onChange={(e) => setRotation(Number(e.target.value))}
-          />
-        </label>
-      )}
+      {mode === "schematic" && <p className="rotation-hint">{rotationHint}</p>}
       <DomainEdgeLegend />
       <div className="quotient-caption">
         {limited
