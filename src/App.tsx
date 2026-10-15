@@ -75,13 +75,6 @@ import {
   deserialize,
   sceneFromLocation,
 } from "./state";
-const presets = [
-  ["5/13", "5/13"],
-  ["7/19", "7/19"],
-  ["355/113", "355/113"],
-  ["φ", "phi"],
-  ["√2", "sqrt2"],
-] as const;
 const overlayNames: Record<keyof Overlays, string> = {
   farey: "Farey edges",
   ford: "Ford circles",
@@ -597,6 +590,126 @@ export default function App() {
     displayCF =
       alternateEnding && rationalInput && !infinite ? alternate(cf) : cf,
     displayConvergents = displayCF.length ? convergents(displayCF) : [];
+  const numberEditor = (
+    <form
+      className="alpha-editor"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submitInput();
+      }}
+    >
+      <label htmlFor="number-input">α =</label>
+      <div className="input-group">
+        <input
+          id="number-input"
+          aria-label="ENDPOINT α"
+          title="Edit α: fraction, decimal, continued fraction, phi, or sqrt2"
+          style={{ width: `${Math.min(24, Math.max(5, input.length + 1))}ch` }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setInput(specLabel(scene.spec));
+              setError("");
+            }
+          }}
+          aria-describedby="number-help"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          spellCheck={false}
+        />
+        <button type="submit" aria-label="Apply endpoint">
+          <ArrowUpRight size={18} />
+        </button>
+      </div>
+    </form>
+  );
+  const sceneTools = (
+    <div className="history-tools">
+      <button
+        aria-label="Undo number edit"
+        disabled={!history.past.length}
+        onClick={() => {
+          setPlaying(false);
+          setRectanglePlaying(false);
+          setHistory(undo);
+        }}
+      >
+        <Undo2 size={17} />
+      </button>
+      <button
+        aria-label="Redo number edit"
+        disabled={!history.future.length}
+        onClick={() => {
+          setPlaying(false);
+          setRectanglePlaying(false);
+          setHistory(redo);
+        }}
+      >
+        <Redo2 size={17} />
+      </button>
+      <span className="tool-divider" />
+      <button aria-label="Download scene" onClick={save}>
+        <Download size={17} />
+      </button>
+      <button aria-label="Load scene" onClick={() => file.current?.click()}>
+        <Upload size={17} />
+      </button>
+      <button className="share-button" aria-label="Share scene" onClick={share}>
+        <Share2 size={15} />
+        <span>Share scene</span>
+      </button>
+      <input
+        ref={file}
+        hidden
+        type="file"
+        accept="application/json,.json"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          try {
+            if (f.size > 128000) throw new Error("Scene file exceeds 128 KB.");
+            const s = deserialize(await f.text());
+            setPlaying(false);
+            setHistory((h) => execute(h, { type: "load", scene: s }));
+            setError("");
+            setNotice("Scene loaded.");
+          } catch (err) {
+            setError((err as Error).message);
+          }
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+  const numberOptions = (
+    <details className="alpha-options">
+      <summary>Input options</summary>
+      <div className="input-options">
+        <span id="number-help">
+          Enter a fraction, decimal, [a₀; a₁, …], phi, or sqrt2. Decimals are
+          exact rationals.
+        </span>
+        <label>
+          CF prefix completion{" "}
+          <select
+            aria-label="Continued-fraction prefix completion"
+            value={completion}
+            onChange={(e) => setCompletion(e.target.value as "finite" | "ones")}
+          >
+            <option value="finite">Terminate (rational)</option>
+            <option value="ones">Infinite tail of 1s</option>
+          </select>
+        </label>
+      </div>
+    </details>
+  );
+  const inputError = error && (
+    <div className="error" role="alert">
+      {error}
+      <button aria-label="Dismiss error" onClick={() => setError("")}>
+        <X size={16} />
+      </button>
+    </div>
+  );
   return (
     <div className={`app-shell${comparison ? " comparison-shell" : ""}`}>
       <header className="site-header">
@@ -607,7 +720,7 @@ export default function App() {
             e.preventDefault();
             changeNumber(parseInput("5/13"));
           }}
-          aria-label="Continued Fractions Atlas home"
+          aria-label="Continued Fraction Explorer home"
         >
           <svg width="38" height="34" viewBox="0 0 38 34" aria-hidden="true">
             <path
@@ -619,9 +732,7 @@ export default function App() {
             <path d="M16 3v26" stroke="#c7744d" strokeWidth="1.6" />
             <circle cx="16" cy="14" r="3" fill="#c7744d" />
           </svg>
-          <span>
-            Continued Fractions <em>Atlas</em>
-          </span>
+          <h1>Continued Fraction Explorer</h1>
         </a>
         <nav aria-label="Main navigation">
           <button
@@ -649,161 +760,21 @@ export default function App() {
             Source <ArrowUpRight size={15} />
           </a>
         </nav>
+        {sceneTools}
       </header>
       <main>
-        <section className="intro">
-          <div>
-            <p className="eyebrow">
-              <span /> AN INTERACTIVE MATHEMATICAL INSTRUMENT
-            </p>
-            <h1>
-              One number. <em>Many geometries.</em>
-            </h1>
-            <p>
-              {comparison ? (
-                "Choose two views. Explore the connection between them."
-              ) : (
-                <>
-                  Explore a continued fraction through geometry.
-                  <br className="desktop-break" /> One exact number connects the
-                  hyperbolic plane and Euclidean dissection.
-                </>
-              )}
-            </p>
-          </div>
-          <div className="intro-note">
-            <span className="note-symbol">∞</span>
-            <span>
-              A small atlas of
-              <br />
-              an infinite landscape.
-            </span>
-          </div>
-        </section>
-        <section className="number-bar" aria-label="Choose an endpoint">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitInput();
-            }}
-          >
-            <label htmlFor="number-input">
-              ENDPOINT <span>α</span>
-            </label>
-            <div className="input-group">
-              <input
-                id="number-input"
-                aria-describedby="number-help"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                spellCheck={false}
-              />
-              <button type="submit" aria-label="Apply endpoint">
-                <ArrowUpRight size={18} />
-              </button>
-            </div>
-          </form>
-          <div className="preset-group">
-            <span>EXPLORE</span>
-            {presets.map(([text, v]) => (
-              <button
-                key={text}
-                className={specLabel(scene.spec) === text ? "selected" : ""}
-                onClick={() => changeNumber(parseInput(v))}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
-          <div className="history-tools">
-            <button
-              aria-label="Undo number edit"
-              disabled={!history.past.length}
-              onClick={() => {
-                setPlaying(false);
-                setRectanglePlaying(false);
-                setHistory(undo);
-              }}
-            >
-              <Undo2 size={17} />
-            </button>
-            <button
-              aria-label="Redo number edit"
-              disabled={!history.future.length}
-              onClick={() => {
-                setPlaying(false);
-                setRectanglePlaying(false);
-                setHistory(redo);
-              }}
-            >
-              <Redo2 size={17} />
-            </button>
-            <span className="tool-divider" />
-            <button aria-label="Download scene" onClick={save}>
-              <Download size={17} />
-            </button>
-            <button
-              aria-label="Load scene"
-              onClick={() => file.current?.click()}
-            >
-              <Upload size={17} />
-            </button>
-            <button className="share-button" onClick={share}>
-              <Share2 size={15} />
-              <span>Share scene</span>
-            </button>
-            <input
-              ref={file}
-              hidden
-              type="file"
-              accept="application/json,.json"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                try {
-                  if (f.size > 128000)
-                    throw new Error("Scene file exceeds 128 KB.");
-                  const s = deserialize(await f.text());
-                  setPlaying(false);
-                  setHistory((h) => execute(h, { type: "load", scene: s }));
-                  setError("");
-                  setNotice("Scene loaded.");
-                } catch (err) {
-                  setError((err as Error).message);
-                }
-                e.target.value = "";
-              }}
-            />
-          </div>
-        </section>
-        <div className="input-options">
-          <span id="number-help">
-            Rational, decimal, or [a₀; a₁, …]. Decimals are exact rationals.
-          </span>
-          <label>
-            CF prefix completion{" "}
-            <select
-              aria-label="Continued-fraction prefix completion"
-              value={completion}
-              onChange={(e) =>
-                setCompletion(e.target.value as "finite" | "ones")
-              }
-            >
-              <option value="finite">Terminate (rational)</option>
-              <option value="ones">Infinite tail of 1s</option>
-            </select>
-          </label>
-        </div>
-        {error && (
-          <div className="error" role="alert">
-            {error}
-            <button aria-label="Dismiss error" onClick={() => setError("")}>
-              <X size={16} />
-            </button>
-          </div>
+        {!comparison && (
+          <>
+            <div className="atlas-number-controls">{numberEditor}</div>
+            {numberOptions}
+            {inputError}
+          </>
         )}
         {comparison ? (
           <Workspace
+            numberEditor={numberEditor}
+            numberOptions={numberOptions}
+            inputError={inputError}
             scene={scene}
             coefficients={cf}
             convergents={cs}
@@ -1830,7 +1801,7 @@ export default function App() {
             <a href="https://github.com/davbachman/ContinuedFractions/blob/main/LICENSE">
               MIT license
             </a>
-            <span className="footer-separator">/</span>Atlas 1.0
+            <span className="footer-separator">/</span>Explorer 1.0
           </span>
         </footer>
       </main>
@@ -1889,12 +1860,12 @@ export default function App() {
         <h2>A number, seen through geometry.</h2>
         <h3>Compare two representations</h3>
         <p>
-          Choose a representation on each side, or start with a suggested
-          connection. Both panes use the same exact number and undo history;
-          their cameras are independent. The connection caption explains what is
-          linked. Selecting a coefficient highlights its counterpart without
-          seeking the trajectory, unless coefficient synchronization is enabled.
-          Use “Seek selected run” to move the point in independent mode.
+          Edit α beside the coefficient strip and choose a representation on
+          each side. Both panes use the same exact number and undo history;
+          their cameras are independent. Selecting a coefficient highlights its
+          counterpart without seeking the trajectory, unless coefficient
+          synchronization is enabled. Use “Seek selected run” to move the point
+          in independent mode.
         </p>
         <p>
           Hyperbolic views share trajectory time. Rectangle playback advances
@@ -1965,10 +1936,10 @@ export default function App() {
         </p>
         <h3>From continued fractions to flips</h3>
         <p>
-          Choose “Continued fractions → flips” to pair the Farey diagram with
-          the marked square. Both automatically follow the α chosen at the top.
-          Each crossed Farey side flips one edge. Left/right turns are grouped
-          by coefficient, with the initial and terminal offsets shown
+          Choose “Farey triangles · flip path” and “Marked torus · edge flips”
+          in the two view selectors. Both automatically follow the α chosen at
+          the top. Each crossed Farey side flips one edge. Left/right turns are
+          grouped by coefficient, with the initial and terminal offsets shown
           explicitly. Selecting a coefficient highlights its run; “Go to
           selected run” seeks it. Changing α rebuilds the path; stepping the
           path preserves α. “Explain this flip” replaces the diagram with its

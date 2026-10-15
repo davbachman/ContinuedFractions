@@ -175,7 +175,8 @@ test("tangle diagrams, 3D rotation, marked slopes and Dehn twists", async ({
 test("irrational tangles label selected convergents and editing explicitly makes the number rational", async ({
   page,
 }) => {
-  await button(page, "φ").click();
+  await page.getByLabel("ENDPOINT α").fill("phi");
+  await button(page, "Apply endpoint").click();
   await expect(
     page.locator(".tangle-panel .tangle-approximation"),
   ).toContainText("does not represent the exact irrational");

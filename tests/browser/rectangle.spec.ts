@@ -141,7 +141,10 @@ test("zero-square orientation step, periodic playback, camera, resize, and mobil
   await page.setViewportSize({ width, height: 900 });
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await expect(diagram).toHaveAttribute("data-stage", "1");
-  await page.getByRole("button", { name: "φ", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("φ");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await page.getByRole("button", { name: "Play dissection" }).click();
   await expect(diagram).toHaveAttribute("data-stage", "2", { timeout: 4000 });
   await page.getByRole("button", { name: "Pause dissection" }).click();
@@ -154,7 +157,10 @@ test("zero-square orientation step, periodic playback, camera, resize, and mobil
   await expect(page.locator(".rectangle-progress")).toContainText(
     "16 stages generated",
   );
-  await page.getByRole("button", { name: "√2", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("√2");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await expect(page.locator(".dissection-status")).toContainText(
     "Display limits do not mean mathematical termination",
   );
@@ -181,7 +187,10 @@ test("zero-square orientation step, periodic playback, camera, resize, and mobil
   await page
     .getByRole("button", { name: "Full dissection", exact: true })
     .click();
-  await page.getByRole("button", { name: "5/13", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("5/13");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Select coefficient a4 = 2", exact: true })
     .click();
@@ -345,7 +354,10 @@ test("deep irrational remainders remain visible and the display cap never implie
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.getByRole("button", { name: "φ", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("φ");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Rectangle dissection", exact: true })
     .click();

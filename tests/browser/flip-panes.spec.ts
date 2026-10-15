@@ -11,8 +11,11 @@ test("paired Farey and square panes share following, coefficient runs and playba
   page,
 }, info) => {
   await page
-    .getByLabel("Comparison preset", { exact: true })
-    .selectOption({ label: "Continued fractions → flips" });
+    .getByRole("combobox", { name: "Left representation", exact: true })
+    .selectOption("farey");
+  await page
+    .getByRole("combobox", { name: "Right representation", exact: true })
+    .selectOption("triangulation");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
   const farey = left.getByRole("group", {

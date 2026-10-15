@@ -24,9 +24,6 @@ test("defaults to two views, synchronizes coefficient edits and undo, and fits d
 }, info) => {
   await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
   await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
-  await expect(
-    page.getByRole("status", { name: "Connection between views" }),
-  ).toContainText("Coefficients ↔ square groups");
   await left(page)
     .getByRole("button", { name: "Select coefficient a2 = 1", exact: true })
     .click();
@@ -123,7 +120,7 @@ test("coefficient inspection highlights folded and 3D quotient runs without seek
   });
 });
 
-test("two H² cameras and layers are independent, swap with their panes, and share trajectory time", async ({
+test("two H² cameras and layers are independent and share trajectory time", async ({
   page,
 }, info) => {
   await choose(page, "Left", "h2");
@@ -146,12 +143,6 @@ test("two H² cameras and layers are independent, swap with their panes, and sha
   await expect(
     right(page).getByRole("slider", { name: "Scrub trajectory" }),
   ).toHaveValue("1.2");
-  const zoom = await first.getAttribute("data-manual-zoom");
-  await page.getByRole("button", { name: "Swap sides ⇄" }).click();
-  await expect(second).toHaveAttribute("data-manual-zoom", zoom!);
-  await expect(
-    right(page).getByLabel("Ford circles", { exact: true }),
-  ).not.toBeChecked();
   await choose(page, "Right", "torus");
   await right(page).getByLabel("Cover lift", { exact: true }).selectOption("3");
   await expect(
@@ -220,7 +211,10 @@ test("canonical tangle selection links coefficients, custom words and irrational
   ).toBeVisible();
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(right(page).getByText(/Canonical construction/)).toBeVisible();
-  await page.getByRole("button", { name: "φ", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("φ");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await right(page)
     .getByLabel("Tangle convergent", { exact: true })
     .selectOption("4");
@@ -359,11 +353,7 @@ test("removed views disappear and old links and saved layouts retain the shared 
   await expect(left(page)).toHaveAttribute("data-representation", "symbolic");
   await expect(right(page)).toHaveAttribute("data-representation", "rectangle");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
-  for (const name of [
-    "Left representation",
-    "Right representation",
-    "Comparison preset",
-  ]) {
+  for (const name of ["Left representation", "Right representation"]) {
     const options = await page
       .getByLabel(name, { exact: true })
       .locator("option")
@@ -381,4 +371,66 @@ test("removed views disappear and old links and saved layouts retain the shared 
   await page.locator(".comparison-grid").screenshot({
     path: `test-results/${info.project.name}-simplified-workspace.png`,
   });
+});
+
+test("inline alpha editing replaces the top controls and preserves exact edits and undo", async ({
+  page,
+}, info) => {
+  await expect(page).toHaveTitle("Continued Fraction Explorer");
+  await expect(
+    page.getByRole("heading", { name: "Continued Fraction Explorer" }),
+  ).toBeVisible();
+  await expect(page.locator(".intro")).toHaveCount(0);
+  const alpha = page.locator(".comparison-strip").getByLabel("ENDPOINT α");
+  await expect(alpha).toHaveCount(1);
+  await expect(
+    page
+      .locator(".site-header")
+      .getByRole("button", { name: "Share scene", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".site-header .history-tools button")).toHaveCount(
+    5,
+  );
+  await expect(
+    page.locator(
+      ".number-bar, .preset-group, .comparison-presets, .connection-caption",
+    ),
+  ).toHaveCount(0);
+  await alpha.fill("13/5");
+  await expect(left(page).locator(".symbolic-value")).toContainText("5/13");
+  await alpha.press("Enter");
+  await expect(left(page).locator(".symbolic-value")).toContainText("13/5");
+  await expect(right(page).locator(".rectangle-overview")).toContainText(
+    "α = 13/5",
+  );
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(alpha).toHaveValue("5/13");
+  await page.getByRole("button", { name: "Redo number edit" }).click();
+  await expect(alpha).toHaveValue("13/5");
+  await alpha.fill("0/0");
+  await alpha.press("Enter");
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(left(page).locator(".symbolic-value")).toContainText("13/5");
+  await alpha.press("Escape");
+  await expect(alpha).toHaveValue("13/5");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByText("Input options", { exact: true }).click();
+  await page
+    .getByLabel("Continued-fraction prefix completion")
+    .selectOption("ones");
+  await alpha.fill("[1]");
+  await alpha.press("Enter");
+  await expect(alpha).toHaveValue("φ");
+  await page.getByText("Input options", { exact: true }).click();
+  await page.getByRole("button", { name: "Undo number edit" }).click();
+  await expect(alpha).toHaveValue("13/5");
+  await page.screenshot({
+    path: `test-results/${info.project.name}-inline-alpha.png`,
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
 });

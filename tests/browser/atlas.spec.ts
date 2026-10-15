@@ -9,7 +9,7 @@ test("loads exact default, plays, steps, edits and undoes", async ({
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await expect(
-    page.getByRole("heading", { name: "One number. Many geometries." }),
+    page.getByRole("heading", { name: "Continued Fraction Explorer" }),
   ).toBeVisible();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page
@@ -26,7 +26,10 @@ test("loads exact default, plays, steps, edits and undoes", async ({
   ).toBeVisible();
   await page.waitForTimeout(200);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
-  await page.getByRole("button", { name: "7/19", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("7/19");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("7/19");
   await page.getByRole("button", { name: "Undo number edit" }).click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
@@ -44,7 +47,10 @@ test("loads exact default, plays, steps, edits and undoes", async ({
 test("scene share, download, load, validation and local persistence", async ({
   page,
 }) => {
-  await page.getByRole("button", { name: "√2", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("√2");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Next Farey crossing", exact: true })
     .click();
@@ -144,7 +150,10 @@ test("integer inputs, alternate expressions, and mobile panel changes remain sta
   await page.locator("#coefficient-input").fill("-2");
   await page.getByRole("button", { name: "Apply coefficient" }).click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("-2");
-  await page.getByRole("button", { name: "5/13", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("5/13");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await page.getByLabel("Alternate ending", { exact: false }).check();
   await expect(
     page.getByRole("button", {
@@ -492,7 +501,10 @@ test("stacked fractions handle integers, alternate endings, and scrollable perio
   await expect(
     panel.getByRole("button", { name: "Select coefficient a1 = 1" }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "φ", exact: true }).click();
+  await page.getByLabel("ENDPOINT α").fill("φ");
+  await page
+    .getByRole("button", { name: "Apply endpoint", exact: true })
+    .click();
   await expect(panel.getByLabel("continues indefinitely")).toBeVisible();
   await expect(panel).toContainText("continues indefinitely");
   expect(

@@ -1,14 +1,14 @@
-# Continued Fractions Atlas
+# Continued Fraction Explorer
 
-An interactive mathematical instrument connecting continued fractions, the Farey tessellation, Ford circles, the modular orbifold, rectangle dissection, and marked rational tangles. Choose an exact number and compare two representations, with an explicit explanation of their correspondence.
+An interactive mathematical instrument connecting continued fractions, the Farey tessellation, Ford circles, the modular orbifold, rectangle dissection, and marked rational tangles. Choose an exact number and compare two representations.
 
-**[Open the Atlas](https://davbachman.github.io/ContinuedFractions/)** · [Mathematical conventions](docs/MATHEMATICS.md) · [Original design](docs/DESIGN.txt)
+**[Open the Explorer](https://davbachman.github.io/ContinuedFractions/)** · [Mathematical conventions](docs/MATHEMATICS.md) · [Original design](docs/DESIGN.txt)
 
 ## Compare two representations
 
-The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Farey triangles, marked torus flips, CF braid / 4-plat, rational tangle, or marked torus/pillowcase. The same representation can appear twice. **Swap sides** moves each pane with its current camera and display settings.
+The default workspace shows **Symbolic continued fraction** beside **Rectangle dissection**. Choose any representation independently from the left and right selectors: symbolic CF, rectangle, H²/Farey/Ford, modular surface, punctured modular torus, Farey triangles, marked torus flips, CF braid / 4-plat, rational tangle, or marked torus/pillowcase. The same representation can appear twice.
 
-- Use **Start with a connection** for curated comparisons. The connection caption states whether the panes share a trajectory, coefficient, marked construction, or only the target number. It does not invent a common clock or identify the distinct torus markings.
+- Edit **α** beside the shared coefficient strip and press Enter or the arrow to apply. Fractions, decimals, continued fractions, `phi`, and `sqrt2` use the same exact input parser and undo history. **Input options** controls finite or infinite-tail completion. Undo/redo, scene files, and sharing are in the top-right header.
 - The compact shared coefficient strip selects and edits terms in every pairing. Selecting a term highlights a rectangle group, Farey run, or canonical tangle twist region where defined. Symbolic views offer nested fractions, coefficient lists, exact editing, convergents, approximation error, prefix cylinders, and optional alternate endings.
 - Hyperbolic panes share one trajectory clock and expose their own play, reverse, scrub, event list, speed, and depth controls. Cameras and H² overlay settings are independent. When paired with a coefficient or prefix view, quotient surfaces highlight the selected coefficient's displayed Farey-run interval, including its future portion; this inspection overlay does not seek the moving point. a₀ and zero-length runs are described explicitly.
 - Rectangle playback normally steps Euclidean groups and leaves hyperbolic time unchanged. Pair it with Farey triangles, marked edge flips, H², the modular surface, or the punctured modular torus and enable **Synchronize by coefficient** to use a shared run clock. Play/Pause and Previous/Next linked stage work from either pane; the shared progress slider scrubs forward or backward within a run, and **Reverse linked playback** retraces the stages. Starting one process pauses the other so competing clocks cannot change the shared selection simultaneously.
@@ -30,7 +30,7 @@ The optional link groups the existing exact Farey itinerary by coefficient. Each
 
 ## CF braid / 4-plat
 
-Choose **CF braid · 4-plat** in either pane, or use **Read the CF braid** to place it beside the symbolic fraction. This is the vertical three-active-strand presentation: boxes alternate between strands **1–2** and **2–3**, with the return strand **R** and curved plat caps visible. **Tangle and its plat closure** compares it with the marked rational tangle.
+Choose **CF braid · 4-plat** in either pane and **Symbolic continued fraction** in the other. This is the vertical three-active-strand presentation: boxes alternate between strands **1–2** and **2–3**, with the return strand **R** and curved plat caps visible. Choose **Marked rational tangle** in the other pane to compare the two diagrams.
 
 - Read the colored boxes downward in coefficient order. Click or keyboard-select a box to highlight its coefficient in both panes. **Previous/Next coefficient** navigates the shared selection; rectangle and Farey playback also highlight the matching boxes.
 - **Apply braid coefficient** edits α through the existing shared commands; Undo restores the number and its other views. Canonicalization may change the final CF ending.
@@ -42,7 +42,7 @@ The [documented convention](docs/MATHEMATICS.md#continued-fraction-braid--four-p
 
 ## Explore
 
-Start at **5/13 = [0; 2, 1, 1, 2]**, or select 7/19, 355/113, φ, or √2. Enter a rational, signed integer, exact decimal, or regular continued-fraction list. A finite prefix can terminate or explicitly continue with an infinite tail of ones.
+Start at **5/13 = [0; 2, 1, 1, 2]**, or enter 7/19, 355/113, φ, or √2. Enter a rational, signed integer, exact decimal, or regular continued-fraction list. A finite prefix can terminate or explicitly continue with an infinite tail of ones.
 
 - **Play**, reverse, scrub, or step between Farey crossings and coefficient runs. Time measures hyperbolic distance, with `z(t) = α + 2i exp(−t)`.
 - **Auto zoom** is on by default: the view magnifies as `exp(0.92t)`, so the point keeps descending slowly in the viewport, with remaining screen height proportional to `exp(−0.08t)`. Turn it off for a fixed camera. Seeking and reverse playback retrace the same camera motion.
@@ -95,7 +95,7 @@ When **Punctured torus** is selected, the H² viewer lightly fills modular-domai
 
 The **Marked torus · edge flips** panel starts with slopes **a₀, ∞, a₀+1** (thus **0, ∞, 1** for 0 < α < 1) in the fixed meridian–longitude basis. A slope p/q represents the primitive vector (q,p), up to overall sign. This editor uses the Farey combinatorial correspondence; it does not assign a homology slope to the moving ray on the six-sheet hyperbolic cover.
 
-- Start with **Continued fractions → flips** to pair **Farey triangles · flip path** with **Marked torus · edge flips**. Both panes show one shared exact triangulation and one playback position. Play/Pause and Previous/Next work from either pane; shared undo/redo also restores flips.
+- Use the two view selectors to pair **Farey triangles · flip path** with **Marked torus · edge flips**. Both panes show one shared exact triangulation and one playback position. Play/Pause and Previous/Next work from either pane; shared undo/redo also restores flips.
 - A square edge of slope p/q corresponds to a Farey vertex, its three edge slopes form a Farey triangle, and flipping an edge crosses the opposite Farey side. Colors match the three edge classes across the views. The target α determines the path; stepping the path never replaces it.
 - Use **Previous/Next flip step**, playback, or click the next/previous triangle or edge on α’s path. Other neighbors are context only. Colored slope buttons highlight edge classes. In the marked-square view, **Explain this flip** temporarily replaces the diagram with the unfolded quadrilateral; **Back to diagram** restores it. The tiled grid and affine/fixed-basis patch controls live inside this inspector.
 - The path reuses the vertical ray’s Farey itinerary. The initial crossing is separate from the L/R runs; a₀ translates the starting bracket, a₁ has the initial −1 offset, and a rational’s last run has another −1 offset (both apply when there is only one fractional coefficient). Zero-length runs create no fake flips. The caption shows the selected coefficient, direction, completed flips, and full run length. Selecting a coefficient highlights its colored path segments without seeking; **Go to selected run** explicitly moves the shared position.

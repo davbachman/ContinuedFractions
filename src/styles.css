@@ -183,32 +183,6 @@ h1 em {
   color: #8e9c79;
   transform: rotate(-15deg);
 }
-.number-bar {
-  background: #edeee5;
-  border: 1px solid #dce0d1;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  padding: 16px 18px;
-}
-.number-bar form {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.number-bar form > label {
-  font-size: 9px;
-  letter-spacing: 1.3px;
-  color: #74806d;
-  white-space: nowrap;
-}
-.number-bar form > label span {
-  font:
-    italic 20px Georgia,
-    serif;
-  margin-left: 5px;
-}
 .input-group {
   display: flex;
   align-items: center;
@@ -234,29 +208,6 @@ h1 em {
   width: 34px;
   color: var(--green);
   flex-shrink: 0;
-}
-.preset-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.preset-group > span {
-  color: #85907c;
-  letter-spacing: 1.3px;
-  font-size: 9px;
-  margin-right: 7px;
-}
-.preset-group button {
-  padding: 5px 11px;
-  font-family: Georgia, serif;
-  font-size: 14px;
-  min-width: 32px;
-  border-radius: 4px;
-  color: #687460;
-}
-.preset-group button.selected {
-  background: #d9e2cc;
-  color: #35563f;
 }
 .history-tools {
   display: flex;
@@ -1196,16 +1147,6 @@ footer a {
   .app-shell {
     padding: 0 30px;
   }
-  .number-bar {
-    gap: 18px;
-    padding: 12px;
-  }
-  .preset-group {
-    gap: 2px;
-  }
-  .preset-group > span {
-    display: none;
-  }
   .history-tools .share-button {
     margin-left: 4px;
     padding: 6px;
@@ -1263,28 +1204,8 @@ footer a {
   h1 {
     font-size: 39px;
   }
-  .number-bar {
-    flex-wrap: wrap;
-    gap: 14px;
-  }
-  .number-bar form {
-    flex: 1;
-  }
-  .number-bar form .input-group {
-    flex: 1;
-  }
-  .number-bar input {
-    width: 100%;
-  }
   .history-tools {
     margin-left: 0;
-  }
-  .preset-group {
-    order: 3;
-    flex: 1;
-  }
-  .preset-group > span {
-    display: block;
   }
   .input-options {
     flex-wrap: wrap;
@@ -1444,17 +1365,6 @@ footer a {
   .desktop-break {
     display: none;
   }
-  .number-bar {
-    gap: 8px;
-    padding: 12px;
-  }
-  .number-bar form {
-    flex-basis: 100%;
-  }
-  .number-bar form > label {
-    width: 82px;
-    font-size: 8px;
-  }
   .history-tools {
     margin-left: auto;
     gap: 0;
@@ -1464,21 +1374,6 @@ footer a {
   }
   .history-tools .tool-divider {
     margin: 0 3px;
-  }
-  .preset-group {
-    flex-basis: 100%;
-    order: 0;
-    border-top: 1px solid #dde2d1;
-    padding-top: 8px;
-    gap: 4px;
-  }
-  .preset-group > span {
-    font-size: 8px;
-    margin-right: 8px;
-  }
-  .preset-group button {
-    font-size: 14px;
-    padding: 4px 10px;
   }
   .history-tools {
     width: 100%;
@@ -2377,23 +2272,6 @@ footer,
 .comparison-shell .input-options {
   margin-bottom: 12px;
 }
-.comparison-presets {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin: 14px 0 10px;
-}
-.comparison-presets label {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 12px;
-}
-.comparison-presets button,
-.comparison-presets select,
 .workspace-actions button,
 .workspace-actions select,
 .workspace-details button,
@@ -2404,36 +2282,12 @@ footer,
   padding: 8px 11px;
   min-height: 38px;
 }
-.connection-caption {
-  background: #eaf0e5;
-  border-left: 3px solid #66876d;
-  padding: 12px 16px;
-  border-radius: 0 6px 6px 0;
-  line-height: 1.5;
-}
-.connection-caption strong {
-  font-size: 14px;
-}
-.connection-caption p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  max-width: 1000px;
-}
 .comparison-strip {
   display: flex;
   gap: 16px;
   align-items: center;
   min-width: 0;
   margin: 12px 0;
-}
-.comparison-strip > strong {
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font:
-    15px Georgia,
-    serif;
 }
 .comparison-coefficients {
   display: flex;
@@ -2809,7 +2663,7 @@ footer,
     justify-content: flex-end;
     gap: 8px 12px;
   }
-  .comparison-shell .brand span {
+  .comparison-shell .brand h1 {
     font-size: 14px;
   }
   .comparison-shell .brand svg {
@@ -2818,19 +2672,9 @@ footer,
   .comparison-shell .site-header {
     gap: 10px;
   }
-  .comparison-presets select {
-    max-width: 100%;
-  }
-  .comparison-presets label {
-    flex: 1;
-    min-width: 0;
-  }
   .comparison-strip {
     flex-wrap: wrap;
     gap: 8px;
-  }
-  .comparison-strip > strong {
-    max-width: calc(100% - 100px);
   }
   .comparison-coefficients {
     order: 3;
@@ -2876,16 +2720,10 @@ footer,
 .comparison-shell .intro {
   padding: 12px 0;
 }
-.comparison-shell .number-bar {
-  margin-top: 6px;
-}
 .comparison-shell .input-options {
   margin: 8px 0;
   padding: 0;
   min-height: 0;
-}
-.comparison-presets {
-  margin-top: 12px;
 }
 .symbolic-value .small-tag {
   display: inline-block;
@@ -3255,4 +3093,147 @@ svg[data-rotation] * {
 }
 .cf-braid-panel .tangle-approximation button {
   margin: 8px 8px 0 0;
+}
+
+/* The shared alpha readout is the number editor. */
+.alpha-editor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.alpha-editor > label {
+  font:
+    italic 19px Georgia,
+    serif;
+  white-space: nowrap;
+}
+.alpha-editor .input-group {
+  height: 42px;
+  min-width: 0;
+}
+.alpha-editor .input-group input {
+  font:
+    18px Georgia,
+    serif;
+  max-width: 100%;
+  box-sizing: content-box;
+}
+.alpha-editor .input-group:focus-within {
+  border-color: #54755d;
+  box-shadow: 0 0 0 2px #54755d22;
+}
+.alpha-editor .input-group button {
+  min-width: 40px;
+  height: 42px;
+}
+.comparison-number-tools,
+.atlas-number-controls {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0 14px;
+}
+.alpha-options {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #62745e;
+}
+.alpha-options summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 10px 0;
+}
+.alpha-options .input-options {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0 0 10px;
+}
+@media (max-width: 760px) {
+  .alpha-editor {
+    flex-shrink: 1;
+  }
+  .alpha-editor .input-group,
+  .alpha-editor .input-group button,
+  .comparison-number-tools button,
+  .atlas-number-controls button,
+  .alpha-options select,
+  .alpha-options summary {
+    min-height: 44px;
+  }
+  .alpha-options summary {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.site-header,
+.comparison-shell .site-header {
+  height: auto;
+  min-height: 76px;
+  padding: 10px 0;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+}
+.site-header nav {
+  margin-left: auto;
+  gap: 16px;
+}
+.site-header .history-tools {
+  flex-shrink: 0;
+  width: auto;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.site-header .history-tools button {
+  min-height: 36px;
+}
+@media (max-width: 760px) {
+  .site-header,
+  .comparison-shell .site-header {
+    gap: 4px 8px;
+  }
+  .site-header nav {
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .site-header .brand,
+  .comparison-shell .brand {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .site-header .history-tools {
+    gap: 0;
+  }
+  .site-header .history-tools button {
+    min-width: 32px;
+    min-height: 44px;
+    padding: 6px;
+  }
+  .site-header .history-tools .share-button {
+    margin-left: 4px;
+  }
+  .site-header .history-tools .tool-divider {
+    margin: 0 3px;
+  }
+  .site-header .share-button span {
+    display: none;
+  }
+}
+
+.brand h1 {
+  font: inherit;
+  margin: 0;
+  letter-spacing: inherit;
 }

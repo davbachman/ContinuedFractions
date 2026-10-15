@@ -1,10 +1,5 @@
 import { expect, it } from "vitest";
-import {
-  correspondence,
-  representations,
-  isRepresentation,
-  type Representation,
-} from "../src/workspace";
+import { isRepresentation } from "../src/workspace";
 import {
   canonicalTwistCoefficients,
   expressionFor,
@@ -15,24 +10,14 @@ import { toCF } from "../src/math/continuedFraction";
 import { parseInput } from "../src/math/continuedFraction";
 import { derive } from "../src/math/trajectory";
 import { coefficientTrace } from "../src/renderers/selectedRun";
-it("describes pairs symmetrically without inventing a common clock or homology map", () => {
-  for (const a of Object.keys(representations) as Representation[])
-    for (const b of Object.keys(representations) as Representation[])
-      expect(correspondence(a, b)).toEqual(correspondence(b, a));
-  expect(correspondence("h2", "torus").kind).toBe("Same trajectory");
-  expect(correspondence("h2", "triangulation").kind).toBe(
-    "Farey triangles ↔ flips",
-  );
-  expect(correspondence("rectangle", "torus").text).toContain(
-    "different clocks",
-  );
-  expect(correspondence("torus", "pillowcase").text).toContain(
-    "not a homology slope",
-  );
-  expect(correspondence("tangle", "pillowcase").text).toContain(
-    "parallel meridians",
-  );
-  for (const removed of ["closure", "intervals", "lattice", "errors", "matrices"])
+it("rejects removed and invalid representations", () => {
+  for (const removed of [
+    "closure",
+    "intervals",
+    "lattice",
+    "errors",
+    "matrices",
+  ])
     expect(isRepresentation(removed)).toBe(false);
   expect(isRepresentation("__proto__")).toBe(false);
 });

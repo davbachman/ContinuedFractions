@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState, type ComponentProps } from "react";
 import {
-  comparisonPresets,
-  correspondence,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type ComponentProps,
+} from "react";
+import {
   isRepresentation,
   isTrajectory,
   isCoefficientView,
@@ -9,7 +13,7 @@ import {
   type Representation,
 } from "./workspace";
 import type { Scene } from "./state";
-import { approximate, specLabel } from "./math/continuedFraction";
+import { approximate } from "./math/continuedFraction";
 import { label, type Rational } from "./math/rational";
 import { heightAt, type derive } from "./math/trajectory";
 import { currentTriangulation, targetItinerary } from "./math/triangulation";
@@ -32,6 +36,9 @@ import { useRunPlayback } from "./useRunPlayback";
 import type { TriangulationState } from "./math/triangulation";
 
 export type WorkspaceProps = {
+  numberEditor: ReactNode;
+  numberOptions: ReactNode;
+  inputError: ReactNode;
   scene: Scene;
   coefficients: bigint[];
   convergents: Rational[];
@@ -170,7 +177,6 @@ export function Workspace(props: WorkspaceProps) {
     props.onPause();
     setPanes((p) => p.map((v) => (v.id === id ? { ...v, kind } : v)));
   };
-  const connection = correspondence(panes[0].kind, panes[1].kind);
   const infinite =
     props.scene.spec.kind === "rational" && !props.scene.spec.value.q;
   return (
@@ -178,52 +184,6 @@ export function Workspace(props: WorkspaceProps) {
       className="comparison-workspace"
       aria-label="Compare representations"
     >
-      <div className="comparison-presets">
-        <label>
-          Start with a connection{" "}
-          <select
-            aria-label="Comparison preset"
-            value=""
-            onChange={(e) => {
-              const preset = comparisonPresets[Number(e.target.value)];
-              if (!preset) return;
-              props.onPause();
-              setFlipPlaying(false);
-              runs.disable();
-              if (preset.follow)
-                props.triangulation.onChange(
-                  targetItinerary(props.scene.spec, flipState.horizon),
-                  0,
-                  0,
-                );
-              setActivePane(null);
-              setPanes((p) =>
-                p.map((v, i) => ({ ...v, kind: preset.pair[i] })),
-              );
-            }}
-          >
-            <option value="" disabled>
-              Choose a comparison…
-            </option>
-            {comparisonPresets.map((p, i) => (
-              <option key={p.label} value={i}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button onClick={() => setPanes((p) => [p[1], p[0]])}>
-          Swap sides ⇄
-        </button>
-      </div>
-      <div
-        className="connection-caption"
-        role="status"
-        aria-label="Connection between views"
-      >
-        <strong>{connection.kind}</strong>
-        <p>{connection.text}</p>
-      </div>
       {canLink && (
         <div className="run-link" aria-label="Coefficient synchronization">
           <label>
@@ -334,7 +294,7 @@ export function Workspace(props: WorkspaceProps) {
         className="comparison-strip"
         aria-label="Shared coefficient selection"
       >
-        <strong>α = {specLabel(props.scene.spec)}</strong>
+        {props.numberEditor}
         <div className="comparison-coefficients">
           {props.coefficients.map((a, i) => (
             <button
@@ -381,6 +341,8 @@ export function Workspace(props: WorkspaceProps) {
           </details>
         )}
       </div>
+      <div className="comparison-number-tools">{props.numberOptions}</div>
+      {props.inputError}
       <div className="comparison-grid">
         {panes.map((pane, i) => (
           <ComparisonPane

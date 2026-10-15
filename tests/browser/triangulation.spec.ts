@@ -111,7 +111,8 @@ test("target following stops at a rational cusp triangle and extends irrational 
   await expect(page.getByTestId("flip-status")).not.toContainText(
     "Terminal triangle",
   );
-  await button(page, "φ").click();
+  await page.getByLabel("ENDPOINT α").fill("phi");
+  await button(page, "Apply endpoint").click();
   await expect(page.getByTestId("flip-status")).toContainText("Step 0");
   const before = await page.locator(".flip-history button").count();
   await button(page, "Extend flip itinerary").click();
