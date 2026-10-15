@@ -5,6 +5,7 @@ import {
   involution,
   liftedQuarterTurn,
   meridianCurves,
+  meridianTrace,
   mod1,
   pillowPoint,
 } from "../src/math/pillowcase";
@@ -84,4 +85,39 @@ it("the lifted Dehn and quarter-turn maps give the same rational changes downsta
     expect((a1.y - a0.y) / epsilon).toBeCloseTo(q, 7);
   }
   expect(meridianCurves(rational(10000n, 13n)).limited).toBe(true);
+});
+
+it("traces one circuit with the stated windings and identifies both lifted markers downstairs", () => {
+  for (const r of [
+    rational(2n, 3n),
+    rational(-2n, 3n),
+    rational(0n),
+    rational(1n, 0n),
+    rational(5n, 13n),
+  ]) {
+    const start = meridianTrace(r, 0)!,
+      end = meridianTrace(r, 1)!;
+    expect(end.a.x - start.a.x).toBeCloseTo(Number(r.q), 12);
+    expect(end.a.y - start.a.y).toBeCloseTo(Number(r.p), 12);
+    for (const t of [0, 0.125, 0.25, 0.37, 0.5, 0.75, 1]) {
+      const trace = meridianTrace(r, t)!;
+      const imageB = pillowPoint(trace.b);
+      expect(trace.image.x).toBeCloseTo(imageB.x, 10);
+      expect(trace.image.y).toBeCloseTo(imageB.y, 10);
+      if (
+        trace.image.x > 1e-8 &&
+        trace.image.x < 1 - 1e-8 &&
+        trace.image.y > 1e-8 &&
+        trace.image.y < 1 - 1e-8
+      )
+        expect(trace.image.face).toBe(imageB.face);
+      expect(
+        mod1(Number(r.q) * trace.a.y - Number(r.p) * trace.a.x),
+      ).toBeCloseTo(0.25, 10);
+      expect(
+        mod1(Number(r.q) * trace.b.y - Number(r.p) * trace.b.x),
+      ).toBeCloseTo(0.75, 10);
+    }
+  }
+  expect(meridianTrace(rational(10n ** 100n), 0.5)).toBeNull();
 });

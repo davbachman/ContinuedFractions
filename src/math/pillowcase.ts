@@ -88,3 +88,18 @@ export function meridianCurves(r: Rational) {
   }
   return { curves, pillow, limited: false };
 }
+
+/** Follow one lifted curve and its involution partner, which share a quotient point. */
+export function meridianTrace(r: Rational, progress: number) {
+  if (!Number.isFinite(progress) || progress < 0 || progress > 1)
+    throw new Error("Trace progress must lie between 0 and 1.");
+  if ((r.p < 0n ? -r.p : r.p) + r.q > 512n) return null;
+  const p = Number(r.p),
+    q = Number(r.q);
+  const a = {
+    x: (q ? 0 : -0.25 / p) + q * progress,
+    y: (q ? 0.25 / q : 0) + p * progress,
+  };
+  const b = involution(a);
+  return { a, b, image: pillowPoint(a) };
+}

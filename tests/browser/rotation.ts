@@ -7,7 +7,10 @@ export async function dragSurface(
 ) {
   await surface.scrollIntoViewIfNeeded();
   const before = await surface.getAttribute("data-rotation");
-  const pathBefore = await surface.locator("path").first().getAttribute("d");
+  const pathBefore = await surface
+    .locator("path:not(defs *)")
+    .first()
+    .getAttribute("d");
   const box = (await surface.boundingBox())!;
   const width = Math.min(box.width, page.viewportSize()!.width - box.x - 10);
   const x = box.x + width * 0.3,
@@ -35,7 +38,7 @@ export async function dragSurface(
     await page.mouse.up();
   }
   await expect(surface).not.toHaveAttribute("data-rotation", before!);
-  await expect(surface.locator("path").first()).not.toHaveAttribute(
+  await expect(surface.locator("path:not(defs *)").first()).not.toHaveAttribute(
     "d",
     pathBefore!,
   );
@@ -46,7 +49,10 @@ export async function dragSurface(
   );
   expect(delta).toBeCloseTo((-width * 0.3 * 2 * Math.PI) / box.width, 2);
   const rollBefore = Number(await surface.getAttribute("data-roll"));
-  const turnedPath = await surface.locator("path").first().getAttribute("d");
+  const turnedPath = await surface
+    .locator("path:not(defs *)")
+    .first()
+    .getAttribute("d");
   const scrollBefore = await page.evaluate(() => scrollY);
   const dy = Math.min(45, box.height * 0.15);
   if (touch) {
@@ -77,7 +83,7 @@ export async function dragSurface(
     2,
   );
   await expect(surface).toHaveAttribute("data-rotation", String(angle));
-  await expect(surface.locator("path").first()).not.toHaveAttribute(
+  await expect(surface.locator("path:not(defs *)").first()).not.toHaveAttribute(
     "d",
     turnedPath!,
   );

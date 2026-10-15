@@ -3152,3 +3152,68 @@ svg[data-rotation] * {
     height: auto;
   }
 }
+
+.pillow-windings {
+  display: grid;
+  grid-template-columns: 0.8fr 1fr 1fr;
+  gap: 8px;
+}
+.pillow-windings > div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #cbd5c0;
+  border-top-width: 3px;
+  border-radius: 5px;
+  background: #fbfbf6;
+}
+.pillow-windings span {
+  display: block;
+  font-size: 11px;
+  color: #526753;
+}
+.pillow-windings strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.pillow-reading {
+  margin-bottom: 0;
+}
+.pillow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pillow-legend button {
+  min-height: 44px;
+  border: 1px solid #cbd5c0;
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  padding: 7px 10px;
+  background: #fbfbf6;
+}
+.pillow-legend button[aria-pressed="true"] {
+  background: #e9eee3;
+}
+.pillow-legend label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  font-size: 12px;
+}
+.pillow-trace-control {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  gap: 6px;
+}
+.pillow-trace-control input {
+  width: 100%;
+  min-height: 32px;
+}
+.pillow-trace-readout {
+  overflow-wrap: anywhere;
+}
