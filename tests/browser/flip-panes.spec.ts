@@ -64,7 +64,7 @@ test("visible restart and coefficient following synchronize both flip panes with
 test("coefficient following handles empty runs, unavailable depth, and H² time", async ({
   page,
 }) => {
-  await page.goto("/?left=h2&right=farey");
+  await page.goto("/?left=h2&right=triangulation");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
   await page.getByLabel("ENDPOINT α").fill("2/3");
@@ -131,7 +131,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
   const left = pane(page, "Left"),
     right = pane(page, "Right");
   const farey = left.getByRole("group", {
-    name: "Interactive Farey triangles",
+    name: "Poincare Disk",
     exact: true,
   });
   const square = right.getByRole("group", {
@@ -150,7 +150,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
   ).toBeHidden();
   await expect(
     right.getByRole("group", {
-      name: "Interactive Farey triangles",
+      name: "Poincare Disk",
       exact: true,
     }),
   ).toBeHidden();
@@ -235,12 +235,12 @@ test("target-path navigation works from either pane; the square stays visible an
   await right
     .getByLabel("Show a hole at the shared corner", { exact: true })
     .check();
-  await expect(square.locator('circle[r="7"]')).toHaveCount(4);
+  await expect(square.locator('circle[r="6"]')).toHaveCount(4);
   await expect(square).toHaveAttribute("data-slopes", "0 | ∞ | 1");
   await right
     .getByLabel("Show a hole at the shared corner", { exact: true })
     .uncheck();
-  await expect(square.locator('circle[r="7"]')).toHaveCount(0);
+  await expect(square.locator('circle[r="6"]')).toHaveCount(0);
   await button(
     left,
     "Next path step via Farey triangle replacing ∞ with 1/2",
@@ -249,7 +249,7 @@ test("target-path navigation works from either pane; the square stays visible an
   await button(right, "Previous flip step").click();
   await expect(
     left.getByRole("group", {
-      name: "Interactive Farey triangles",
+      name: "Poincare Disk",
       exact: true,
     }),
   ).toHaveAttribute("data-slopes", "0 | ∞ | 1");
@@ -275,11 +275,9 @@ test("target-path navigation works from either pane; the square stays visible an
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
   await left.getByText("Flip history", { exact: true }).click();
   await expect(button(left, "Extend flip itinerary")).toHaveCount(0);
-  await left
-    .locator(".triangulation-panel")
-    .screenshot({
-      path: `test-results/${info.project.name}-farey-history.png`,
-    });
+  await left.locator(".triangulation-panel").screenshot({
+    path: `test-results/${info.project.name}-farey-history.png`,
+  });
   await button(left, "Center Farey triangle").click();
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
@@ -288,7 +286,7 @@ test("target-path navigation works from either pane; the square stays visible an
 test("H² playback and seeking drive follow-target flips in both directions", async ({
   page,
 }) => {
-  await page.goto("/?left=h2&right=farey");
+  await page.goto("/?left=h2&right=triangulation");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
   await left.getByText("More layers", { exact: true }).click();
@@ -342,7 +340,7 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
   const left = pane(page, "Left"),
     right = pane(page, "Right");
   const farey = right.getByRole("group", {
-    name: "Interactive Farey triangles",
+    name: "Poincare Disk",
     exact: true,
   });
   await page.getByLabel("ENDPOINT α").fill("13/5");
@@ -350,7 +348,7 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   await expect(farey).toHaveAttribute("data-slopes", "2 | ∞ | 3");
-  await button(right, "Next flip step").click();
+  await button(right, "Next crossing").click();
   const advanced = await farey.getAttribute("data-slopes");
   await page
     .getByRole("button", { name: "Highlight coefficient a0 = 2", exact: true })
@@ -362,7 +360,7 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
     .click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("23/5");
   await expect(farey).toHaveAttribute("data-slopes", "4 | ∞ | 5");
-  await expect(right.getByTestId("flip-status")).toContainText("Step 0");
+  await expect(farey).toHaveAttribute("data-flip-cursor", "0");
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
@@ -376,7 +374,7 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
   await page.keyboard.press("ArrowRight");
   await expect(page.getByLabel("ENDPOINT α")).not.toHaveValue("13/5");
   const updated = await page.getByLabel("ENDPOINT α").inputValue();
-  await expect(right.locator(".flip-target")).toContainText(
+  await expect(farey.locator("[data-target-marker] title")).toContainText(
     `Target α = ${updated}`,
   );
   await page

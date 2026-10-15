@@ -26,13 +26,12 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
   const right = pane(page, "Right"),
     left = pane(page, "Left");
   await link(page).check();
-  await expect(
-    right.getByText("Following α automatically", { exact: true }),
-  ).toBeVisible();
+  const disk = right.getByRole("group", { name: "Poincare Disk", exact: true });
+  await expect(disk.locator("[data-dual-flip-path]")).toHaveCount(0);
   await clock(page).fill("1");
-  await expect(right.getByTestId("flip-status")).toContainText("Step 2");
+  await expect(disk).toHaveAttribute("data-flip-cursor", "2");
   await clock(page).fill("0");
-  await expect(right.getByTestId("flip-status")).toContainText("Step 1");
+  await expect(disk).toHaveAttribute("data-flip-cursor", "1");
   await expect(diagram(page)).toHaveAttribute("data-stage", "1");
   await page.getByLabel("Linked playback speed").selectOption("1");
   await left
@@ -62,9 +61,7 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     .getByRole("button", { name: "Highlight coefficient a4 = 2", exact: true })
     .click();
   await clock(page).fill("1");
-  await expect(right.getByTestId("flip-status")).toContainText(
-    "Terminal triangle",
-  );
+  await expect(disk).toHaveAttribute("data-flip-cursor", "5");
   await expect(page.getByTestId("linked-run-status")).toContainText(
     "Rational dissection complete",
   );
@@ -73,13 +70,11 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
   await expect(link(page)).not.toBeChecked();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 0");
+  await expect(disk).toHaveAttribute("data-flip-cursor", "0");
   await page
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();
-  await expect(right.getByTestId("flip-status")).toContainText(
-    "Terminal triangle",
-  );
+  await expect(disk).toHaveAttribute("data-flip-cursor", "5");
   await page
     .getByRole("combobox", { name: "Right representation", exact: true })
     .selectOption("triangulation");
@@ -98,7 +93,7 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
   expect(errors).toEqual([]);
 });
 
-for (const view of ["h2", "orbifold", "torus"]) {
+for (const view of ["h2", "farey", "orbifold", "torus"]) {
   test(`rectangle clock drives ${view}, including zero runs and edits`, async ({
     page,
   }, info) => {
@@ -152,7 +147,7 @@ for (const view of ["h2", "orbifold", "torus"]) {
     await pane(page, "Right").focus();
     await page.keyboard.press("ArrowLeft");
     await expect(diagram(page)).toHaveAttribute("data-stage", "1");
-    if (view !== "h2") {
+    if (view !== "h2" && view !== "farey") {
       const right = pane(page, "Right");
       await page
         .getByRole("button", {

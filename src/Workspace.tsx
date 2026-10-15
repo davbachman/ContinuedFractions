@@ -16,8 +16,13 @@ import type { Scene } from "./state";
 import { approximate } from "./math/continuedFraction";
 import { label, type Rational } from "./math/rational";
 import { heightAt, type derive } from "./math/trajectory";
-import { currentTriangulation, targetItinerary } from "./math/triangulation";
+import {
+  currentTriangulation,
+  targetItinerary,
+  triangulationPath,
+} from "./math/triangulation";
 import type { TangleExpression } from "./math/tangles";
+import { FareyDisk } from "./renderers/FareyDisk";
 import { HalfPlane } from "./renderers/HalfPlane";
 import { Quotient } from "./renderers/Quotient";
 import { ModularTorus } from "./renderers/ModularTorus";
@@ -600,7 +605,21 @@ function ComparisonPane({
         }
       : undefined;
   useEffect(() => setInspect(null), [p.scene.spec]);
-  const localScene = { ...p.scene, overlays, follow };
+  const flipPartner = other.kind === "triangulation";
+  const diskOptions = {
+    overlays: { ...overlays, dual: true },
+    showFlipPath: flipPartner,
+    torusLift: other.kind === "torus" ? other.lift : undefined,
+    onInspect: setInspect,
+    onEndpointStart: p.rectangle.onStart,
+    onEndpointMove: p.rectangle.onMove,
+    onEndpointEnd: p.rectangle.onEnd,
+  };
+  const localScene = {
+    ...p.scene,
+    overlays: { ...overlays, dual: flipPartner },
+    follow,
+  };
   const onKey = (e: React.KeyboardEvent) => {
     if (
       (e.target as Element).closest(
@@ -747,7 +766,7 @@ function ComparisonPane({
             </details>
           </>
         )}
-        {pane.kind === "h2" && (
+        {(pane.kind === "h2" || pane.kind === "farey") && (
           <>
             <div className="pane-overlays">
               {(
@@ -768,14 +787,16 @@ function ComparisonPane({
                   {name}
                 </label>
               ))}
-              <label>
-                <input
-                  type="checkbox"
-                  checked={follow}
-                  onChange={(e) => setFollow(e.target.checked)}
-                />
-                Auto zoom
-              </label>
+              {pane.kind === "h2" && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={follow}
+                    onChange={(e) => setFollow(e.target.checked)}
+                  />
+                  Auto zoom
+                </label>
+              )}
               <details>
                 <summary>More layers</summary>
                 {(
@@ -783,7 +804,6 @@ function ComparisonPane({
                     ["trajectory", "Trajectory"],
                     ["labels", "Rational labels"],
                     ["convergents", "Convergents"],
-                    ["dual", "Dual-tree path"],
                   ] as const
                 ).map(([key, name]) => (
                   <label key={key}>
@@ -797,24 +817,45 @@ function ComparisonPane({
                     {name}
                   </label>
                 ))}
-                {["triangulation", "farey"].includes(other.kind) ? (
-                  <span className="pane-note">
-                    Current triangulation is shown automatically beside a flip
-                    view.
-                  </span>
-                ) : (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={triangleVisible}
-                      onChange={(e) => setShowTriangulation(e.target.checked)}
-                    />
-                    Marked triangulation
-                  </label>
-                )}
+                {pane.kind === "h2" &&
+                  (["triangulation", "farey"].includes(other.kind) ? (
+                    <span className="pane-note">
+                      Current triangulation is shown automatically beside a flip
+                      view.
+                    </span>
+                  ) : (
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={triangleVisible}
+                        onChange={(e) => setShowTriangulation(e.target.checked)}
+                      />
+                      Marked triangulation
+                    </label>
+                  ))}
               </details>
             </div>
-            {infinite ? (
+            {pane.kind === "farey" ? (
+              flipPartner ? (
+                <MarkedTriangulation
+                  {...p.triangulation}
+                  view="farey"
+                  diskOptions={diskOptions}
+                />
+              ) : (
+                <FareyDisk
+                  {...diskOptions}
+                  spec={p.scene.spec}
+                  time={p.scene.time}
+                  tri={currentTriangulation(triState)}
+                  path={triangulationPath(triState)}
+                  state={triState}
+                  term={p.selected}
+                  edgeAction={() => undefined}
+                  selectEdge={() => {}}
+                />
+              )
+            ) : infinite ? (
               <p className="view-unavailable">
                 H² has no finite vertical-ray display at ∞. The shared number is
                 unchanged.
@@ -822,6 +863,7 @@ function ComparisonPane({
             ) : (
               <HalfPlane
                 scene={localScene}
+                flipPath={flipPartner ? triState : undefined}
                 torusLift={other.kind === "torus" ? other.lift : undefined}
                 colorFarey={other.kind !== "torus" && triangleVisible}
                 triangulation={
@@ -842,16 +884,20 @@ function ComparisonPane({
                 {other.lift}.
               </p>
             )}
-            {other.kind !== "torus" && triangleVisible && (
-              <p className="pane-note">
-                Fixed triangle colors match the Farey disk and marked-square
-                faces.
-              </p>
-            )}
+            {pane.kind === "h2" &&
+              other.kind !== "torus" &&
+              triangleVisible && (
+                <p className="pane-note">
+                  Fixed triangle colors match the Poincare Disk and lattice
+                  faces.
+                </p>
+              )}
             {inspect && (
               <div className="pane-inspection">
-                Ford circle {label(inspect)} · radius 1/
-                {String(2n * inspect.q * inspect.q)}
+                Ford horocycle {label(inspect)} ·{" "}
+                {inspect.q
+                  ? `H² radius 1/${2n * inspect.q * inspect.q}`
+                  : "H² line y = 1"}
                 <button onClick={() => p.onNumber(inspect)}>
                   Use this endpoint
                 </button>
@@ -895,36 +941,38 @@ function ComparisonPane({
               </p>
             </>
           ))}
-        {isTrajectory(pane.kind) && !infinite && (
-          <>
-            {selectedRun && pane.kind !== "h2" && (
-              <p className="pane-note">
-                {selectedRun.segments.length
-                  ? `Thick colored overlay: the displayed Farey run for a${p.selected}, including its future portion. The moving point keeps its own time.`
-                  : p.selected === 0
-                    ? "a₀ translates the initial Farey bracket; it is not a crossing run."
-                    : "This coefficient has no crossings in the current display window (run offsets apply)."}
-              </p>
-            )}
-            {p.linkedPlayback ? (
-              <>
+        {isTrajectory(pane.kind) &&
+          !(pane.kind === "farey" && flipPartner) &&
+          !infinite && (
+            <>
+              {selectedRun && pane.kind !== "h2" && pane.kind !== "farey" && (
                 <p className="pane-note">
-                  Linked run · hyperbolic time t = {p.scene.time.toFixed(3)}.
-                  This clock pauses at zero-crossing stages.
+                  {selectedRun.segments.length
+                    ? `Thick colored overlay: the displayed Farey run for a${p.selected}, including its future portion. The moving point keeps its own time.`
+                    : p.selected === 0
+                      ? "a₀ translates the initial Farey bracket; it is not a crossing run."
+                      : "This coefficient has no crossings in the current display window (run offsets apply)."}
                 </p>
-                <RunTransport run={p.linkedPlayback} />
-              </>
-            ) : (
-              <TrajectoryControls shared={p} />
-            )}
-          </>
-        )}
-        {(pane.kind === "triangulation" || pane.kind === "farey") && (
+              )}
+              {p.linkedPlayback ? (
+                <>
+                  <p className="pane-note">
+                    Linked run · hyperbolic time t = {p.scene.time.toFixed(3)}.
+                    This clock pauses at zero-crossing stages.
+                  </p>
+                  <RunTransport run={p.linkedPlayback} />
+                </>
+              ) : (
+                <TrajectoryControls shared={p} />
+              )}
+            </>
+          )}
+        {pane.kind === "triangulation" && (
           <MarkedTriangulation
             {...p.triangulation}
             time={p.scene.time}
             externalPlaying={p.triangulation.externalPlaying}
-            view={pane.kind === "farey" ? "farey" : "square"}
+            view="square"
           />
         )}
         {(["tangle", "pillowcase"] as string[]).includes(pane.kind) && (

@@ -47,12 +47,10 @@ test("only α’s path is interactive, including boundary copies, keyboard navig
   await nextEdge.focus();
   await page.keyboard.press("Enter");
   await expect(torus).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
-  await button(page, "Farey triangles").click();
-  await button(
-    page,
-    "Previous path step via Farey triangle replacing 1/2 with ∞",
-  ).click();
-  await button(page, "Marked square").click();
+  await button(page, "Poincare Disk").click();
+  await expect(page.locator("[data-dual-flip-path]")).toHaveCount(0);
+  await button(page, "Previous flip step").click();
+  await button(page, "Euclidean lattice").click();
   await expect(torus).toHaveAttribute("data-slopes", "0 | ∞ | 1");
   await button(page, "Highlight edge 1").click();
   await button(page, "Use slope 1 as target").click();
@@ -201,11 +199,11 @@ test("large exact α discloses wrap limits without inventing a flip or changing 
     buffer: Buffer.from(serialize(scene)),
   });
   await expect(page.locator(".triangulation-panel")).toContainText(
-    "Wrap display limit",
+    "Thin-domain detail",
   );
-  await button(page, "Farey triangles").click();
+  await button(page, "Poincare Disk").click();
   await button(page, "Center Farey triangle").click();
-  await button(page, "Marked square").click();
+  await button(page, "Euclidean lattice").click();
   await expect(page.getByTestId("triangulation-slope-0")).toHaveText(String(n));
   await page.locator(".flip-slope-strip button").first().focus();
   await page.keyboard.press("Enter");

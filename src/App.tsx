@@ -1028,25 +1028,25 @@ export default function App() {
                   <details className="more-overlays">
                     <summary>More</summary>
                     <div>
-                      {(
-                        ["trajectory", "labels", "convergents", "dual"] as const
-                      ).map((key) => (
-                        <label key={key}>
-                          <input
-                            type="checkbox"
-                            checked={scene.overlays[key]}
-                            onChange={(e) =>
-                              patch({
-                                overlays: {
-                                  ...scene.overlays,
-                                  [key]: e.target.checked,
-                                },
-                              })
-                            }
-                          />
-                          {overlayNames[key]}
-                        </label>
-                      ))}
+                      {(["trajectory", "labels", "convergents"] as const).map(
+                        (key) => (
+                          <label key={key}>
+                            <input
+                              type="checkbox"
+                              checked={scene.overlays[key]}
+                              onChange={(e) =>
+                                patch({
+                                  overlays: {
+                                    ...scene.overlays,
+                                    [key]: e.target.checked,
+                                  },
+                                })
+                              }
+                            />
+                            {overlayNames[key]}
+                          </label>
+                        ),
+                      )}
                     </div>
                   </details>
                 </div>
@@ -1647,6 +1647,13 @@ export default function App() {
               )}
             </section>
             <MarkedTriangulation
+              diskOptions={{
+                overlays: scene.overlays,
+                onInspect: setInspect,
+                onEndpointStart: startEndpointDrag,
+                onEndpointMove: moveEndpoint,
+                onEndpointEnd: endEndpointDrag,
+              }}
               followCoefficient={followFlipCoefficient}
               coefficientSeekVersion={coefficientSeekVersion}
               onFollowCoefficient={setFollowFlipCoefficient}
@@ -1910,15 +1917,16 @@ export default function App() {
         <p>
           Hyperbolic views share trajectory time. Rectangle playback advances
           Euclidean stages on its own clock by default. Pair the rectangle with
-          Farey triangles, marked edge flips, or any hyperbolic view and enable
-          “Synchronize by coefficient” to play each stage’s run of crossings.
-          Both panes then share play/pause, stage stepping, reverse, and a run
-          progress slider. Zero-crossing stages hold the point; a display limit
-          is explicitly incomplete. All flip paths follow α; enabling the link
-          synchronizes their playback with rectangle stages. Canonical tangle
-          regions can link to coefficients; custom signed constructions retain
-          their own operations. A finite tangle for an irrational uses a labeled
-          convergent. “Full atlas” restores the original layout.
+          Poincare Disk, marked edge flips, or any other hyperbolic view and
+          enable “Synchronize by coefficient” to play each stage’s run of
+          crossings. Both panes then share play/pause, stage stepping, reverse,
+          and a run progress slider. Zero-crossing stages hold the point; a
+          display limit is explicitly incomplete. All flip paths follow α;
+          enabling the link synchronizes their playback with rectangle stages.
+          Canonical tangle regions can link to coefficients; custom signed
+          constructions retain their own operations. A finite tangle for an
+          irrational uses a labeled convergent. “Full atlas” restores the
+          original layout.
         </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>
@@ -1976,17 +1984,17 @@ export default function App() {
         </p>
         <h3>From continued fractions to flips</h3>
         <p>
-          Choose “Farey triangles · flip path” and “Marked torus · edge flips”
-          in the two view selectors. Both automatically follow the α chosen at
-          the top. Each crossed Farey side flips one edge. Left/right turns are
-          grouped by coefficient, with the initial and terminal offsets shown
-          explicitly. Selecting a coefficient highlights its run; enable “Follow
-          selected coefficient” to seek automatically, or use the “Go to”
-          button. “Restart flips” returns to the start. Changing α rebuilds the
-          path; stepping the path preserves α. The caption names the retained
-          and replaced slopes. H² playback also advances the follow-target path
-          at its crossing times; flip steps seek those times. Rectangle stages
-          keep their own clock unless “Synchronize by coefficient” is enabled.
+          Choose “Poincare Disk” and “Marked torus · edge flips” in the two view
+          selectors. Both automatically follow the α chosen at the top. Each
+          crossed Farey side flips one edge. Left/right turns are grouped by
+          coefficient, with the initial and terminal offsets shown explicitly.
+          Selecting a coefficient highlights its run; enable “Follow selected
+          coefficient” to seek automatically, or use the “Go to” button.
+          “Restart flips” returns to the start. Changing α rebuilds the path;
+          stepping the path preserves α. The caption names the retained and
+          replaced slopes. H² playback also advances the follow-target path at
+          its crossing times; flip steps seek those times. Rectangle stages keep
+          their own clock unless “Synchronize by coefficient” is enabled.
         </p>
         <h3>Marked tangles</h3>
         <p>

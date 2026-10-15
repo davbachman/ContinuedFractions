@@ -101,3 +101,81 @@ describe("continuous Poincaré disk", () => {
     }
   });
 });
+
+import { diskFordCircle, diskWorldPoint } from "../src/renderers/fareyDisk";
+import { diskDomains } from "../src/renderers/diskDomains";
+it("Ford horocycles map to circles tangent to the disk and preserve Farey tangencies", () => {
+  for (const camera of [
+    { x: rational(0n), y: 1 },
+    { x: rational(5n, 13n), y: 0.003 },
+  ]) {
+    const rs = [rational(0n), rational(1n), rational(1n, 0n), rational(1n, 2n)];
+    for (const r of rs) {
+      const c = diskFordCircle(r, camera);
+      expect(Math.hypot(c.x, c.y) + c.radius).toBeCloseTo(1, 12);
+      if (r.q)
+        for (const a of [0.2, 1, 2, 3, 5]) {
+          const radius = 1 / (2 * Number(r.q) ** 2);
+          // Sample finite world points on the original Ford circle.
+          const x = value(r) + radius * Math.cos(a);
+          const p = diskProjection(camera).point({
+            x: rational(BigInt(Math.round(x * 1e12)), 10n ** 12n),
+            y: radius * (1 + Math.sin(a)),
+          });
+          expect(Math.hypot(p.x - c.x, p.y - c.y)).toBeCloseTo(c.radius, 7);
+        }
+    }
+    for (const [a, b] of [
+      [rs[0], rs[1]],
+      [rs[0], rs[2]],
+      [rs[0], rs[3]],
+    ]) {
+      const c = diskFordCircle(a, camera),
+        d = diskFordCircle(b, camera);
+      expect(Math.hypot(c.x - d.x, c.y - d.y)).toBeCloseTo(
+        c.radius + d.radius,
+        10,
+      );
+    }
+  }
+});
+it("projects the six modular half-domains with three S and three T seam pieces per Farey triangle", () => {
+  for (const tri of triangulationPath(targetItinerary(parseInput("5/13")))) {
+    const ds = diskDomains(tri, { x: rational(5n, 13n), y: 0.1 });
+    expect(ds).toHaveLength(6);
+    expect(ds.filter((d) => d.s)).toHaveLength(3);
+    expect(ds.filter((d) => d.t)).toHaveLength(3);
+    expect(
+      ds.every((d) => !/NaN|Infinity/.test(d.fill + (d.s ?? "") + (d.t ?? ""))),
+    ).toBe(true);
+  }
+});
+it("inverts disk camera coordinates without losing tiny cusp offsets", () => {
+  for (const camera of [
+    { x: rational(2n), y: 3 },
+    { x: rational(5n, 13n), y: 1e-20 },
+  ]) {
+    for (const p of [
+      { x: 0, y: 0 },
+      { x: 0.3, y: 0.4 },
+      { x: -0.8, y: 0.1 },
+    ]) {
+      const result = diskProjection(camera).point(diskWorldPoint(camera, p));
+      expect(result.x).toBeCloseTo(p.x, 12);
+      expect(result.y).toBeCloseTo(p.y, 12);
+    }
+  }
+});
+
+import { diskCameraTriangle } from "../src/renderers/fareyDisk";
+it("seeds the tessellation at a freely panned camera, far from the target", () => {
+  for (const camera of [
+    { x: rational(1000000000000000000000000n), y: 1 },
+    { x: rational(-777n, 47n), y: 1e-9 },
+  ]) {
+    const seed = diskCameraTriangle(camera),
+      view = diskNeighborhood([seed], camera);
+    expect(view.triangles.length).toBeGreaterThan(20);
+    expect(diskTrianglePath(seed, camera)).not.toMatch(/NaN|Infinity/);
+  }
+});

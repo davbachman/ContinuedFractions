@@ -1,4 +1,9 @@
-import { flip, type Triangulation } from "../math/triangulation";
+import {
+  flip,
+  triangulationPath,
+  type TriangulationState,
+  type Triangulation,
+} from "../math/triangulation";
 import {
   planeTriangle,
   insidePolygon,
@@ -14,6 +19,8 @@ import { domainEdgeColor } from "./domainEdges";
 import { visibleModularArcs } from "./modularGeometry";
 import { torusDomainColor, visibleTorusDomains } from "./torusDomains";
 import { cameraScale, endpointAtPointer, zoomFromVerticalDrag } from "./camera";
+import { triangleCenter } from "./fareyDisk";
+import { stageColor } from "./dissectionColors";
 import { heightAt } from "../math/trajectory";
 import {
   fareyTriangleColor,
@@ -25,6 +32,7 @@ type Props = {
   torusLift?: number;
   colorFarey?: boolean;
   triangulation?: Triangulation;
+  flipPath?: TriangulationState;
   onFlipTriangle?: (edge: number) => void;
   crossings: readonly Crossing[];
   selectedTerm: number;
@@ -38,6 +46,7 @@ export function HalfPlane({
   torusLift,
   colorFarey = false,
   triangulation,
+  flipPath,
   onFlipTriangle,
   crossings,
   selectedTerm,
@@ -177,9 +186,10 @@ export function HalfPlane({
     ctx.beginPath();
     ctx.rect(0, 0, size.width, bottom);
     ctx.clip();
-    const triangles = colorFarey
-      ? visibleFareyTriangles(geometry, min, max)
-      : [];
+    const triangles =
+      colorFarey && scene.overlays.farey
+        ? visibleFareyTriangles(geometry, min, max)
+        : [];
     node.dataset.fareyTriangleCount = String(triangles.length);
     ctx.globalAlpha = FAREY_FILL_OPACITY;
     for (const triangle of triangles) {
@@ -336,6 +346,26 @@ export function HalfPlane({
       ctx.stroke();
     }
     if (triangulation) {
+      if (flipPath)
+        triangulation.forEach((_, i) => {
+          const a = triangulation[(i + 1) % 3],
+            b = triangulation[(i + 2) % 3];
+          ctx.strokeStyle = flipColors[i];
+          ctx.lineWidth = 2.5;
+          if (!a.q || !b.q) {
+            const x = X(value(a.q ? a : b));
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, bottom);
+            ctx.stroke();
+          } else
+            edge(
+              Math.min(value(a), value(b)),
+              Math.max(value(a), value(b)),
+              flipColors[i],
+              2.5,
+            );
+        });
       ctx.font = "bold 12px ui-monospace, monospace";
       triangulation.forEach((r, i) => {
         const x = r.q ? X(value(r)) : size.width - 32;
@@ -345,21 +375,37 @@ export function HalfPlane({
         ctx.fillText(label(r), x, r.q ? bottom - 8 : 18);
       });
     }
-    if (scene.overlays.farey)
+    if (scene.overlays.farey && !flipPath)
       for (const e of crossings.filter((e) => e.term === selectedTerm))
         edge(value(e.left), value(e.right), "#cf7448", 2.5);
-    if (scene.overlays.dual) {
-      ctx.beginPath();
-      ctx.setLineDash([3, 5]);
-      ctx.strokeStyle = "#b88845";
-      for (let i = 0; i < crossings.length; i++) {
-        const e = crossings[i],
-          cx = X((value(e.left) + value(e.right)) / 2),
-          cy = Y((value(e.right) - value(e.left)) / 3);
-        if (i) ctx.lineTo(cx, cy);
-        else ctx.moveTo(cx, cy);
+    if (flipPath) {
+      const path = triangulationPath(flipPath);
+      for (let i = 0; i < flipPath.steps.length; i++) {
+        const a = triangleCenter(path[i]),
+          b = triangleCenter(path[i + 1]);
+        const ax = value(a.x),
+          bx = value(b.x);
+        ctx.beginPath();
+        if (Math.abs(ax - bx) < 1e-15) {
+          ctx.moveTo(X(ax), Y(a.y));
+          ctx.lineTo(X(bx), Y(b.y));
+        } else {
+          const dx = bx - ax,
+            offset = (dx * dx + b.y * b.y - a.y * a.y) / (2 * dx);
+          const cx = ax + offset,
+            radius = Math.hypot(offset, a.y);
+          const start = Math.atan2(-a.y, ax - cx),
+            end = Math.atan2(-b.y, bx - cx);
+          ctx.arc(X(cx), bottom, radius * scale, start, end, end < start);
+        }
+        const step = flipPath.steps[i];
+        ctx.strokeStyle = stageColor(step.term ?? 0);
+        ctx.lineWidth = step.term === selectedTerm ? 3.5 : 1.6;
+        ctx.globalAlpha = i < flipPath.cursor ? 1 : 0.35;
+        ctx.setLineDash(i < flipPath.cursor ? [] : [3, 3]);
+        ctx.stroke();
       }
-      ctx.stroke();
+      ctx.globalAlpha = 1;
       ctx.setLineDash([]);
     }
     if (scene.overlays.trajectory) {
@@ -450,6 +496,7 @@ export function HalfPlane({
     crossings,
     selectedTerm,
     triangulation,
+    flipPath,
     torusLift,
     colorFarey,
     scale,
@@ -462,6 +509,8 @@ export function HalfPlane({
     <div className="canvas-wrap">
       <canvas
         ref={canvas}
+        data-flip-path={flipPath ? flipPath.steps.length : undefined}
+        data-flip-cursor={flipPath?.cursor}
         data-triangulation={triangulation?.map(label).join(" | ")}
         data-farey-coloring={colorFarey}
         data-triangle-color={

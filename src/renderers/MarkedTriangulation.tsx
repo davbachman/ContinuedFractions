@@ -1,19 +1,11 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-  useId,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { type NumberSpec, specLabel, terms } from "../math/continuedFraction";
-import { label, value, type Rational } from "../math/rational";
+import { label, type Rational } from "../math/rational";
 import {
   triangulationPath,
   triangleKey,
   flip,
   flipDetails,
-  wrappedEdge,
   targetItinerary,
   followStatus,
   coefficientFlipRun,
@@ -22,10 +14,9 @@ import {
 } from "../math/triangulation";
 import { flipColors } from "./triangulationGeometry";
 import { useFlipPlayback } from "../useFlipPlayback";
-import { FareyDisk } from "./FareyDisk";
-import { fareyTriangleColor, FAREY_FILL_OPACITY } from "./fareyColors";
+import { LatticeTriangulation } from "./LatticeTriangulation";
+import { FareyDisk, type DiskOptions } from "./FareyDisk";
 import { stageColor } from "./dissectionColors";
-import { svgPath } from "./ModularTorus";
 type Props = {
   followCoefficient: boolean;
   onFollowCoefficient: (enabled: boolean) => void;
@@ -34,6 +25,7 @@ type Props = {
   time: number;
   onFrame: (time: number, term: number) => void;
   view?: "square" | "farey";
+  diskOptions?: DiskOptions;
   coefficient?: number;
   playback?: { playing: boolean; onChange: (playing: boolean) => void };
   transport?: ReactNode;
@@ -54,7 +46,6 @@ const short = (r: Rational) =>
     ? label(r).slice(0, 8) + "…" + label(r).slice(-7)
     : label(r);
 export function MarkedTriangulation(props: Props) {
-  const id = useId();
   const { spec, speed, onChange, onTarget, onError } = props,
     state = props.state ?? targetItinerary(spec);
   const path = useMemo(
@@ -165,37 +156,12 @@ export function MarkedTriangulation(props: Props) {
     props.onFrame,
     () => setPlaying(false),
   );
-  const shown = transition?.before ?? tri,
-    wrapped = useMemo(() => shown.map((r) => wrappedEdge(r)), [shown]);
+  const shown = transition?.before ?? tri;
   const operationIndex = Math.max(0, state.cursor - 1);
   const hasOperation = state.steps.length > 0;
   const operation =
     transition ??
     flipDetails(path[operationIndex], state.steps[operationIndex]?.edge ?? 2);
-  const square = (p: { x: number; y: number }) => ({
-    x: 45 + 260 * p.x,
-    y: 305 - 260 * p.y,
-  });
-  const faceData = flipDetails(shown, 2);
-  const faceCopies = faceData.triangles.flatMap((triangle, k) => {
-    const xs = triangle.map((v) => Number(v.x)),
-      ys = triangle.map((v) => Number(v.y));
-    const minX = Math.min(...xs),
-      maxX = Math.max(...xs),
-      minY = Math.min(...ys),
-      maxY = Math.max(...ys);
-    if ((maxX - minX + 2) * (maxY - minY + 2) > 180) return [];
-    const copies = [];
-    for (let x = Math.ceil(-maxX); x <= Math.floor(1 - minX); x++)
-      for (let y = Math.ceil(-maxY); y <= Math.floor(1 - minY); y++)
-        copies.push({
-          k,
-          points: triangle.map((v) =>
-            square({ x: Number(v.x) + x, y: Number(v.y) + y }),
-          ),
-        });
-    return copies;
-  });
   const activeStatus = followStatus(spec, state);
   const completePath =
     spec.kind === "rational" &&
@@ -208,7 +174,7 @@ export function MarkedTriangulation(props: Props) {
   const run = coefficientFlipRun(spec, state, term);
   const coefficientPosition = coefficientFlipPosition(spec, state, term);
   const graph =
-    view === "farey" ? "Farey triangles" : "Marked torus · edge flips";
+    view === "farey" ? "Poincare Disk" : "Marked torus · edge flips";
   return (
     <section
       className="panel triangulation-panel flip-focused"
@@ -230,13 +196,15 @@ export function MarkedTriangulation(props: Props) {
       }}
       tabIndex={0}
     >
-      <div className="panel-heading">
-        <div>
-          <span className="panel-number">05</span>
-          <h2>{graph}</h2>
+      {!props.view && (
+        <div className="panel-heading">
+          <div>
+            <span className="panel-number">05</span>
+            <h2>{graph}</h2>
+          </div>
+          <span className="small-tag">FIXED BASIS (q,p)</span>
         </div>
-        <span className="small-tag">FIXED BASIS (q,p)</span>
-      </div>
+      )}
       <p className="flip-target">
         Target α = <strong>{specLabel(spec)}</strong> · current slopes{" "}
         <strong>{triangleKey(tri)}</strong>
@@ -247,19 +215,16 @@ export function MarkedTriangulation(props: Props) {
             aria-pressed={view === "square"}
             onClick={() => setLocalView("square")}
           >
-            Marked square
+            Euclidean lattice
           </button>
           <button
             aria-pressed={view === "farey"}
             onClick={() => setLocalView("farey")}
           >
-            Farey triangles
+            Poincare Disk
           </button>
         </div>
       )}
-      <div className="tangle-controls" role="group" aria-label="Target path">
-        <span className="small-tag">Following α automatically</span>
-      </div>
       <p
         className="flip-run-caption"
         data-testid="flip-run-caption"
@@ -275,13 +240,6 @@ export function MarkedTriangulation(props: Props) {
           run.expected === 0n &&
           " This coefficient has no flip after the boundary offsets."}
       </p>
-      {hasOperation && (
-        <p className="flip-operation" data-testid="flip-operation-caption">
-          {state.cursor === 0 ? "Next flip: " : "Current flip: "}
-          Retain {operation.retained.map(label).join(" and ")}; replace{" "}
-          {label(operation.removed)} with {label(operation.inserted)}.
-        </p>
-      )}
       <div
         className="tangle-controls"
         role="group"
@@ -314,9 +272,6 @@ export function MarkedTriangulation(props: Props) {
           </>
         )}
       </div>
-      <p className="topology-note" role="status" data-testid="flip-status">
-        Step {state.cursor} / {state.steps.length}. {activeStatus}
-      </p>
       {state.mode === "follow" && !props.transport && (
         <div className="tangle-controls flip-coefficient-controls">
           <button
@@ -344,157 +299,16 @@ export function MarkedTriangulation(props: Props) {
           </label>
         </div>
       )}
-      {state.mode === "follow" &&
-        !props.transport &&
-        coefficients.length > 0 && (
-          <p className="topology-note">
-            {!coefficientPosition
-              ? "This coefficient is beyond the generated flip path. Extend the itinerary in Flip history."
-              : term === 0
-                ? "a₀ sets the starting bracket. Go to a₀ returns to the start."
-                : run.expected === 0n
-                  ? `a${term} has no flips after the initial/terminal offsets; seeking selects its boundary triangle.`
-                  : `a${term} selects a ${run.direction} run of ${run.expected} flip${run.expected === 1n ? "" : "s"}. Go to it, or enable following to seek when you click a coefficient above.`}
-          </p>
-        )}
       <div className="triangulation-grid">
         <div hidden={view !== "square"}>
-          <svg
-            viewBox="0 0 380 370"
-            role="group"
-            aria-label="Marked torus triangulation"
-            data-slopes={triangleKey(tri)}
-            data-triangle-color={fareyTriangleColor(shown)}
-          >
-            <defs>
-              <clipPath id={`${id}-marked-square-clip`}>
-                <rect x={45} y={45} width={260} height={260} />
-              </clipPath>
-              <marker
-                id={`${id}-basis-arrow`}
-                markerWidth={7}
-                markerHeight={7}
-                refX={6}
-                refY={3.5}
-                orient="auto"
-              >
-                <path d="M0 0L7 3.5L0 7Z" fill="#425b48" />
-              </marker>
-            </defs>
-            <rect
-              x={45}
-              y={45}
-              width={260}
-              height={260}
-              fill="#fbfbf6"
-              stroke="#70816c"
-            />
-            {!faceCopies.length && (
-              <rect
-                x={45}
-                y={45}
-                width={260}
-                height={260}
-                fill={fareyTriangleColor(shown)}
-                fillOpacity={FAREY_FILL_OPACITY}
-              />
-            )}
-            <g
-              clipPath={`url(#${id}-marked-square-clip)`}
-              className={transition ? "flip-incident-triangles" : ""}
-            >
-              {faceCopies.map((f, i) => (
-                <path
-                  key={i}
-                  d={svgPath(f.points) + "Z"}
-                  fill={fareyTriangleColor(shown)}
-                  fillOpacity={FAREY_FILL_OPACITY}
-                  data-torus-face={f.k}
-                />
-              ))}
-            </g>
-            {wrapped.map((w, i) => (
-              <g
-                key={i}
-                role={edgeAction(i) ? "button" : "img"}
-                tabIndex={edgeAction(i) ? 0 : undefined}
-                aria-label={
-                  edgeAction(i)
-                    ? `${edgeAction(i)} path step via torus edge ${label(shown[i])}`
-                    : `Torus edge ${label(shown[i])}`
-                }
-                onFocus={() => setSelected(i)}
-                onClick={() => selectEdge(i)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    selectEdge(i);
-                  }
-                }}
-              >
-                <title>
-                  Edge class {label(shown[i])}; both boundary copies represent
-                  the same edge. Only steps on α’s path can be followed.
-                </title>
-                {w.segments.map((segment, j) => {
-                  const d = svgPath(
-                    segment.map((p) =>
-                      square({ x: value(p.x), y: value(p.y) }),
-                    ),
-                  );
-                  return (
-                    <g key={j}>
-                      <path
-                        d={d}
-                        stroke="transparent"
-                        strokeWidth={18}
-                        fill="none"
-                      />
-                      <path
-                        d={d}
-                        stroke={flipColors[i]}
-                        strokeWidth={selected === i ? 4 : 2.7}
-                        fill="none"
-                        pointerEvents="none"
-                      />
-                    </g>
-                  );
-                })}
-              </g>
-            ))}
-            {[0, 1].flatMap((x) =>
-              [0, 1].map((y) => (
-                <circle
-                  key={`${x}${y}`}
-                  cx={45 + 260 * x}
-                  cy={45 + 260 * y}
-                  r={puncture ? 7 : 4}
-                  fill={puncture ? "#fbfbf6" : "#425b48"}
-                  stroke="#425b48"
-                  strokeDasharray={puncture ? "2 2" : undefined}
-                />
-              )),
-            )}
-            <path
-              d="M45 332H155 M22 305V195"
-              stroke="#425b48"
-              markerEnd={`url(#${id}-basis-arrow)`}
-            />
-            <text x={170} y={337} className="svg-muted">
-              meridian (1,0) → 0
-            </text>
-            <text x={45} y={25} className="svg-muted">
-              longitude (0,1) ↑ ∞
-            </text>
-            <text x={175} y={360} textAnchor="middle" className="svg-muted">
-              All four corners are the same marked vertex.
-            </text>
-          </svg>
-          <p className="flip-diagram-caption">
-            Step α’s path to see one edge change. Opposite square sides are
-            identified. Face color matches the current Farey triangle; edge
-            colors match its vertex labels.
-          </p>
+          <LatticeTriangulation
+            tri={shown}
+            selected={selected}
+            puncture={puncture}
+            animating={!!transition}
+            selectEdge={selectEdge}
+            edgeAction={edgeAction}
+          />
           {view === "square" && (
             <div className="tangle-controls flip-coefficient-controls">
               <label>
@@ -511,21 +325,11 @@ export function MarkedTriangulation(props: Props) {
               </span>
             </div>
           )}
-          {wrapped.some((w) => w.limited) && (
-            <p className="topology-limit" role="status">
-              Wrap display limit: edges with |p|+q &gt; 160 are hidden. Exact
-              slopes and path controls remain available.
-            </p>
-          )}
-          {!faceCopies.length && (
-            <p className="topology-limit">
-              Face shading exceeds the tile budget; edge classes remain exact.
-            </p>
-          )}
         </div>
         <div hidden={view !== "farey"}>
           {view === "farey" && (
             <FareyDisk
+              {...props.diskOptions}
               spec={spec}
               time={props.time}
               tri={tri}
@@ -562,6 +366,32 @@ export function MarkedTriangulation(props: Props) {
         >
           Use {short(tri[selected])} as α
         </button>
+      </div>
+      {hasOperation && (
+        <p className="flip-operation" data-testid="flip-operation-caption">
+          {state.cursor === 0 ? "Next flip: " : "Current flip: "}
+          Retain {operation.retained.map(label).join(" and ")}; replace{" "}
+          {label(operation.removed)} with {label(operation.inserted)}.
+        </p>
+      )}
+      <p className="topology-note" role="status" data-testid="flip-status">
+        Step {state.cursor} / {state.steps.length}. {activeStatus}
+      </p>
+      {state.mode === "follow" &&
+        !props.transport &&
+        coefficients.length > 0 && (
+          <p className="topology-note">
+            {!coefficientPosition
+              ? "This coefficient is beyond the generated flip path. Extend the itinerary in Flip history."
+              : term === 0
+                ? "a₀ sets the starting bracket. Go to a₀ returns to the start."
+                : run.expected === 0n
+                  ? `a${term} has no flips after the initial/terminal offsets; seeking selects its boundary triangle.`
+                  : `a${term} selects a ${run.direction} run of ${run.expected} flip${run.expected === 1n ? "" : "s"}. Go to it, or enable following to seek when you click a coefficient above.`}
+          </p>
+        )}
+      <div className="tangle-controls" role="group" aria-label="Target path">
+        <span className="small-tag">Following α automatically</span>
       </div>
       <details className="flip-details">
         <summary>Flip history</summary>

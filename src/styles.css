@@ -3132,3 +3132,23 @@ svg[data-rotation] * {
   height: 15px;
   padding: 0;
 }
+
+.interactive-disk {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.interactive-disk:active {
+  cursor: grabbing;
+}
+.pane-body > .interactive-disk {
+  display: block;
+  width: 100%;
+  height: 380px;
+}
+@media (max-width: 700px) {
+  .pane-body > .interactive-disk {
+    height: auto;
+  }
+}

@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 const pane = (page: Page, side: string) =>
   page.getByRole("region", { name: `${side} representation`, exact: true });
 const disk = (page: Page) =>
-  page.getByRole("group", { name: "Interactive Farey triangles", exact: true });
+  page.getByRole("group", { name: "Poincare Disk", exact: true });
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?left=h2&right=farey");
@@ -59,9 +59,9 @@ test("point-centered disk moves continuously with H² and preserves colors, froz
         ),
     ).toBe(true);
   }
-  await right
-    .locator(".triangulation-panel")
-    .screenshot({ path: `test-results/${info.project.name}-farey-disk.png` });
+  await svg.screenshot({
+    path: `test-results/${info.project.name}-farey-disk.png`,
+  });
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   expect(
     await page.evaluate(
@@ -70,20 +70,20 @@ test("point-centered disk moves continuously with H² and preserves colors, froz
   ).toBe(true);
 });
 
-test("flip playback animates between crossings, pauses, and shares actual time with H²", async ({
+test("disk trajectory playback shares the H² clock and pauses", async ({
   page,
 }) => {
   const right = pane(page, "Right"),
     svg = disk(page);
-  const outline = svg.locator("[data-current-farey-triangle]");
-  const before = await outline.getAttribute("d");
-  await right.getByRole("button", { name: "Play flips", exact: true }).click();
+  await right
+    .getByRole("button", { name: "Play trajectory", exact: true })
+    .click();
   await expect
     .poll(async () => Number(await svg.getAttribute("data-time")))
     .toBeGreaterThan(0.05);
-  expect(Number(await svg.getAttribute("data-time"))).toBeLessThan(1.4);
-  await expect(outline).not.toHaveAttribute("d", before!);
-  await right.getByRole("button", { name: "Pause flips", exact: true }).click();
+  await right
+    .getByRole("button", { name: "Pause trajectory", exact: true })
+    .click();
   const paused = await svg.getAttribute("data-time");
   await page.waitForTimeout(150);
   await expect(svg).toHaveAttribute("data-time", paused!);
@@ -94,50 +94,26 @@ test("flip playback animates between crossings, pauses, and shares actual time w
         .inputValue(),
     ),
   ).toBeCloseTo(Number(paused), 3);
-  await right.getByRole("button", { name: "Play flips", exact: true }).click();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 1", {
-    timeout: 5000,
-  });
-  await right.getByRole("button", { name: "Pause flips", exact: true }).click();
-  // On a small screen, scrolling the transport into view can span a crossing.
-  // Rewind the actual paused cursor rather than assuming it is still step one.
-  const cursor = Number(
-    (await right.getByTestId("flip-status").textContent())?.match(
-      /Step (\d+)/,
-    )?.[1],
-  );
-  expect(cursor).toBeGreaterThan(0);
-  for (let step = cursor - 1; step >= 0; step--) {
-    await right
-      .getByRole("button", { name: "Previous flip step", exact: true })
-      .click();
-    await expect(right.getByTestId("flip-status")).toContainText(
-      `Step ${step} /`,
-    );
-  }
+  await right
+    .getByRole("button", { name: "Restart trajectory", exact: true })
+    .click();
   await expect(svg).toHaveAttribute("data-time", "0");
-  await expect(outline).toHaveAttribute("d", before!);
-  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
+  await expect(svg.locator("[data-dual-flip-path]")).toHaveCount(0);
 });
 
-test("fixed Farey colors are independent of the cover lift and infinity has no fictitious moving point", async ({
+test("modular domains match the cover lift and infinity has no fictitious moving point", async ({
   page,
 }) => {
   await page
     .getByRole("combobox", { name: "Left representation", exact: true })
     .selectOption("torus");
   const svg = disk(page),
-    before = await svg
-      .locator("[data-farey-fills] path")
-      .first()
-      .getAttribute("fill");
+    tiles = svg.locator("[data-disk-domains] path");
+  const before = await tiles.first().getAttribute("fill");
   await pane(page, "Left")
     .getByLabel("Cover lift", { exact: true })
     .selectOption("2");
-  await expect(svg.locator("[data-farey-fills] path").first()).toHaveAttribute(
-    "fill",
-    before!,
-  );
+  await expect(tiles.first()).not.toHaveAttribute("fill", before!);
   await page.getByLabel("ENDPOINT α").fill("infinity");
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
@@ -240,9 +216,7 @@ test("triangle fills stay fixed across crossings and agree in H², the disk, and
     .click();
   await expect(disk(page)).toHaveAttribute("data-triangle-color", beforeEdit!);
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
-  await page
-    .locator(".comparison-grid")
-    .screenshot({
-      path: `test-results/${info.project.name}-fixed-farey-square.png`,
-    });
+  await page.locator(".comparison-grid").screenshot({
+    path: `test-results/${info.project.name}-fixed-farey-square.png`,
+  });
 });

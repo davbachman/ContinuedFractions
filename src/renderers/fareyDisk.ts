@@ -1,5 +1,17 @@
-import { type Matrix, type Point } from "../math/modular";
-import { rational, subtract, label, type Rational } from "../math/rational";
+import {
+  reduce,
+  inverse,
+  multiply,
+  type Matrix,
+  type Point,
+} from "../math/modular";
+import {
+  rational,
+  subtract,
+  floor,
+  label,
+  type Rational,
+} from "../math/rational";
 import { ratioNumber } from "../math/approximations";
 import {
   flip,
@@ -139,4 +151,50 @@ export function diskNeighborhood(
     queue.push(...cellGeometry(tri).neighbors);
   }
   return { triangles, limited };
+}
+
+/** Cayley image of the standard Ford horocycle, including y=1 at infinity. */
+export function diskFordCircle(r: Rational, camera: DiskCamera) {
+  const contact = diskProjection(camera).vertex(r);
+  const h = camera.y;
+  const dxq = ratioNumber(r.p * camera.x.q - camera.x.p * r.q, camera.x.q);
+  const a = dxq / Math.sqrt(h),
+    b = ratioNumber(r.q, 1n) * Math.sqrt(h);
+  const radius = r.q ? 1 / (1 + a * a + b * b) : h / (1 + h);
+  return { x: (1 - radius) * contact.x, y: (1 - radius) * contact.y, radius };
+}
+
+export function diskWorldPoint(camera: DiskCamera, point: Point): DiskCamera {
+  const den = (1 - point.x) ** 2 + point.y ** 2;
+  const dx = (-2 * camera.y * point.y) / den;
+  // Preserve small camera offsets even deep in a cusp (fixed decimal rounding would erase them).
+  const [mantissa, exponent] = dx.toExponential(16).split("e");
+  const power = Number(exponent) - 16;
+  const numerator = BigInt(mantissa.replace(".", ""));
+  const offset =
+    power >= 0
+      ? rational(numerator * 10n ** BigInt(power))
+      : rational(numerator, 10n ** BigInt(-power));
+  return {
+    x: rational(
+      camera.x.p * offset.q + offset.p * camera.x.q,
+      camera.x.q * offset.q,
+    ),
+    y: (camera.y * (1 - point.x ** 2 - point.y ** 2)) / den,
+  };
+}
+
+/** Find a local seed when a free camera moves away from the selected trajectory. */
+export function diskCameraTriangle(camera: DiskCamera): Triangulation {
+  const n = floor(camera.x),
+    local = subtract(camera.x, rational(n));
+  const chart = reduce({ x: num(local), y: camera.y });
+  const m = multiply([1n, n, 0n, 1n], inverse(chart.matrix));
+  const rs =
+    chart.point.x >= 0
+      ? [rational(0n), rational(1n, 0n), rational(1n)]
+      : [rational(-1n), rational(1n, 0n), rational(0n)];
+  return rs.map((r) =>
+    rational(m[0] * r.p + m[1] * r.q, m[2] * r.p + m[3] * r.q),
+  ) as unknown as Triangulation;
 }
