@@ -886,6 +886,7 @@ function ComparisonPane({
       );
   const surfacePartner = other.kind === "torus" || other.kind === "orbifold";
   const diskOptions = {
+    crossings: p.math.farey.crossings,
     domainFocus: surfacePartner ? focus : undefined,
     overlays: { ...overlays, dual: true },
     showFlipPath: flipPartner,

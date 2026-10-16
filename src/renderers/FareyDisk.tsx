@@ -10,6 +10,7 @@ import {
 } from "../math/continuedFraction";
 import { label, value } from "../math/rational";
 import { heightAt } from "../math/trajectory";
+import { fareyCrossings, type Crossing } from "../math/farey";
 import {
   INITIAL_TRIANGLE,
   triangleKey,
@@ -33,6 +34,8 @@ import {
   fareyTriangleColor,
   fareyTriangleId,
   FAREY_FILL_OPACITY,
+  fareyEdgeStyle,
+  fareyEdgeId,
 } from "./fareyColors";
 import { stageColor } from "./dissectionColors";
 import { rational } from "../math/rational";
@@ -43,6 +46,7 @@ import { domainEdgeColor } from "./domainEdges";
 import { torusDomainColor } from "./torusDomains";
 import type { Rational } from "../math/rational";
 export type DiskOptions = {
+  crossings?: readonly Crossing[];
   domainFocus?: DomainFocus;
   inspection?: { rational: Rational; label: string; color: string };
   selectedRun?: SelectedRun;
@@ -79,6 +83,7 @@ type Props = DiskOptions & {
   selectEdge: (edge: number) => void;
 };
 export function FareyDisk({
+  crossings,
   domainFocus,
   inspection,
   selectedRun,
@@ -122,6 +127,27 @@ export function FareyDisk({
     [tri, seed, follow, camera],
   );
   const neighbors = tri.map((_, i) => flip(tri, i));
+  const fareyEdges = useMemo(() => {
+    const edges = new Map<string, [Rational, Rational]>();
+    for (const triangle of neighborhood.triangles)
+      triangle.forEach((a, i) => {
+        const b = triangle[(i + 1) % 3];
+        edges.set(fareyEdgeId(a, b), [a, b]);
+      });
+    return [...edges];
+  }, [neighborhood]);
+  const selectedCrossings = useMemo(
+    () =>
+      (crossings ?? fareyCrossings(spec, state.horizon).crossings).filter(
+        (crossing) => crossing.term === term,
+      ),
+    [crossings, spec, state.horizon, term],
+  );
+  const edgePath = (a: Rational, b: Rational) => {
+    const from = projection.vertex(a),
+      to = projection.vertex(b);
+    return `M${from.x} ${from.y}` + diskGeodesic(from, to);
+  };
   const circles = useMemo(() => {
     const vertices = new Map<string, Rational>();
     neighborhood.triangles.flat().forEach((r) => vertices.set(label(r), r));
@@ -306,14 +332,15 @@ export function FareyDisk({
             data-disk-farey="true"
             transform={transform}
             fill="none"
-            stroke="#82927a"
-            strokeWidth={0.6}
+            stroke={fareyEdgeStyle.color}
+            strokeWidth={fareyEdgeStyle.width}
             pointerEvents="none"
           >
-            {neighborhood.triangles.map((t) => (
+            {fareyEdges.map(([id, [a, b]]) => (
               <path
-                key={triangleKey(t)}
-                d={diskTrianglePath(t, camera)}
+                key={id}
+                data-farey-edge={id}
+                d={edgePath(a, b)}
                 vectorEffect="non-scaling-stroke"
               />
             ))}
@@ -458,8 +485,8 @@ export function FareyDisk({
               d={diskTrianglePath(t, camera)}
               transform={transform}
               fill="transparent"
-              stroke={flipColors[i]}
-              strokeWidth={1.4}
+              stroke={flipColors[i] + "80"}
+              strokeWidth={fareyEdgeStyle.neighborWidth}
               vectorEffect="non-scaling-stroke"
             />
           ))}
@@ -470,13 +497,35 @@ export function FareyDisk({
           fill="none"
           stroke={
             showFlipPath || (showCurrentTriangle && overlays.farey)
-              ? "#425b48"
+              ? fareyEdgeStyle.currentColor
               : "none"
           }
-          strokeWidth={showFlipPath ? 0.5 : 1.7}
+          strokeWidth={showFlipPath ? 0.5 : fareyEdgeStyle.currentWidth}
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
         />
+        {overlays.farey && !showFlipPath && (
+          <g
+            data-farey-run={term}
+            transform={transform}
+            fill="none"
+            stroke={stageColor(term)}
+            strokeWidth={fareyEdgeStyle.selectedWidth}
+            pointerEvents="none"
+          >
+            {selectedCrossings.map((crossing) => (
+              <path
+                key={crossing.id}
+                data-highlighted-farey-edge={fareyEdgeId(
+                  crossing.left,
+                  crossing.right,
+                )}
+                d={edgePath(crossing.left, crossing.right)}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </g>
+        )}
         {showFlipPath &&
           tri.map((r, i) => {
             const a = projection.vertex(tri[(i + 1) % 3]),

@@ -8,6 +8,16 @@ import type { Triangulation } from "../math/triangulation";
 // classes, so adjacent triangles always have different colors.
 export const fareyPalette = ["#197d9a", "#a65732", "#9450a1", "#e4bf66"];
 export const FAREY_FILL_OPACITY = 0.3;
+export const fareyEdgeStyle = {
+  color: "#879a9165",
+  width: 1,
+  currentColor: "#425b48",
+  currentWidth: 1.7,
+  selectedWidth: 2.5,
+  neighborWidth: 1.4,
+};
+export const fareyEdgeId = (a: Rational, b: Rational) =>
+  [label(a), label(b)].sort().join("|");
 const mod3 = (n: bigint) => ((n % 3n) + 3n) % 3n;
 function slopeClass(r: Rational) {
   const p = mod3(r.p),

@@ -28,6 +28,7 @@ import {
   fareyTriangleColor,
   visibleFareyTriangles,
   FAREY_FILL_OPACITY,
+  fareyEdgeStyle,
 } from "./fareyColors";
 type Props = {
   domainFocus?: DomainFocus;
@@ -293,7 +294,11 @@ export function HalfPlane({
     }
     ctx.restore();
     if (triangulation) {
-      const draw = (tri: Triangulation, color: string) => {
+      const draw = (
+        tri: Triangulation,
+        color?: string,
+        width = fareyEdgeStyle.currentWidth,
+      ) => {
         const points = planeTriangle(tri, bottom / scale).map((p) => ({
           x: X(p.x),
           y: Y(p.y),
@@ -304,17 +309,24 @@ export function HalfPlane({
           i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y),
         );
         ctx.closePath();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        if (color) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.stroke();
+        }
         return points;
       };
       for (let i = 0; i < 3; i++)
         triangleTargets.current.push({
           edge: i,
-          points: draw(flip(triangulation, i), flipColors[i] + "80"),
+          points: draw(
+            flip(triangulation, i),
+            flipPath ? flipColors[i] + "80" : undefined,
+            fareyEdgeStyle.neighborWidth,
+          ),
         });
-      draw(triangulation, "#425b48");
+      if (flipPath || scene.overlays.farey)
+        draw(triangulation, fareyEdgeStyle.currentColor);
     }
     const edge = (l: number, r: number, color: string, width = 1) => {
       const radius = ((r - l) * scale) / 2,
@@ -365,8 +377,14 @@ export function HalfPlane({
     }
     if (scene.overlays.farey) {
       for (const e of geometry)
-        edge(value(e.left), value(e.right), "#879a9165");
-      ctx.strokeStyle = "#879a9165";
+        edge(
+          value(e.left),
+          value(e.right),
+          fareyEdgeStyle.color,
+          fareyEdgeStyle.width,
+        );
+      ctx.strokeStyle = fareyEdgeStyle.color;
+      ctx.lineWidth = fareyEdgeStyle.width;
       for (let n = Math.ceil(min); n <= max; n++) {
         ctx.beginPath();
         ctx.moveTo(X(n), 0);
@@ -422,7 +440,12 @@ export function HalfPlane({
     }
     if (scene.overlays.farey && !flipPath)
       for (const e of crossings.filter((e) => e.term === selectedTerm))
-        edge(value(e.left), value(e.right), stageColor(selectedTerm), 2.5);
+        edge(
+          value(e.left),
+          value(e.right),
+          stageColor(selectedTerm),
+          fareyEdgeStyle.selectedWidth,
+        );
     if (flipPath) {
       const path = triangulationPath(flipPath);
       for (let i = 0; i < flipPath.steps.length; i++) {
