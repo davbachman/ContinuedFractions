@@ -255,7 +255,12 @@ test("Farey flips preserve the target, shared undo works, and layouts survive re
     "data-representation",
     "triangulation",
   );
-  await page.getByRole("button", { name: "Full atlas", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Full atlas", exact: true }),
+  ).toHaveCount(0);
+  const atlasUrl = new URL(page.url());
+  atlasUrl.searchParams.set("layout", "atlas");
+  await page.goto(atlasUrl.toString());
   await expect(
     page.getByRole("heading", { name: "The upper half-plane", exact: true }),
   ).toBeVisible();

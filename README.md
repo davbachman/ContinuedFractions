@@ -17,7 +17,7 @@ The default workspace shows **Symbolic continued fraction** beside **Rectangle d
 - On desktop the two equal panes scroll independently. On mobile they stack and use the page scroll. Tab to a pane and use Space/Left/Right for its trajectory or dissection controls; focus a 3D surface for rotation keys. Standard controls remain keyboard and touch accessible.
 - The exact number, signed expression, and triangulation history still use the existing scene and undo system. View choices and cover lifts are retained locally and included in shared-link query parameters. Camera angles, zoom, and other local display preferences are session settings; changing representation resets its renderer. Scene JSON retains mathematical state rather than pane preferences.
 
-**Full atlas** opens the previous layout without changing the exact state. **Compare two views** returns to the new workspace. The earlier layout is also available at `?layout=atlas`; its regression tests continue to run alongside the new workspace tests. The detailed controls below describe both renderers and the full atlas layout.
+The comparison workspace has no layout-switch button. Older `?layout=atlas` links still offer **Compare two views** to return to the comparison workspace. The detailed controls below describe the shared renderers.
 
 ### Linked rectangle and Farey-run playback
 

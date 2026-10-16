@@ -731,20 +731,21 @@ export default function App() {
           <h1>Continued Fraction Explorer</h1>
         </a>
         <nav aria-label="Main navigation">
-          <button
-            className="text-button layout-switch"
-            onClick={() => {
-              setPlaying(false);
-              setRectanglePlaying(false);
-              const url = new URL(location.href);
-              if (comparison) url.searchParams.set("layout", "atlas");
-              else url.searchParams.delete("layout");
-              window.history.replaceState(null, "", url);
-              setComparison(!comparison);
-            }}
-          >
-            {comparison ? "Full atlas" : "Compare two views"}
-          </button>
+          {!comparison && (
+            <button
+              className="text-button layout-switch"
+              onClick={() => {
+                setPlaying(false);
+                setRectanglePlaying(false);
+                const url = new URL(location.href);
+                url.searchParams.delete("layout");
+                window.history.replaceState(null, "", url);
+                setComparison(true);
+              }}
+            >
+              Compare two views
+            </button>
+          )}
           <button className="text-button" onClick={() => setShowGuide(true)}>
             <BookOpen size={15} /> Field guide
           </button>
@@ -1895,8 +1896,7 @@ export default function App() {
           enabling the link synchronizes their playback with rectangle stages.
           Canonical tangle regions can link to coefficients; custom signed
           constructions retain their own operations. A finite tangle for an
-          irrational uses a labeled convergent. “Full atlas” restores the
-          original layout.
+          irrational uses a labeled convergent.
         </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>
