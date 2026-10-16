@@ -8,7 +8,6 @@ import {
 } from "./math/runPlayback";
 
 export function useRunPlayback(props: WorkspaceProps, available: boolean) {
-  const [enabled, setEnabled] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState({ term: 0, progress: 0 });
   const itinerary = useMemo(
@@ -19,52 +18,75 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     () => coefficientStages(props.scene.spec, itinerary),
     [props.scene.spec, itinerary],
   );
-  const expectedSteps = useRef(itinerary.steps);
+  const enabled = available && stages.length > 0;
+  const emitted = useRef<{ time: number; term: number } | null>(null);
   const latest = useRef(props);
   latest.current = props;
   const current = useRef(position);
   current.current = position;
   const stage = stages[position.term];
-  const disable = () => {
-    setPlaying(false);
-    setEnabled(false);
+  const pause = () => setPlaying(false);
+  const publish = (time: number, term: number) => {
+    emitted.current = { time, term };
+    latest.current.onRunFrame(time, term);
   };
+  const context = useRef({ enabled, stages });
+  // Keep synchronization active after edits and view changes, preserving time
+  // and undo history. Own frames retain progress in zero-crossing stages.
   useEffect(() => {
-    setPlaying(false);
-    setEnabled(false);
-  }, [itinerary]);
-  // Editing, undo, or a new display window interrupts this clock.
-  useEffect(() => {
+    const changed =
+      context.current.enabled !== enabled || context.current.stages !== stages;
+    context.current = { enabled, stages };
+    if (!enabled) {
+      setPlaying(false);
+      return;
+    }
+    const last = emitted.current;
     if (
-      !available ||
-      props.scene.triangulation?.steps !== expectedSteps.current
+      !changed &&
+      last?.time === props.scene.time &&
+      last.term === props.selected
     )
-      disable();
-  }, [
-    available,
-    props.scene.spec,
-    props.scene.end,
-    props.scene.triangulation?.steps,
-  ]);
+      return;
+    setPlaying(false);
+    const time = props.scene.time;
+    const contains = (s: (typeof stages)[number]) =>
+      time >= s.start - 1e-8 && time <= (s.times.at(-1) ?? s.start) + 1e-8;
+    const selected = stages[props.selected];
+    let term =
+      selected && contains(selected)
+        ? props.selected
+        : stages.findIndex(contains);
+    if (term < 0) term = time < stages[0].start ? 0 : stages.length - 1;
+    const s = stages[term];
+    let position = 0;
+    let before = s.start;
+    for (const after of s.times) {
+      if (time >= after) position++;
+      else {
+        position += Math.max(0, (time - before) / (after - before));
+        break;
+      }
+      before = after;
+    }
+    current.current = {
+      term,
+      progress: s.times.length ? position / s.times.length : 0,
+    };
+    setPosition(current.current);
+    if (term !== props.selected) publish(time, term);
+  }, [enabled, stages, props.scene.time, props.selected]);
   useEffect(() => {
     if (props.playing || props.rectangle.playing) setPlaying(false);
   }, [props.playing, props.rectangle.playing]);
   const seek = (term: number, progress = 0) => {
     setPlaying(false);
+    props.onPause();
     const index = Math.max(0, Math.min(stages.length - 1, term));
     if (!stages[index]) return;
-    setPosition({ term: index, progress });
-    props.onRunFrame(stageFrame(stages[index], progress).time, index);
-  };
-  const enable = () => {
-    if (!stages.length) return;
-    props.onPause();
-    const term = Math.min(props.selected, stages.length - 1);
-    expectedSteps.current = itinerary.steps;
-    props.onRunFrame(stages[term].start, term, itinerary);
-    setPosition({ term, progress: 0 });
-    setPlaying(false);
-    setEnabled(true);
+    current.current = { term: index, progress };
+    setPosition(current.current);
+    publish(stageFrame(stages[index], progress).time, index);
   };
   useEffect(() => {
     if (!playing || !enabled) return;
@@ -97,10 +119,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
         drawn = now;
         const next = current.current;
         setPosition(next);
-        latest.current.onRunFrame(
-          stageFrame(s, progress, reduced).time,
-          at.term,
-        );
+        publish(stageFrame(s, progress, reduced).time, at.term);
       }
       if (boundary) {
         if (
@@ -113,10 +132,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
           nextProgress = reverse ? 1 : 0;
         current.current = { term, progress: nextProgress };
         setPosition(current.current);
-        latest.current.onRunFrame(
-          stageFrame(stages[term], nextProgress, reduced).time,
-          term,
-        );
+        publish(stageFrame(stages[term], nextProgress, reduced).time, term);
       }
       frame = requestAnimationFrame(tick);
     };
@@ -143,8 +159,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     position,
     stage,
     stages,
-    enable,
-    disable,
+    pause,
     seek,
     toggle,
     frame: stage ? stageFrame(stage, position.progress) : undefined,

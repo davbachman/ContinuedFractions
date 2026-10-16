@@ -224,7 +224,7 @@ export function Workspace(props: WorkspaceProps) {
   const setKind = (id: string, kind: Representation) => {
     setActivePane(null);
     setFlipPlaying(false);
-    runs.disable();
+    runs.pause();
     props.onPause();
     setPanes((p) => p.map((v) => (v.id === id ? { ...v, kind } : v)));
   };
@@ -252,20 +252,20 @@ export function Workspace(props: WorkspaceProps) {
     selectedEdge,
     onSelectedEdge: setSelectedEdge,
     onSeekCoefficient: (i) => {
-      runs.disable();
+      runs.pause();
       setFlipPlaying(false);
       props.triangulation.onSeekCoefficient(i);
     },
     onChange: (...args) => {
-      runs.disable();
+      runs.pause();
       props.triangulation.onChange(...args);
     },
     onUndo: () => {
-      runs.disable();
+      runs.pause();
       props.triangulation.onUndo();
     },
     onRedo: () => {
-      runs.disable();
+      runs.pause();
       props.triangulation.onRedo();
     },
     playback: {
@@ -281,7 +281,7 @@ export function Workspace(props: WorkspaceProps) {
     ...props,
     onSeek: (time: number) => {
       setFlipPlaying(false);
-      runs.disable();
+      runs.pause();
       props.onSeek(time);
     },
     onStepTrajectory: (direction: number) => {
@@ -347,7 +347,7 @@ export function Workspace(props: WorkspaceProps) {
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (coefficientDraft !== String(a)) {
-                    runs.disable();
+                    runs.pause();
                     props.onEditCoefficient(coefficientDraft);
                   }
                 }}
@@ -446,38 +446,28 @@ export function Workspace(props: WorkspaceProps) {
           </div>
           {canLink && (
             <div className="run-link" aria-label="Coefficient synchronization">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={runs.enabled}
-                  onChange={(e) => {
-                    setFlipPlaying(false);
-                    if (e.target.checked) runs.enable();
-                    else runs.disable();
-                  }}
-                />
-                Synchronize by coefficient
-              </label>
               {runs.enabled ? (
                 <>
-                  <RunTransport run={runs} />
-                  <label className="pane-scrubber">
-                    Progress through a{runs.position.term} ·{" "}
-                    <span data-testid="linked-time">
-                      t = {props.scene.time.toFixed(3)}
-                    </span>
-                    <input
-                      aria-label="Progress through coefficient run"
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.001"
-                      value={runs.position.progress}
-                      onChange={(e) =>
-                        runs.seek(runs.position.term, Number(e.target.value))
-                      }
-                    />
-                  </label>
+                  <div className="playback-row">
+                    <label className="pane-scrubber">
+                      Progress through a{runs.position.term} ·{" "}
+                      <span data-testid="linked-time">
+                        t = {props.scene.time.toFixed(3)}
+                      </span>
+                      <input
+                        aria-label="Progress through coefficient run"
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.001"
+                        value={runs.position.progress}
+                        onChange={(e) =>
+                          runs.seek(runs.position.term, Number(e.target.value))
+                        }
+                      />
+                    </label>
+                    <RunTransport run={runs} />
+                  </div>
                   <p data-testid="linked-run-status" role="status">
                     {runs.stage &&
                       (runs.stage.term === 0
@@ -529,21 +519,22 @@ export function Workspace(props: WorkspaceProps) {
                     </p>
                     <p>
                       All flip paths follow α. Editing, undo, or switching views
-                      pauses and releases the link. The marked flip torus and
-                      six-sheet modular cover remain distinct constructions.
+                      pauses playback; coefficient synchronization remains
+                      active. The marked flip torus and six-sheet modular cover
+                      remain distinct constructions.
                     </p>
                   </details>
                   {runs.stage && !runs.stage.complete && (
                     <button
                       disabled={props.scene.end >= 24}
                       onClick={() => {
-                        runs.disable();
+                        runs.pause();
                         props.onPatch({
                           end: Math.min(24, props.scene.end + 4),
                         });
                       }}
                     >
-                      Extend depth +4, then relink
+                      Extend depth +4
                     </button>
                   )}
                 </>
@@ -636,18 +627,18 @@ export function Workspace(props: WorkspaceProps) {
               linkedPlayback: runs.enabled ? runs : undefined,
               onSeek: (time) => {
                 setFlipPlaying(false);
-                runs.disable();
+                runs.pause();
                 props.onSeek(time);
               },
               onSelect: selectCoefficient,
               onEditCoefficient: (v) => {
-                runs.disable();
+                runs.pause();
                 props.onEditCoefficient(v);
               },
               rectangle: {
                 ...props.rectangle,
                 onStart: () => {
-                  runs.disable();
+                  runs.pause();
                   props.rectangle.onStart();
                 },
               },
@@ -678,7 +669,7 @@ function RunTransport({ run }: { run: ReturnType<typeof useRunPlayback> }) {
         aria-label="Restart linked playback"
         title="Restart linked playback"
       >
-        <RotateCcw size={22} aria-hidden="true" />
+        <RotateCcw size={22} aria-hidden="true" /> Reset
       </button>
       <button
         aria-label="Previous linked stage"
@@ -719,48 +710,50 @@ function TrajectoryControls({ shared: p }: { shared: WorkspaceProps }) {
   );
   return (
     <div className="pane-transport">
-      <div className="workspace-actions">
-        <button
-          onClick={() => p.onSeek(0)}
-          aria-label="Restart trajectory"
-          title="Restart trajectory"
-        >
-          <RotateCcw size={22} aria-hidden="true" />
-        </button>
-        <button
-          aria-label="Previous crossing"
-          title="Previous Farey crossing"
-          onClick={() => p.onStepTrajectory(-1)}
-        >
-          Previous
-        </button>
-        <button
-          aria-label={p.playing ? "Pause trajectory" : "Play trajectory"}
-          className="primary-action"
-          onClick={p.onToggleTrajectory}
-        >
-          {p.playing ? "Pause" : "Play"}
-        </button>
-        <button
-          aria-label="Next crossing"
-          title="Next Farey crossing"
-          onClick={() => p.onStepTrajectory(1)}
-        >
-          Next
-        </button>
+      <div className="playback-row">
+        <label className="pane-scrubber">
+          Hyperbolic time · t = {p.scene.time.toFixed(2)}
+          <input
+            aria-label="Scrub trajectory"
+            type="range"
+            min={0}
+            max={p.scene.end}
+            step={0.001}
+            value={p.scene.time}
+            onChange={(e) => p.onSeek(Number(e.target.value))}
+          />
+        </label>
+        <div className="workspace-actions">
+          <button
+            aria-label="Previous crossing"
+            title="Previous Farey crossing"
+            onClick={() => p.onStepTrajectory(-1)}
+          >
+            Previous
+          </button>
+          <button
+            aria-label={p.playing ? "Pause trajectory" : "Play trajectory"}
+            className="primary-action"
+            onClick={p.onToggleTrajectory}
+          >
+            {p.playing ? "Pause" : "Play"}
+          </button>
+          <button
+            onClick={() => p.onSeek(0)}
+            aria-label="Restart trajectory"
+            title="Restart trajectory"
+          >
+            <RotateCcw size={22} aria-hidden="true" /> Reset
+          </button>
+          <button
+            aria-label="Next crossing"
+            title="Next Farey crossing"
+            onClick={() => p.onStepTrajectory(1)}
+          >
+            Next
+          </button>
+        </div>
       </div>
-      <label className="pane-scrubber">
-        Hyperbolic time · t = {p.scene.time.toFixed(2)}
-        <input
-          aria-label="Scrub trajectory"
-          type="range"
-          min={0}
-          max={p.scene.end}
-          step={0.001}
-          value={p.scene.time}
-          onChange={(e) => p.onSeek(Number(e.target.value))}
-        />
-      </label>
       <details className="workspace-details">
         <summary>Playback options & events</summary>{" "}
         <div className="workspace-actions">
@@ -1200,42 +1193,56 @@ function RectangleControls({ shared: p }: { shared: WorkspaceProps }) {
   const stage = p.rectangle.stages[p.selected];
   return (
     <div className="pane-transport">
-      <div className="workspace-actions">
-        <button
-          aria-label="Restart dissection"
-          title="Restart dissection"
-          onClick={() => p.onSelect(0)}
-        >
-          <RotateCcw size={22} aria-hidden="true" />
-        </button>
-        <button
-          disabled={!p.selected}
-          aria-label="Previous stage"
-          title="Previous Euclidean stage"
-          onClick={() => p.rectangle.onStep(-1)}
-        >
-          Previous
-        </button>
-        <button
-          className="primary-action"
-          aria-label={
-            p.rectangle.playing ? "Pause dissection" : "Play dissection"
-          }
-          onClick={p.rectangle.onToggle}
-        >
-          {p.rectangle.playing ? "Pause" : "Play"}
-        </button>
-        <button
-          disabled={
-            stage?.terminal ||
-            (p.scene.spec.kind === "periodic" && p.selected >= 95)
-          }
-          aria-label="Next stage"
-          title="Next Euclidean stage"
-          onClick={() => p.rectangle.onStep(1)}
-        >
-          Next
-        </button>
+      <div className="playback-row">
+        <label className="pane-scrubber">
+          Coefficient a{p.selected}
+          <input
+            aria-label="Dissection stage"
+            type="range"
+            min={0}
+            max={Math.max(0, p.rectangle.stages.length - 1)}
+            step={1}
+            value={p.selected}
+            onChange={(e) => p.onSelect(Number(e.target.value))}
+          />
+        </label>
+        <div className="workspace-actions">
+          <button
+            disabled={!p.selected}
+            aria-label="Previous stage"
+            title="Previous Euclidean stage"
+            onClick={() => p.rectangle.onStep(-1)}
+          >
+            Previous
+          </button>
+          <button
+            className="primary-action"
+            aria-label={
+              p.rectangle.playing ? "Pause dissection" : "Play dissection"
+            }
+            onClick={p.rectangle.onToggle}
+          >
+            {p.rectangle.playing ? "Pause" : "Play"}
+          </button>
+          <button
+            aria-label="Restart dissection"
+            title="Restart dissection"
+            onClick={() => p.onSelect(0)}
+          >
+            <RotateCcw size={22} aria-hidden="true" /> Reset
+          </button>
+          <button
+            disabled={
+              stage?.terminal ||
+              (p.scene.spec.kind === "periodic" && p.selected >= 95)
+            }
+            aria-label="Next stage"
+            title="Next Euclidean stage"
+            onClick={() => p.rectangle.onStep(1)}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

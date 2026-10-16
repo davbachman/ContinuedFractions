@@ -153,20 +153,24 @@ test("two H² cameras and layers are independent and share trajectory time", asy
   });
 });
 
-test("rectangle playback leaves hyperbolic time independent and unavailable inputs retain the number", async ({
+test("rectangle playback automatically synchronizes hyperbolic time and unavailable inputs retain the number", async ({
   page,
 }) => {
   await choose(page, "Left", "h2");
-  await page.getByRole("slider", { name: "Scrub trajectory" }).fill("2");
-  await page.getByLabel("Playback process").selectOption("rectangle");
+  await expect(page.getByLabel("Synchronize by coefficient")).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Restart dissection", exact: true })
+    .getByRole("button", { name: "Restart linked playback", exact: true })
     .click();
-  await page.getByRole("button", { name: "Next stage", exact: true }).click();
-  await page.getByLabel("Playback process").selectOption("trajectory");
+  await page
+    .getByRole("slider", { name: "Progress through coefficient run" })
+    .fill("1");
+  await expect(page.getByTestId("linked-time")).not.toHaveText("t = 0.000");
+  await page
+    .getByRole("button", { name: "Next linked stage", exact: true })
+    .click();
   await expect(
-    page.getByRole("slider", { name: "Scrub trajectory" }),
-  ).toHaveValue("2");
+    page.getByRole("group", { name: "Rectangle dissection diagram" }),
+  ).toHaveAttribute("data-stage", "1");
   for (const value of ["0", "-1", "infinity"]) {
     await number(page, value);
     await expect(right(page).locator(".view-unavailable")).toBeVisible();

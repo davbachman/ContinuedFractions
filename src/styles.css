@@ -3218,17 +3218,6 @@ svg[data-rotation] * {
   max-height: 190px;
   overflow-y: auto;
 }
-@media (min-width: 761px) {
-  .shared-playback .pane-transport {
-    display: grid;
-    grid-template-columns: auto minmax(180px, 1fr);
-    column-gap: 24px;
-    align-items: center;
-  }
-  .shared-playback .pane-transport > details {
-    grid-column: 1 / -1;
-  }
-}
 
 .shared-playback .linked-transport {
   display: flex;
@@ -3245,4 +3234,52 @@ svg[data-rotation] * {
 }
 .shared-playback .run-link .pane-scrubber {
   font-size: 11px;
+}
+
+/* The shared clock always follows alpha; its buttons sit beside the slider. */
+.shared-playback .playback-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+.shared-playback .playback-row > .pane-scrubber {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  font-size: 12px;
+}
+.shared-playback .playback-row > .workspace-actions {
+  flex-wrap: nowrap;
+  margin: 0;
+}
+.shared-playback .playback-row > .workspace-actions button {
+  order: 2;
+}
+.shared-playback .playback-row > .workspace-actions .primary-action {
+  order: 0;
+}
+.shared-playback
+  .playback-row
+  > .workspace-actions
+  button[aria-label^="Restart"] {
+  order: 1;
+}
+@media (max-width: 760px) {
+  .shared-playback .playback-row {
+    gap: 10px;
+  }
+  .shared-playback .playback-row > .workspace-actions {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 6px;
+  }
+  .shared-playback .playback-row > .workspace-actions button {
+    padding-inline: 8px;
+  }
+  .shared-playback .playback-row > .pane-scrubber input {
+    min-width: 0;
+  }
 }

@@ -1882,22 +1882,22 @@ export default function App() {
           each side. Both panes use the same exact number and undo history;
           their cameras are independent. Playback controls sit below α and span
           both panes; choose the playback process there when more than one is
-          available. Selecting a coefficient highlights its counterpart without
-          seeking the trajectory, unless coefficient synchronization is enabled.
-          Use “Seek selected run” to move the point in independent mode.
+          available. Compatible rectangle pairs always synchronize by
+          coefficient: selecting a coefficient seeks its stage in both panes. In
+          other pairs, selection highlights its counterpart; use “Seek selected
+          run” to move the point.
         </p>
         <p>
           Hyperbolic views share trajectory time. Rectangle playback advances
-          Euclidean stages on its own clock by default. Pair the rectangle with
-          Poincare Disk, marked edge flips, or any other hyperbolic view and
-          enable “Synchronize by coefficient” to play each stage’s run of
-          crossings. Both panes then share play/pause, stage stepping, reverse,
-          and a run progress slider. Zero-crossing stages hold the point; a
-          display limit is explicitly incomplete. All flip paths follow α;
-          enabling the link synchronizes their playback with rectangle stages.
-          Canonical tangle regions can link to coefficients; custom signed
-          constructions retain their own operations. A finite tangle for an
-          irrational uses a labeled convergent.
+          Euclidean stages. When paired with Poincare Disk, marked edge flips,
+          or any other hyperbolic view, each stage automatically plays its
+          corresponding run of crossings. Both panes then share play/pause,
+          stage stepping, reverse, and a run progress slider. Zero-crossing
+          stages hold the point; a display limit is explicitly incomplete. All
+          flip paths follow α; compatible views automatically synchronize their
+          playback with rectangle stages. Canonical tangle regions can link to
+          coefficients; custom signed constructions retain their own operations.
+          A finite tangle for an irrational uses a labeled convergent.
         </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>
@@ -1965,7 +1965,8 @@ export default function App() {
           stepping the path preserves α. The caption names the retained and
           replaced slopes. H² playback also advances the follow-target path at
           its crossing times; flip steps seek those times. Rectangle stages keep
-          their own clock unless “Synchronize by coefficient” is enabled.
+          a shared coefficient-run clock when paired with hyperbolic or flip
+          views.
         </p>
         <h3>Marked tangles</h3>
         <p>

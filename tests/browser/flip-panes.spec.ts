@@ -367,9 +367,10 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   await expect(farey).toHaveAttribute("data-slopes", "2 | ∞ | 3");
-  await button(page.locator(".shared-playback"), "Next crossing").click();
-  const advanced = await farey.getAttribute("data-slopes");
+  await button(page.locator(".shared-playback"), "Next linked stage").click();
+
   await page.locator('.comparison-coefficients [data-coefficient="0"]').click();
+  const advanced = await farey.getAttribute("data-slopes");
   await page.getByLabel("Edit coefficient a0", { exact: true }).fill("4");
   await page.getByLabel("Edit coefficient a0", { exact: true }).press("Enter");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("23/5");

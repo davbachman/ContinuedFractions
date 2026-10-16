@@ -3,8 +3,6 @@ const pane = (page: Page, side: string) =>
   page.getByRole("region", { name: `${side} representation`, exact: true });
 const diagram = (page: Page) =>
   page.getByRole("group", { name: "Rectangle dissection diagram" });
-const link = (page: Page) =>
-  page.getByRole("checkbox", { name: "Synchronize by coefficient" });
 const clock = (page: Page) =>
   page.getByRole("slider", { name: "Progress through coefficient run" });
 async function number(page: Page, input: string) {
@@ -23,9 +21,13 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?left=rectangle&right=farey");
+  await number(page, "13/5");
+  await number(page, "5/13");
+  await page
+    .getByRole("button", { name: "Highlight coefficient a1 = 2", exact: true })
+    .click();
   const right = pane(page, "Right"),
     left = pane(page, "Left");
-  await link(page).check();
   const disk = right.getByRole("group", { name: "Poincare Disk", exact: true });
   await expect(disk.locator("[data-dual-flip-path]")).toHaveCount(0);
   await clock(page).fill("1");
@@ -68,16 +70,15 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
-  await expect(link(page)).not.toBeChecked();
-  await expect(disk).toHaveAttribute("data-flip-cursor", "0");
+  await expect(page.getByLabel("Synchronize by coefficient")).toHaveCount(0);
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
   await page
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();
-  await expect(disk).toHaveAttribute("data-flip-cursor", "5");
+  await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page
     .getByRole("combobox", { name: "Right representation", exact: true })
     .selectOption("triangulation");
-  await link(page).check();
   await page.getByRole("button", { name: "Restart linked playback" }).click();
   await clock(page).fill("1");
   await expect(right.getByTestId("flip-status")).toContainText("Step 1");
@@ -98,7 +99,12 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
   }, info) => {
     await page.goto(`/?left=rectangle&right=${view}`);
     await number(page, "1/2");
-    await link(page).check();
+    await page
+      .getByRole("button", {
+        name: "Highlight coefficient a1 = 2",
+        exact: true,
+      })
+      .click();
     await expect(diagram(page)).toHaveAttribute("data-stage", "1");
     await expect(page.getByTestId("linked-run-status")).toContainText(
       "No crossings",
@@ -127,15 +133,16 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
       });
       await surface.press("ArrowRight");
       await expect(time).toHaveText(before!);
-      await expect(link(page)).toBeChecked();
+      await expect(
+        page.getByRole("region", { name: "Shared playback" }),
+      ).toContainText("Coefficient runs");
       await page.locator(".comparison-workspace").screenshot({
         path: `test-results/${info.project.name}-linked-torus.png`,
       });
     }
     await number(page, "13/5");
-    await expect(link(page)).not.toBeChecked();
+    await expect(page.getByLabel("Synchronize by coefficient")).toHaveCount(0);
     await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
-    await link(page).check();
     await page
       .locator('.comparison-coefficients [data-coefficient="2"]')
       .click();
@@ -157,9 +164,11 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
         .locator('path[data-selected-run="2"]')
         .first()
         .dispatchEvent("click");
-      await expect(link(page)).not.toBeChecked();
+      await expect(page.getByLabel("Synchronize by coefficient")).toHaveCount(
+        0,
+      );
       await expect(
-        page.getByRole("button", { name: "Play trajectory", exact: true }),
+        page.getByRole("button", { name: "Play linked playback", exact: true }),
       ).toBeVisible();
       await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
     }
@@ -172,7 +181,6 @@ test("irrational cutoff and large coefficients are incomplete, not terminal", as
   await page.goto("/?left=rectangle&right=farey");
   for (const input of ["phi", "sqrt2", "1/10000"]) {
     await number(page, input);
-    await link(page).check();
     const next = page.getByRole("button", {
       name: "Next linked stage",
       exact: true,
@@ -197,7 +205,9 @@ test("smooth run playback traverses multiple crossings and reverses without chan
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/?left=rectangle&right=h2");
   await number(page, "1/7");
-  await link(page).check();
+  await page
+    .getByRole("button", { name: "Highlight coefficient a1 = 7", exact: true })
+    .click();
   await page.getByText("Linked playback options", { exact: true }).click();
   await page.getByLabel("Linked playback speed").selectOption("2");
   const right = pane(page, "Right");

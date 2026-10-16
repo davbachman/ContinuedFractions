@@ -388,7 +388,8 @@ export function TriangulationNavigation(
     );
   return (
     <>
-      <div className={props.sharedControls ? "pane-transport" : undefined}>
+      <div className={props.sharedControls ? "playback-row" : undefined}>
+        {props.children}
         <div
           className={
             props.sharedControls ? "workspace-actions" : "tangle-controls"
@@ -396,13 +397,6 @@ export function TriangulationNavigation(
           role="group"
           aria-label="Flip path transport"
         >
-          <button
-            onClick={() => navigate(0)}
-            aria-label="Restart flips"
-            title="Restart flips"
-          >
-            <RotateCcw size={22} aria-hidden="true" />
-          </button>
           {props.transport ?? (
             <>
               <button
@@ -430,6 +424,13 @@ export function TriangulationNavigation(
                     : "Play flips"}
               </button>
               <button
+                onClick={() => navigate(0)}
+                aria-label="Restart flips"
+                title="Restart flips"
+              >
+                <RotateCcw size={22} aria-hidden="true" /> Reset
+              </button>
+              <button
                 aria-label="Next flip step"
                 disabled={state.cursor >= state.steps.length}
                 onClick={() => navigate(state.cursor + 1)}
@@ -439,7 +440,6 @@ export function TriangulationNavigation(
             </>
           )}
         </div>
-        {props.children}
       </div>
       {state.mode === "follow" && !props.transport && (
         <div className="tangle-controls flip-coefficient-controls">
