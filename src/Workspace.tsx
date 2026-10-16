@@ -1,3 +1,4 @@
+import { PlaybackSpeed } from "./PlaybackSpeed";
 import { RotateCcw } from "lucide-react";
 import { coefficientInterval } from "./math/coefficientTimeline";
 import {
@@ -73,8 +74,6 @@ export type WorkspaceProps = {
   onPatch: (changes: Partial<Scene>) => void;
   math: ReturnType<typeof derive>;
   playing: boolean;
-  reverse: boolean;
-  onReverse: (b: boolean) => void;
   onToggleTrajectory: () => void;
   onSeek: (time: number) => void;
   onStepTrajectory: (direction: number) => void;
@@ -159,14 +158,16 @@ export function Workspace(props: WorkspaceProps) {
     props.scene.triangulation ?? targetItinerary(props.scene.spec);
   const previousFlip = useRef(flipState);
   useEffect(() => {
-    if (
-      previousFlip.current.steps !== flipState.steps ||
-      flipState.cursor < previousFlip.current.cursor
-    )
-      setFlipPlaying(false);
+    if (previousFlip.current.steps !== flipState.steps) setFlipPlaying(false);
     previousFlip.current = flipState;
   }, [flipState]);
   useEffect(() => setFlipPlaying(false), [props.scene.spec, flipState.mode]);
+  // Explicit coefficient navigation and undo/redo pause; returning playback
+  // crosses the same edges in reverse without triggering this signal.
+  useEffect(
+    () => setFlipPlaying(false),
+    [props.triangulation.coefficientSeekVersion],
+  );
   useEffect(() => {
     if (props.triangulation.externalPlaying) setFlipPlaying(false);
   }, [props.triangulation.externalPlaying]);
@@ -272,6 +273,12 @@ export function Workspace(props: WorkspaceProps) {
       },
     },
     coefficient: props.selected,
+    speedControl: (
+      <PlaybackSpeed
+        value={props.scene.speed}
+        onChange={(speed) => props.onPatch({ speed })}
+      />
+    ),
   };
   const navigationProps = {
     ...props,
@@ -296,9 +303,7 @@ export function Workspace(props: WorkspaceProps) {
     } else if (playbackMode === "flips") {
       props.onPause();
       if (code === "Space")
-        setFlipPlaying(
-          !flipPlaying && flipState.cursor < flipState.steps.length,
-        );
+        setFlipPlaying(!flipPlaying && flipState.steps.length > 0);
       else {
         setFlipPlaying(false);
         const cursor = Math.max(
@@ -467,7 +472,11 @@ export function Workspace(props: WorkspaceProps) {
                         }
                       />
                     </label>
-                    <RunTransport run={runs} />
+                    <RunTransport
+                      run={runs}
+                      speed={props.scene.speed}
+                      onSpeed={(speed) => props.onPatch({ speed })}
+                    />
                   </div>
                   <p data-testid="linked-run-status" role="status">
                     {!runs.stage &&
@@ -478,7 +487,7 @@ export function Workspace(props: WorkspaceProps) {
                         : `a${runs.stage.term} = ${runs.stage.coefficient} · ${runs.stage.term % 2 ? "L" : "R"} run · ${runs.frame?.completed} of ${runs.stage.expected} flips. ${runs.stage.expected === 0n ? "No flips after the initial/terminal offsets; the point continues through the triangle." : ""}`)}
                     {runs.stage &&
                       !runs.stage.complete &&
-                      ` Only ${runs.stage.times.length} crossings fit this display window. Playback stops here; the sequence is incomplete.`}
+                      ` Only ${runs.stage.times.length} crossings fit this display window. Playback bounces at this display limit; the sequence is incomplete.`}
                     {props.scene.spec.kind === "rational" &&
                       runs.position.progress === 1 &&
                       runs.position.term === runs.stages.length - 1 &&
@@ -487,30 +496,6 @@ export function Workspace(props: WorkspaceProps) {
                   </p>
                   <details className="workspace-details">
                     <summary>Linked playback options</summary>
-                    <label>
-                      Playback speed{" "}
-                      <select
-                        aria-label="Linked playback speed"
-                        value={props.scene.speed}
-                        onChange={(e) =>
-                          props.onPatch({ speed: Number(e.target.value) })
-                        }
-                      >
-                        {[0.25, 0.5, 1, 2, 4].map((v) => (
-                          <option key={v} value={v}>
-                            {v}×
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={props.reverse}
-                        onChange={(e) => props.onReverse(e.target.checked)}
-                      />{" "}
-                      Reverse linked playback
-                    </label>
                     <p>
                       Each rectangle group follows its coefficient’s trajectory
                       interval. The point keeps moving inside triangles even
@@ -518,7 +503,7 @@ export function Workspace(props: WorkspaceProps) {
                       crossing is separate. The first and rational last runs use
                       the documented −1 offsets. Playback has constant
                       hyperbolic speed; coefficient intervals have different
-                      lengths.
+                      lengths. Playback bounces until paused.
                     </p>
                     <p>
                       All flip paths follow α. Editing, undo, or switching views
@@ -660,7 +645,15 @@ export function Workspace(props: WorkspaceProps) {
   );
 }
 
-function RunTransport({ run }: { run: ReturnType<typeof useRunPlayback> }) {
+function RunTransport({
+  run,
+  speed,
+  onSpeed,
+}: {
+  run: ReturnType<typeof useRunPlayback>;
+  speed: number;
+  onSpeed: (speed: number) => void;
+}) {
   return (
     <div
       className="workspace-actions linked-transport"
@@ -698,6 +691,11 @@ function RunTransport({ run }: { run: ReturnType<typeof useRunPlayback> }) {
       >
         Next
       </button>
+      <PlaybackSpeed
+        label="Linked playback speed"
+        value={speed}
+        onChange={onSpeed}
+      />
     </div>
   );
 }
@@ -756,33 +754,15 @@ function TrajectoryControls({ shared: p }: { shared: WorkspaceProps }) {
           >
             Next
           </button>
+          <PlaybackSpeed
+            value={p.scene.speed}
+            onChange={(speed) => p.onPatch({ speed })}
+          />
         </div>
       </div>
       <details className="workspace-details">
         <summary>Playback options & events</summary>{" "}
         <div className="workspace-actions">
-          <label>
-            <input
-              type="checkbox"
-              checked={p.reverse}
-              onChange={(e) => p.onReverse(e.target.checked)}
-            />{" "}
-            Reverse
-          </label>
-          <label>
-            Speed{" "}
-            <select
-              aria-label="Playback speed"
-              value={p.scene.speed}
-              onChange={(e) => p.onPatch({ speed: Number(e.target.value) })}
-            >
-              {[0.25, 0.5, 1, 2, 4].map((v) => (
-                <option key={v} value={v}>
-                  {v}×
-                </option>
-              ))}
-            </select>
-          </label>
           <button disabled={!run} onClick={() => run && p.onSeek(run.start)}>
             Seek selected run
           </button>
@@ -1246,6 +1226,10 @@ function RectangleControls({ shared: p }: { shared: WorkspaceProps }) {
           >
             Next
           </button>
+          <PlaybackSpeed
+            value={p.scene.speed}
+            onChange={(speed) => p.onPatch({ speed })}
+          />
         </div>
       </div>
     </div>

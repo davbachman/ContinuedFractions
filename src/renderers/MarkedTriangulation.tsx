@@ -35,6 +35,7 @@ type Props = {
   coefficient?: number;
   playback?: { playing: boolean; onChange: (playing: boolean) => void };
   transport?: ReactNode;
+  speedControl?: ReactNode;
   externalPlaying: boolean;
   spec: NumberSpec;
   state?: TriangulationState;
@@ -192,8 +193,7 @@ export function MarkedTriangulation(props: Props) {
         if (!["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) return;
         e.preventDefault();
         e.stopPropagation();
-        if (e.code === "Space")
-          setPlaying(!playing && state.cursor < state.steps.length);
+        if (e.code === "Space") setPlaying(!playing && state.steps.length > 0);
         else navigate(state.cursor + (e.code === "ArrowRight" ? 1 : -1));
       }}
       tabIndex={0}
@@ -412,7 +412,7 @@ export function TriangulationNavigation(
               <button
                 aria-label={playing ? "Pause flips" : "Play flips"}
                 className="primary-action"
-                disabled={state.cursor >= state.steps.length && !playing}
+                disabled={!state.steps.length}
                 onClick={() => setPlaying(!playing)}
               >
                 {props.sharedControls
@@ -439,6 +439,7 @@ export function TriangulationNavigation(
               </button>
             </>
           )}
+          {props.speedControl}
         </div>
       </div>
       {state.mode === "follow" && !props.transport && !props.sharedControls && (

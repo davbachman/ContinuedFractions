@@ -1,3 +1,5 @@
+import { advanceBounce } from "./math/playback";
+import { PlaybackSpeed } from "./PlaybackSpeed";
 import {
   coefficientAtTime,
   coefficientInterval,
@@ -120,7 +122,6 @@ export default function App() {
   const [input, setInput] = useState(specLabel(scene.spec)),
     [error, setError] = useState(boot.error ?? ""),
     [playing, setPlaying] = useState(false),
-    [reverse, setReverse] = useState(false),
     [notice, setNotice] = useState(""),
     [followFlipCoefficient, setFollowFlipCoefficient] = useState(false),
     [coefficientSeekVersion, setCoefficientSeekVersion] = useState(0),
@@ -190,6 +191,14 @@ export default function App() {
     [scene.spec, rectangleDepth, selectedTerm],
   );
   const rectangleStage = rectangleStages[selectedTerm];
+  const rectangleDirection = useRef<1 | -1>(1);
+  const trajectoryDirection = useRef<1 | -1>(1);
+  const liveScene = useRef(scene);
+  liveScene.current = scene;
+  useEffect(() => {
+    trajectoryDirection.current = 1;
+    rectangleDirection.current = 1;
+  }, [scene.spec]);
   function switchViewer(next: "hyperbolic" | "rectangle") {
     setPlaying(false);
     setRectanglePlaying(false);
@@ -212,15 +221,17 @@ export default function App() {
   }, [scene.spec]);
   useEffect(() => {
     if (!rectanglePlaying || viewer !== "rectangle" || !rectangleStage) return;
-    if (
-      rectangleStage.terminal ||
-      (selectedTerm >= MAX_DISSECTION_STAGES - 1 &&
-        scene.spec.kind === "periodic")
-    ) {
-      setRectanglePlaying(false);
-      return;
-    }
-    const timer = setTimeout(() => advanceRectangle(1), 1400 / scene.speed);
+    const timer = setTimeout(() => {
+      const end = rectangleStages.length - 1;
+      const next = advanceBounce(
+        selectedTerm,
+        rectangleDirection.current,
+        1,
+        end,
+      );
+      rectangleDirection.current = next.direction;
+      setSelectedTerm(next.position);
+    }, 1400 / scene.speed);
     return () => clearTimeout(timer);
   }, [rectanglePlaying, viewer, rectangleStage, selectedTerm, scene.speed]);
   const patch = (changes: Partial<Scene>) =>
@@ -348,39 +359,27 @@ export default function App() {
   useEffect(() => {
     if (!playing || infinite) return;
     let frame = 0,
-      last = 0;
+      last = performance.now(),
+      current = liveScene.current.time;
     const animate = (now: number) => {
-      if (last) {
-        const dt =
-          Math.min((now - last) / 1000, 0.1) * scene.speed * (reverse ? -1 : 1);
-        setHistory((h) => {
-          const s = h.present,
-            t = s.time + dt;
-          if (t > s.end && s.spec.kind === "periodic" && s.end < 24)
-            return {
-              ...h,
-              present: followAlpha({
-                ...s,
-                time: t,
-                end: Math.min(24, s.end + 4),
-              }),
-            };
-          if ((!reverse && t >= s.end) || (reverse && t <= 0)) {
-            setPlaying(false);
-            return {
-              ...h,
-              present: { ...s, time: Math.max(0, Math.min(s.end, t)) },
-            };
-          }
-          return { ...h, present: { ...s, time: t } };
-        });
-      }
+      const next = advanceBounce(
+        current,
+        trajectoryDirection.current,
+        Math.min((now - last) / 1000, 0.1) * scene.speed,
+        liveScene.current.end,
+      );
+      current = next.position;
+      trajectoryDirection.current = next.direction;
+      setHistory((h) => ({
+        ...h,
+        present: { ...h.present, time: next.boundary ?? next.position },
+      }));
       last = now;
       frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [playing, scene.speed, reverse]);
+  }, [playing, scene.speed, infinite]);
   useEffect(() => {
     function key(e: KeyboardEvent) {
       if (
@@ -394,6 +393,7 @@ export default function App() {
           e.preventDefault();
           setPlaying(false);
           setRectanglePlaying(false);
+          setCoefficientSeekVersion((v) => v + 1);
           setHistory(e.shiftKey ? redo : undo);
         }
         return;
@@ -424,6 +424,7 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         setPlaying(false);
+        setCoefficientSeekVersion((v) => v + 1);
         setHistory(e.shiftKey ? redo : undo);
       }
     }
@@ -680,6 +681,7 @@ export default function App() {
         onClick={() => {
           setPlaying(false);
           setRectanglePlaying(false);
+          setCoefficientSeekVersion((v) => v + 1);
           setHistory(undo);
         }}
       >
@@ -691,6 +693,7 @@ export default function App() {
         onClick={() => {
           setPlaying(false);
           setRectanglePlaying(false);
+          setCoefficientSeekVersion((v) => v + 1);
           setHistory(redo);
         }}
       >
@@ -824,17 +827,9 @@ export default function App() {
             onPatch={patch}
             math={math}
             playing={playing}
-            reverse={reverse}
-            onReverse={setReverse}
             onToggleTrajectory={() => {
               setViewer("hyperbolic");
               setRectanglePlaying(false);
-              if (
-                !playing &&
-                ((!reverse && scene.time >= scene.end) ||
-                  (reverse && scene.time <= 0))
-              )
-                patch({ time: reverse ? scene.end : 0 });
               setPlaying((p) => !p);
             }}
             onSeek={(time) => {
@@ -855,13 +850,6 @@ export default function App() {
               onToggle: () => {
                 setViewer("rectangle");
                 setPlaying(false);
-                if (
-                  !rectanglePlaying &&
-                  (rectangleStage?.terminal ||
-                    (scene.spec.kind === "periodic" &&
-                      selectedTerm >= MAX_DISSECTION_STAGES - 1))
-                )
-                  setSelectedTerm(0);
                 setRectanglePlaying((p) => !p);
               },
               onStep: (direction) => {
@@ -887,11 +875,13 @@ export default function App() {
               onUndo: () => {
                 setPlaying(false);
                 setRectanglePlaying(false);
+                setCoefficientSeekVersion((v) => v + 1);
                 setHistory(undo);
               },
               onRedo: () => {
                 setPlaying(false);
                 setRectanglePlaying(false);
+                setCoefficientSeekVersion((v) => v + 1);
                 setHistory(redo);
               },
               canUndo: history.past.length > 0,
@@ -1212,13 +1202,6 @@ export default function App() {
                     }
                     disabled={!rectangleStage}
                     onClick={() => {
-                      if (
-                        !rectanglePlaying &&
-                        (rectangleStage?.terminal ||
-                          (scene.spec.kind === "periodic" &&
-                            selectedTerm >= MAX_DISSECTION_STAGES - 1))
-                      )
-                        setSelectedTerm(0);
                       setRectanglePlaying((p) => !p);
                     }}
                   >
@@ -1243,6 +1226,10 @@ export default function App() {
                   >
                     <SkipForward size={17} />
                   </button>
+                  <PlaybackSpeed
+                    value={scene.speed}
+                    onChange={(speed) => patch({ speed })}
+                  />
                 </div>
                 <div className="rectangle-progress" aria-live="polite">
                   <strong>
@@ -1286,12 +1273,6 @@ export default function App() {
                       className="play-button"
                       aria-label={playing ? "Pause" : "Play"}
                       onClick={() => {
-                        if (
-                          !playing &&
-                          ((!reverse && scene.time >= scene.end) ||
-                            (reverse && scene.time <= 0))
-                        )
-                          patch({ time: reverse ? scene.end : 0 });
                         setPlaying((p) => !p);
                       }}
                     >
@@ -1307,6 +1288,12 @@ export default function App() {
                     >
                       <SkipForward size={17} />
                     </button>
+                  </div>
+                  <div className="speed-controls">
+                    <PlaybackSpeed
+                      value={scene.speed}
+                      onChange={(speed) => patch({ speed })}
+                    />
                   </div>
                   <div className="timeline">
                     <div className="timeline-label">
@@ -1336,27 +1323,6 @@ export default function App() {
                         ))}
                       </div>
                     </div>
-                  </div>
-                  <div className="speed-controls">
-                    <label className="reverse-control">
-                      <input
-                        type="checkbox"
-                        checked={reverse}
-                        onChange={(e) => setReverse(e.target.checked)}
-                      />
-                      Reverse
-                    </label>
-                    <select
-                      aria-label="Playback speed"
-                      value={scene.speed}
-                      onChange={(e) => patch({ speed: Number(e.target.value) })}
-                    >
-                      <option value="0.25">0.25×</option>
-                      <option value="0.5">0.5×</option>
-                      <option value="1">1× speed</option>
-                      <option value="2">2× speed</option>
-                      <option value="4">4× speed</option>
-                    </select>
                   </div>
                 </section>
                 <div className="motion-note">
@@ -1665,17 +1631,25 @@ export default function App() {
               spec={scene.spec}
               state={scene.triangulation}
               speed={scene.speed}
+              speedControl={
+                <PlaybackSpeed
+                  value={scene.speed}
+                  onChange={(speed) => patch({ speed })}
+                />
+              }
               onChange={editTriangulation}
               onTarget={(r) => changeNumber({ kind: "rational", value: r })}
               onError={setError}
               onUndo={() => {
                 setPlaying(false);
                 setRectanglePlaying(false);
+                setCoefficientSeekVersion((v) => v + 1);
                 setHistory(undo);
               }}
               onRedo={() => {
                 setPlaying(false);
                 setRectanglePlaying(false);
+                setCoefficientSeekVersion((v) => v + 1);
                 setHistory(redo);
               }}
               canUndo={history.past.length > 0}
@@ -1910,22 +1884,19 @@ export default function App() {
           each side. Both panes use the same exact number and undo history;
           their cameras are independent. Playback controls sit below α and span
           both panes; choose the playback process there when more than one is
-          available. Compatible rectangle pairs always synchronize by
-          coefficient: selecting a coefficient seeks its stage in both panes. In
-          other pairs, selection highlights its counterpart; use “Seek selected
-          run” to move the point.
+          available. Click a coefficient to jump to its corresponding part in
+          both panes. One coefficient can contain several individual flips, or
+          none after the initial and terminal adjustments.
         </p>
         <p>
-          Hyperbolic views share trajectory time. Rectangle playback advances
-          Euclidean stages. When paired with Poincare Disk, marked edge flips,
-          or any other hyperbolic view, each stage automatically plays its
-          corresponding run of crossings. Both panes then share play/pause,
-          stage stepping, reverse, and a run progress slider. Zero-crossing
-          stages hold the point; a display limit is explicitly incomplete. All
-          flip paths follow α; compatible views automatically synchronize their
-          playback with rectangle stages. Canonical tangle regions can link to
-          coefficients; custom signed constructions retain their own operations.
-          A finite tangle for an irrational uses a labeled convergent.
+          Play moves continuously through the displayed sequence and bounces at
+          each end until paused. Speed sits beside the playback buttons.
+          Hyperbolic views share the moving point; rectangle groups and
+          canonical tangle regions follow the highlighted coefficient. The point
+          keeps moving even when a coefficient has no flips. A display limit
+          does not mean an irrational expansion terminates. Custom signed
+          tangles retain their own operations; an irrational tangle uses a
+          labeled convergent.
         </p>
         <h3>Follow a hyperbolic trajectory</h3>
         <p>

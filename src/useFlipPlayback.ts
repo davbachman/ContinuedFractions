@@ -1,3 +1,4 @@
+import { advanceBounce } from "./math/playback";
 import { useEffect, useRef } from "react";
 import type { TriangulationState } from "./math/triangulation";
 import { coefficientAtTime } from "./math/coefficientTimeline";
@@ -12,12 +13,16 @@ export function useFlipPlayback(
   onFrame: (time: number, term: number) => void,
   onStop: () => void,
 ) {
+  const direction = useRef<1 | -1>(1);
+  useEffect(() => {
+    direction.current = 1;
+  }, [state.steps]);
   const latest = useRef({ time, onFrame, onStop });
   latest.current = { time, onFrame, onStop };
   useEffect(() => {
     if (!playing) return;
     const end = state.steps.at(-1)?.time;
-    if (end === undefined || latest.current.time >= end) {
+    if (end === undefined || end <= 0) {
       latest.current.onStop();
       return;
     }
@@ -29,14 +34,18 @@ export function useFlipPlayback(
       last = performance.now(),
       current = latest.current.time;
     const tick = (now: number) => {
-      current = Math.min(
+      const next = advanceBounce(
+        current,
+        direction.current,
+        (Math.min(100, now - last) * speed) / 1000,
         end,
-        current + (Math.min(100, now - last) * speed) / 1000,
       );
+      current = next.position;
+      direction.current = next.direction;
       last = now;
-      latest.current.onFrame(current, coefficientAtTime(crossings, current));
-      if (current < end) frame = requestAnimationFrame(tick);
-      else latest.current.onStop();
+      const shown = next.boundary ?? current;
+      latest.current.onFrame(shown, coefficientAtTime(crossings, shown));
+      frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);

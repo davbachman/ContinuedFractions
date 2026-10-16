@@ -1,3 +1,4 @@
+import { advanceBounce } from "./math/playback";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceProps } from "./Workspace";
 import { targetItinerary } from "./math/triangulation";
@@ -26,6 +27,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
   const latest = useRef(props);
   latest.current = props;
   const current = useRef(position);
+  const direction = useRef<1 | -1>(1);
   const stage = stages[position.term];
   const pause = () => setPlaying(false);
   const publish = (time: number, term: number) => {
@@ -60,6 +62,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
         return;
     }
     pending.current = [];
+    direction.current = 1;
     setPlaying(false);
     const time = props.scene.time;
     const contains = (s: (typeof stages)[number]) =>
@@ -89,6 +92,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     if (props.playing || props.rectangle.playing) setPlaying(false);
   }, [props.playing, props.rectangle.playing]);
   const seek = (term: number, progress = 0) => {
+    direction.current = 1;
     setPlaying(false);
     props.onPause();
     if (term >= stages.length) {
@@ -112,32 +116,25 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
       const elapsed = Math.min(100, now - last);
       last = now;
       const at = current.current;
-      const reverse = latest.current.reverse;
-      const progress = Math.max(
-        0,
-        Math.min(
-          1,
-          sequenceProgress(stages, at) +
-            ((reverse ? -1 : 1) * elapsed * latest.current.scene.speed) /
-              duration,
-        ),
+      const nextFrame = advanceBounce(
+        sequenceProgress(stages, at),
+        direction.current,
+        (elapsed * latest.current.scene.speed) / duration,
+        1,
       );
-      // Advance on the shared time axis, carrying elapsed time across every
-      // coefficient boundary instead of discarding the remainder of a frame.
-      current.current = sequencePosition(stages, progress);
-      const boundary = reverse ? progress === 0 : progress === 1;
+      direction.current = nextFrame.direction;
+      current.current = sequencePosition(stages, nextFrame.position);
+      const boundary = nextFrame.boundary !== undefined;
       if (now - drawn >= 45 || boundary || current.current.term !== at.term) {
         drawn = now;
-        const next = current.current;
+        const next = boundary
+          ? sequencePosition(stages, nextFrame.boundary!)
+          : current.current;
         setPosition(next);
         publish(
           stageFrame(stages[next.term], next.progress, reduced).time,
           next.term,
         );
-      }
-      if (boundary) {
-        setPlaying(false);
-        return;
       }
       frame = requestAnimationFrame(tick);
     };
@@ -147,16 +144,6 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
   const toggle = () => {
     if (!stage) return;
     props.onPause();
-    if (!playing) {
-      if (props.reverse && position.progress === 0 && position.term === 0)
-        seek(stages.length - 1, 1);
-      else if (
-        !props.reverse &&
-        position.progress === 1 &&
-        position.term === stages.length - 1
-      )
-        seek(0);
-    }
     setPlaying(!playing);
   };
   return {

@@ -312,8 +312,7 @@ test("H² playback and seeking drive follow-target flips in both directions", as
   await expect(
     button(page.locator(".shared-playback"), "Play trajectory"),
   ).toBeVisible();
-  await clock.fill("3");
-  await page.getByLabel("Reverse", { exact: true }).check();
+  await clock.fill("12");
   await button(page.locator(".shared-playback"), "Play trajectory").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0", {
     timeout: 4000,

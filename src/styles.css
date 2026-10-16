@@ -576,13 +576,6 @@ svg[data-rotation]:focus-visible {
   font-size: 10px;
   background: #f5f6ef;
 }
-.reverse-control {
-  font-size: 10px;
-  color: #86927b;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 .motion-note {
   display: flex;
   align-items: center;
@@ -1229,9 +1222,6 @@ footer a {
   }
   .speed-controls {
     gap: 7px;
-  }
-  .reverse-control {
-    font-size: 9px;
   }
   .play-controls {
     gap: 7px;
@@ -3281,5 +3271,27 @@ svg[data-rotation] * {
   }
   .shared-playback .playback-row > .pane-scrubber input {
     min-width: 0;
+  }
+}
+
+.playback-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.shared-playback .playback-row > .workspace-actions .playback-speed {
+  order: 3;
+  margin-left: 6px;
+}
+.playback-speed select {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .shared-playback .playback-row > .workspace-actions .playback-speed {
+    grid-column: 1 / -1;
+    justify-self: end;
+    margin-left: 0;
   }
 }

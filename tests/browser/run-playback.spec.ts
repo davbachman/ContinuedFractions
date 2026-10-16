@@ -225,7 +225,7 @@ test("smooth run playback traverses multiple crossings and reverses without chan
   await page
     .getByRole("button", { name: "Pause linked playback", exact: true })
     .click();
-  await page.getByLabel("Reverse linked playback", { exact: true }).check();
+  await clock(page).fill("1");
   await page
     .getByRole("button", { name: "Play linked playback", exact: true })
     .click();
@@ -233,9 +233,11 @@ test("smooth run playback traverses multiple crossings and reverses without chan
     timeout: 6000,
   });
   await expect(
-    page.getByRole("button", { name: "Play linked playback", exact: true }),
-  ).toBeVisible({ timeout: 6000 });
-  await expect(clock(page)).toHaveValue("0");
+    page.getByRole("button", { name: "Pause linked playback", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Pause linked playback", exact: true })
+    .click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("1/7");
 });
 
@@ -320,15 +322,13 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
   await page.getByRole("button", { name: "Restart linked playback" }).click();
   await page.getByText("Linked playback options", { exact: true }).click();
   await page.getByLabel("Linked playback speed").selectOption("2");
-  for (const reverse of [false, true]) {
-    if (reverse)
-      await page.getByLabel("Reverse linked playback", { exact: true }).check();
-    await page
-      .getByRole("button", { name: "Play linked playback", exact: true })
-      .click();
+  await page
+    .getByRole("button", { name: "Play linked playback", exact: true })
+    .click();
+  for (const reverse of [false, true, false]) {
     let previous = reverse ? 1 : 0;
     const seen = new Set<number>();
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 24; i++) {
       await page.clock.runFor(250);
       const progress = Number(await clock(page).inputValue());
       if (reverse) expect(progress).toBeLessThanOrEqual(previous);
@@ -341,9 +341,12 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
       ).toBeVisible();
     }
     expect([...seen].sort()).toEqual([0, 1, 2, 3, 4]);
-    await expect(clock(page)).toHaveValue(reverse ? "0" : "1");
+    // The shared display is throttled to 45 ms, including the turning frame.
+    expect(
+      Math.abs(Number(await clock(page).inputValue()) - (reverse ? 0 : 1)),
+    ).toBeLessThan(0.009);
     await expect(
-      page.getByRole("button", { name: "Play linked playback", exact: true }),
+      page.getByRole("button", { name: "Pause linked playback", exact: true }),
     ).toBeVisible();
   }
   await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
@@ -383,28 +386,23 @@ for (const view of ["h2", "farey"]) {
     const session = await page.context().newCDPSession(page);
     await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
     for (const reverse of [false, true]) {
-      if (reverse)
-        await page
-          .getByLabel("Reverse linked playback", { exact: true })
-          .check();
-      else
-        await page
-          .getByRole("button", { name: "Restart linked playback" })
-          .click();
+      await clock(page).fill(reverse ? "1" : "0");
       await play.click();
-      await expect(diagram(page)).toHaveAttribute("data-stage", "1", {
-        timeout: 30000,
-      });
+      // Sample faster than this short coefficient interval. Default polling
+      // can miss the return pass and observe a1 on the next outward pass.
+      await expect
+        .poll(() => diagram(page).getAttribute("data-stage"), {
+          intervals: [50],
+          timeout: 30000,
+        })
+        .toBe("1");
       const before = await time();
       await page.waitForTimeout(180);
       const after = await time();
       if (reverse) expect(after).toBeLessThan(before);
       else expect(after).toBeGreaterThan(before);
       await expect(pause).toBeVisible();
-      await expect(clock(page)).toHaveValue(reverse ? "0" : "1", {
-        timeout: 20000,
-      });
-      await expect(play).toBeVisible();
+      await pause.click();
     }
     await session.send("Emulation.setCPUThrottlingRate", { rate: 1 });
     await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/20");
@@ -428,9 +426,7 @@ for (const alpha of ["13/20", "5/13"]) {
       await page
         .getByLabel("Linked playback speed")
         .selectOption(String(speed));
-      await page
-        .getByLabel("Reverse linked playback", { exact: true })
-        .setChecked(reverse);
+      await clock(page).fill(reverse ? "1" : "0");
       await page
         .getByRole("button", { name: "Play linked playback", exact: true })
         .click();
@@ -448,17 +444,21 @@ for (const alpha of ["13/20", "5/13"]) {
           Math.abs(Number(await clock(page).inputValue()) - expectedTime / 12),
         ).toBeLessThan(0.006 * speed);
       }
-      await page.clock.runFor(100);
-      await expect(clock(page)).toHaveValue(reverse ? "0" : "1");
       await expect(
-        page.getByRole("button", { name: "Play linked playback", exact: true }),
+        page.getByRole("button", {
+          name: "Pause linked playback",
+          exact: true,
+        }),
       ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Pause linked playback", exact: true })
+        .click();
     }
     await expect(page.getByLabel("ENDPOINT α")).toHaveValue(alpha);
   });
 }
 
-test("2/7 completes exactly and Play restarts from the beginning", async ({
+test("2/7 at the endpoint starts inward without jumping to the beginning", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -475,7 +475,7 @@ test("2/7 completes exactly and Play restarts from the beginning", async ({
     .getByRole("button", { name: "Play linked playback", exact: true })
     .click();
   await page.clock.runFor(500);
-  expect(Number(await clock(page).inputValue())).toBeGreaterThan(0.03);
-  expect(Number(await clock(page).inputValue())).toBeLessThan(0.05);
-  await expect(diagram(page)).toHaveAttribute("data-stage", "0");
+  expect(Number(await clock(page).inputValue())).toBeGreaterThan(0.95);
+  expect(Number(await clock(page).inputValue())).toBeLessThan(0.97);
+  await expect(diagram(page)).toHaveAttribute("data-stage", "2");
 });

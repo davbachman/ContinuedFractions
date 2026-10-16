@@ -36,6 +36,19 @@ for (const [left, right, clock, play, reset] of [
         name: /^(Play|Pause|Restart) (trajectory|linked playback|flips|dissection)$/,
       }),
     ).toHaveCount(0);
+    const speedControl = nav.getByRole("combobox", { name: /playback speed/i });
+    await expect(speedControl).toBeVisible();
+    await expect(page.getByLabel(/^Reverse/)).toHaveCount(0);
+    const speedBox = (await speedControl.boundingBox())!;
+    const lastButton = (await nav
+      .getByRole("button", { name: /^Next/ })
+      .boundingBox())!;
+    if (info.project.name === "desktop")
+      expect(speedBox.x).toBeGreaterThan(lastButton.x + lastButton.width);
+    else
+      expect(speedBox.y).toBeGreaterThanOrEqual(
+        lastButton.y + lastButton.height,
+      );
     const alpha = (await page.locator(".comparison-strip").boundingBox())!;
     const bar = (await nav.boundingBox())!;
     const panes = (await page.locator(".comparison-grid").boundingBox())!;
