@@ -359,17 +359,22 @@ export function CFBraid({
       )}
       {!infinite && (
         <>
-          <div className="braid-controls">
-            <button disabled={!selected} onClick={() => onSelect(selected - 1)}>
-              Previous coefficient
-            </button>
-            <button
-              disabled={selected >= coefficients.length - 1}
-              onClick={() => onSelect(selected + 1)}
-            >
-              Next coefficient
-            </button>
-          </div>
+          {!sharedControls && (
+            <div className="braid-controls">
+              <button
+                disabled={!selected}
+                onClick={() => onSelect(selected - 1)}
+              >
+                Previous coefficient
+              </button>
+              <button
+                disabled={selected >= coefficients.length - 1}
+                onClick={() => onSelect(selected + 1)}
+              >
+                Next coefficient
+              </button>
+            </div>
+          )}
           {!sharedControls && (
             <form
               className="braid-edit"

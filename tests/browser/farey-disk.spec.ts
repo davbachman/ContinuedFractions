@@ -15,7 +15,7 @@ test("point-centered disk moves continuously with H² and preserves colors, froz
     right = pane(page, "Right"),
     svg = disk(page);
   const point = svg.locator("[data-moving-disk-point]");
-  const scrub = left.getByRole("slider", { name: "Scrub trajectory" });
+  const scrub = page.getByRole("slider", { name: "Scrub trajectory" });
   const outline = svg.locator("[data-current-farey-triangle]");
   await expect(
     left.getByRole("img", { name: /Upper half-plane/ }),
@@ -75,13 +75,13 @@ test("disk trajectory playback shares the H² clock and pauses", async ({
 }) => {
   const right = pane(page, "Right"),
     svg = disk(page);
-  await pane(page, "Left")
+  await page
     .getByRole("button", { name: "Play trajectory", exact: true })
     .click();
   await expect
     .poll(async () => Number(await svg.getAttribute("data-time")))
     .toBeGreaterThan(0.05);
-  await pane(page, "Left")
+  await page
     .getByRole("button", { name: "Pause trajectory", exact: true })
     .click();
   const paused = await svg.getAttribute("data-time");
@@ -89,12 +89,10 @@ test("disk trajectory playback shares the H² clock and pauses", async ({
   await expect(svg).toHaveAttribute("data-time", paused!);
   expect(
     Number(
-      await pane(page, "Left")
-        .getByRole("slider", { name: "Scrub trajectory" })
-        .inputValue(),
+      await page.getByRole("slider", { name: "Scrub trajectory" }).inputValue(),
     ),
   ).toBeCloseTo(Number(paused), 3);
-  await pane(page, "Left")
+  await page
     .getByRole("button", { name: "Restart trajectory", exact: true })
     .click();
   await expect(svg).toHaveAttribute("data-time", "0");
@@ -151,7 +149,7 @@ test("triangle fills stay fixed across crossings and agree in H², the disk, and
   [228, 191, 102, 77].forEach((channel, i) =>
     expect(Math.abs(gold[i] - channel)).toBeLessThanOrEqual(2),
   );
-  await left.getByRole("slider", { name: "Scrub trajectory" }).fill("2");
+  await page.getByRole("slider", { name: "Scrub trajectory" }).fill("2");
   await expect(disk(page)).toHaveAttribute("data-triangle-color", "#a65732");
   await expect(initialCell).toHaveAttribute("fill", "#e4bf66");
   expect(await sample()).toEqual(gold);
@@ -193,11 +191,11 @@ test("triangle fills stay fixed across crossings and agree in H², the disk, and
       fixed.set(id, fill);
     }
     if (step < 5)
-      await right
+      await page
         .getByRole("button", { name: "Next flip step", exact: true })
         .click();
   }
-  await right
+  await page
     .getByRole("button", { name: "Previous flip step", exact: true })
     .click();
   const beforeEdit = await square.getAttribute("data-triangle-color");
@@ -226,7 +224,7 @@ test("traveled trail ends at the moving point and retraces under either camera",
 }, info) => {
   const svg = disk(page),
     right = pane(page, "Right");
-  const scrub = pane(page, "Left").getByRole("slider", {
+  const scrub = page.getByRole("slider", {
     name: "Scrub trajectory",
   });
   const trail = svg.locator("[data-disk-trail]");

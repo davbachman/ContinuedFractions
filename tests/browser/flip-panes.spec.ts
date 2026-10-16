@@ -17,21 +17,22 @@ test("visible restart and coefficient following synchronize both flip panes with
     page.locator(`.comparison-coefficients [data-coefficient="${i}"]`);
   await coefficient(3, 1).click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await expect(button(right, "Go to selected coefficient")).toContainText(
-    "Go to a3 = 1",
-  );
-  await button(right, "Go to selected coefficient").click();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 4 / 5");
-  await right
-    .getByLabel("Follow selected coefficient", { exact: true })
-    .check();
   await expect(
-    right.getByLabel("Follow selected coefficient", { exact: true }),
+    button(page.locator(".shared-playback"), "Go to selected coefficient"),
+  ).toContainText("Go to a3 = 1");
+  await button(
+    page.locator(".shared-playback"),
+    "Go to selected coefficient",
+  ).click();
+  await expect(right.getByTestId("flip-status")).toContainText("Step 4 / 5");
+  await page.getByLabel("Follow selected coefficient", { exact: true }).check();
+  await expect(
+    page.getByLabel("Follow selected coefficient", { exact: true }),
   ).toBeChecked();
   await coefficient(1, 2).click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
   await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
-  await button(right, "Restart flips").click();
+  await button(page.locator(".shared-playback"), "Restart flips").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await expect(coefficient(0, 0)).toHaveValue("0");
   await page
@@ -42,12 +43,16 @@ test("visible restart and coefficient following synchronize both flip panes with
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await button(right, "Play flips").click();
-  await expect(button(right, "Pause flips")).toBeVisible();
-  await button(right, "Restart flips").click();
-  await expect(button(right, "Play flips")).toBeVisible();
+  await button(page.locator(".shared-playback"), "Play flips").click();
+  await expect(
+    button(page.locator(".shared-playback"), "Pause flips"),
+  ).toBeVisible();
+  await button(page.locator(".shared-playback"), "Restart flips").click();
+  await expect(
+    button(page.locator(".shared-playback"), "Play flips"),
+  ).toBeVisible();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await right
+  await page
     .getByLabel("Follow selected coefficient", { exact: true })
     .uncheck();
   await coefficient(3, 1).click();
@@ -68,9 +73,7 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
-  await right
-    .getByLabel("Follow selected coefficient", { exact: true })
-    .check();
+  await page.getByLabel("Follow selected coefficient", { exact: true }).check();
   await page.locator('.comparison-coefficients [data-coefficient="1"]').click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 1");
   await expect(right).toContainText("no flip after the boundary offsets");
@@ -79,35 +82,41 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
   ).toHaveValue("1");
   expect(
     Number(
-      await left.getByRole("slider", { name: "Scrub trajectory" }).inputValue(),
+      await page.getByRole("slider", { name: "Scrub trajectory" }).inputValue(),
     ),
   ).toBeGreaterThan(0);
-  await button(right, "Restart flips").click();
+  await button(page.locator(".shared-playback"), "Restart flips").click();
   await expect(
-    left.getByRole("slider", { name: "Scrub trajectory" }),
+    page.getByRole("slider", { name: "Scrub trajectory" }),
   ).toHaveValue("0");
   await page.getByLabel("ENDPOINT α").fill("[0; 1000000, 1, 2]");
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
-  await expect(button(right, "Go to selected coefficient")).toBeDisabled();
-  await expect(right).toContainText("beyond the generated flip path");
+  await expect(
+    button(page.locator(".shared-playback"), "Go to selected coefficient"),
+  ).toBeDisabled();
+  await expect(page.locator(".shared-playback")).toContainText(
+    "beyond the generated flip path",
+  );
   await expect(right.getByTestId("flip-status")).toContainText("Step 0");
   await page.getByLabel("ENDPOINT α").fill("3");
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
-  await button(right, "Restart flips").click();
+  await button(page.locator(".shared-playback"), "Restart flips").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 0");
   await page.getByLabel("ENDPOINT α").fill("infinity");
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   await expect(
-    right.getByLabel("Follow selected coefficient", { exact: true }),
-  ).toBeDisabled();
-  await expect(button(right, "Go to selected coefficient")).toBeDisabled();
+    page.getByLabel("Follow selected coefficient", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    button(page.locator(".shared-playback"), "Go to selected coefficient"),
+  ).toHaveCount(0);
 });
 test("paired Farey and square panes share following, coefficient runs and playback", async ({
   page,
@@ -149,7 +158,7 @@ test("paired Farey and square panes share following, coefficient runs and playba
   await expect(
     page.getByRole("button", { name: "Manual flips", exact: true }),
   ).toHaveCount(0);
-  await button(right, "Next flip step").click();
+  await button(page.locator(".shared-playback"), "Next flip step").click();
   await expect(farey).toHaveAttribute(
     "data-slopes",
     (await square.getAttribute("data-slopes")) as string,
@@ -157,34 +166,43 @@ test("paired Farey and square panes share following, coefficient runs and playba
   await expect(right.getByTestId("flip-run-caption")).toContainText(
     "Initial crossing",
   );
-  await button(right, "Next flip step").click();
+  await button(page.locator(".shared-playback"), "Next flip step").click();
   await expect(right.getByTestId("flip-run-caption")).toContainText(
     "a1 = 2 · L run · 1 of 1",
   );
   await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
   await expect(left.locator('[data-selected-run="3"]')).toHaveCount(1);
   await expect(right.getByTestId("flip-status")).toContainText("Step 2");
-  await button(right, "Go to selected coefficient").click();
+  await button(
+    page.locator(".shared-playback"),
+    "Go to selected coefficient",
+  ).click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 4");
-  await button(right, "Previous flip step").click();
+  await button(page.locator(".shared-playback"), "Previous flip step").click();
   // Freeze the animation clock while scrolling between stacked mobile panes.
   // Advance it explicitly so terminal playback cannot race the Pause click.
   const playbackStart = new Date("2026-01-01T00:00:00Z");
   await page.clock.install({ time: playbackStart });
   await page.clock.pauseAt(playbackStart);
-  await button(right, "Play flips").click();
-  await expect(button(right, "Pause flips")).toBeVisible();
+  await button(page.locator(".shared-playback"), "Play flips").click();
+  await expect(
+    button(page.locator(".shared-playback"), "Pause flips"),
+  ).toBeVisible();
   await page.clock.runFor(1500);
   await expect(right.getByTestId("flip-status")).toContainText("Step 4", {
     timeout: 4000,
   });
-  await button(right, "Pause flips").click();
-  await expect(button(right, "Play flips")).toBeVisible();
-  await button(right, "Next flip step").click();
+  await button(page.locator(".shared-playback"), "Pause flips").click();
+  await expect(
+    button(page.locator(".shared-playback"), "Play flips"),
+  ).toBeVisible();
+  await button(page.locator(".shared-playback"), "Next flip step").click();
   await expect(right.getByTestId("flip-status")).toContainText(
     "Terminal triangle",
   );
-  await expect(button(right, "Next flip step")).toBeDisabled();
+  await expect(
+    button(page.locator(".shared-playback"), "Next flip step"),
+  ).toBeDisabled();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page
     .locator(".comparison-grid")
@@ -232,7 +250,7 @@ test("target-path navigation works from either pane; the square stays visible an
     "Next path step via Farey triangle replacing ∞ with 1/2",
   ).click();
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
-  await button(right, "Previous flip step").click();
+  await button(page.locator(".shared-playback"), "Previous flip step").click();
   await expect(
     left.getByRole("group", {
       name: "Poincare Disk",
@@ -256,11 +274,13 @@ test("target-path navigation works from either pane; the square stays visible an
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();
   await expect(square).toHaveAttribute("data-slopes", "0 | ∞ | 1");
-  await button(right, "Next flip step").focus();
+  await button(page.locator(".shared-playback"), "Next flip step").focus();
   await page.keyboard.press("Enter");
   await expect(square).toHaveAttribute("data-slopes", "0 | 1/2 | 1");
-  await right.getByText("Flip history", { exact: true }).click();
-  await expect(button(right, "Extend flip itinerary")).toHaveCount(0);
+  await page.getByText("Flip history", { exact: true }).click();
+  await expect(
+    button(page.locator(".shared-playback"), "Extend flip itinerary"),
+  ).toHaveCount(0);
   await left.locator(".triangulation-panel").screenshot({
     path: `test-results/${info.project.name}-farey-history.png`,
   });
@@ -286,38 +306,50 @@ test("H² playback and seeking drive follow-target flips in both directions", as
     left.getByRole("img", { name: /Upper half-plane/ }),
   ).toHaveAttribute("data-triangulation", "0 | ∞ | 1");
   await left.getByText("More layers", { exact: true }).click();
-  await button(right, "Next flip step").click();
-  const clock = left.getByRole("slider", { name: "Scrub trajectory" });
+  await button(page.locator(".shared-playback"), "Next flip step").click();
+  const clock = page.getByRole("slider", { name: "Scrub trajectory" });
   expect(Number(await clock.inputValue())).toBeGreaterThan(0);
   await clock.fill("0");
   await expect(right.getByTestId("flip-status")).toContainText("Step 0");
-  await left.getByText("Playback options & events", { exact: true }).click();
-  await left.getByLabel("Playback speed", { exact: true }).selectOption("4");
-  await button(left, "Play trajectory").click();
+  await page.getByLabel("Playback process").selectOption("trajectory");
+  await page.getByText("Playback options & events", { exact: true }).click();
+  await page.getByLabel("Playback speed", { exact: true }).selectOption("4");
+  await button(page.locator(".shared-playback"), "Play trajectory").click();
   await expect(right.getByTestId("flip-status")).not.toContainText("Step 0", {
     timeout: 4000,
   });
-  await button(left, "Pause trajectory").click();
-  await expect(button(right, "Play flips")).toBeVisible();
+  await button(page.locator(".shared-playback"), "Pause trajectory").click();
+  await expect(
+    button(page.locator(".shared-playback"), "Play trajectory"),
+  ).toBeVisible();
   await clock.fill("3");
-  await left.getByLabel("Reverse", { exact: true }).check();
-  await button(left, "Play trajectory").click();
+  await page.getByLabel("Reverse", { exact: true }).check();
+  await button(page.locator(".shared-playback"), "Play trajectory").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0", {
     timeout: 4000,
   });
-  if (await button(left, "Pause trajectory").isVisible())
-    await button(left, "Pause trajectory").click();
+  if (
+    await button(
+      page.locator(".shared-playback"),
+      "Pause trajectory",
+    ).isVisible()
+  )
+    await button(page.locator(".shared-playback"), "Pause trajectory").click();
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page.getByLabel("ENDPOINT α").fill("phi");
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
-  const before = await right.locator(".flip-history button").count();
+  const stepCount = async () =>
+    Number(
+      (await right.getByTestId("flip-status").textContent())!.match(
+        /Step \d+ \/ (\d+)/,
+      )![1],
+    );
+  const before = await stepCount();
 
-  await button(left, "Extend depth +4").click();
-  await expect
-    .poll(() => right.locator(".flip-history button").count())
-    .toBeGreaterThan(before);
+  await button(page.locator(".shared-playback"), "Extend depth +4").click();
+  await expect.poll(stepCount).toBeGreaterThan(before);
 });
 
 test("typed α, coefficient edits, rectangle resize and undo rebuild the same automatic path", async ({
@@ -335,7 +367,7 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   await expect(farey).toHaveAttribute("data-slopes", "2 | ∞ | 3");
-  await button(right, "Next crossing").click();
+  await button(page.locator(".shared-playback"), "Next crossing").click();
   const advanced = await farey.getAttribute("data-slopes");
   await page.locator('.comparison-coefficients [data-coefficient="0"]').click();
   await page.getByLabel("Edit coefficient a0", { exact: true }).fill("4");

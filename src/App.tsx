@@ -1880,10 +1880,11 @@ export default function App() {
         <p>
           Edit α beside the coefficient strip and choose a representation on
           each side. Both panes use the same exact number and undo history;
-          their cameras are independent. Selecting a coefficient highlights its
-          counterpart without seeking the trajectory, unless coefficient
-          synchronization is enabled. Use “Seek selected run” to move the point
-          in independent mode.
+          their cameras are independent. Playback controls sit below α and span
+          both panes; choose the playback process there when more than one is
+          available. Selecting a coefficient highlights its counterpart without
+          seeking the trajectory, unless coefficient synchronization is enabled.
+          Use “Seek selected run” to move the point in independent mode.
         </p>
         <p>
           Hyperbolic views share trajectory time. Rectangle playback advances

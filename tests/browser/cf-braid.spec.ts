@@ -103,15 +103,13 @@ test("split endings keep coefficient identity and rectangle playback highlights 
   await page
     .getByRole("combobox", { name: "Left representation", exact: true })
     .selectOption("rectangle");
-  await pane(page, "Left")
+  await page
     .getByRole("button", { name: "Restart dissection", exact: true })
     .click();
   await expect(
     braid(page).locator('[data-braid-coefficient="0"]'),
   ).toHaveAttribute("data-selected", "true");
-  await pane(page, "Left")
-    .getByRole("button", { name: "Next stage", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Next stage", exact: true }).click();
   await expect(
     braid(page).locator('[data-braid-coefficient="1"]'),
   ).toHaveAttribute("data-selected", "true");

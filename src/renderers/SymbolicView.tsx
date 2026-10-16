@@ -194,25 +194,27 @@ export function SymbolicView({
           </form>
         )}
       </div>
-      <div className="workspace-actions">
-        <button
-          disabled={selected === 0}
-          onClick={() => onSelect(selected - 1)}
-        >
-          Previous coefficient
-        </button>
-        <button
-          disabled={selected >= coefficients.length - 1}
-          onClick={() => onSelect(selected + 1)}
-        >
-          Next coefficient
-        </button>
-        {spec.kind === "periodic" && (
-          <button onClick={onExtend} disabled={coefficients.length >= 96}>
-            Generate more terms
+      {!sharedControls && (
+        <div className="workspace-actions">
+          <button
+            disabled={selected === 0}
+            onClick={() => onSelect(selected - 1)}
+          >
+            Previous coefficient
           </button>
-        )}
-      </div>
+          <button
+            disabled={selected >= coefficients.length - 1}
+            onClick={() => onSelect(selected + 1)}
+          >
+            Next coefficient
+          </button>
+          {spec.kind === "periodic" && (
+            <button onClick={onExtend} disabled={coefficients.length >= 96}>
+              Generate more terms
+            </button>
+          )}
+        </div>
+      )}
       <details className="workspace-details">
         <summary>Approximation and Farey coding</summary>
         <p>

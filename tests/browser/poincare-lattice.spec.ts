@@ -20,12 +20,12 @@ test("disk layers work independently and its path is exclusive to an edge-flip c
   ).toHaveValue("farey");
   await expect(svg.locator("[data-dual-flip-path]")).toHaveCount(0);
   await expect(
-    right.getByRole("button", { name: "Play flips", exact: true }),
+    page.getByRole("button", { name: "Play flips", exact: true }),
   ).toHaveCount(0);
   await expect(
-    left.getByRole("button", { name: "Play trajectory", exact: true }),
+    page.getByRole("button", { name: "Play trajectory", exact: true }),
   ).toBeVisible();
-  await expect(right.getByRole("button", {name:"Play trajectory",exact:true})).toHaveCount(0);
+  await expect(page.locator(".comparison-pane .pane-transport")).toHaveCount(0);
   await right.getByLabel("Farey edges", { exact: true }).uncheck();
   await expect(svg.locator("[data-disk-farey]")).toHaveCount(0);
   await expect(svg.locator("[data-farey-fills]")).toHaveCount(0);
@@ -64,7 +64,7 @@ test("disk layers work independently and its path is exclusive to an edge-flip c
     );
   }
   for (let i = 0; i < 5; i++)
-    await left
+    await page
       .getByRole("button", { name: "Next flip step", exact: true })
       .click();
   await expect(lattice).toHaveAttribute(
@@ -86,7 +86,7 @@ test("disk layers work independently and its path is exclusive to an edge-flip c
   const h2 = right.getByRole("img", { name: /Upper half-plane/ });
   await expect(h2).toHaveAttribute("data-flip-path", "5");
   await expect(h2).toHaveAttribute("data-flip-cursor", "5");
-  await left
+  await page
     .getByRole("button", { name: "Previous flip step", exact: true })
     .click();
   await expect(h2).toHaveAttribute("data-flip-cursor", "4");
@@ -112,7 +112,7 @@ test("disk cameras, forward and reverse clocks, endpoint drag and undo share the
   const right = pane(page, "Right"),
     left = pane(page, "Left"),
     svg = disk(page);
-  const clock = left.getByRole("slider", { name: "Scrub trajectory" });
+  const clock = page.getByRole("slider", { name: "Scrub trajectory" });
   await clock.fill("2");
   await expect(svg.locator("[data-moving-disk-point]")).toHaveAttribute(
     "cx",

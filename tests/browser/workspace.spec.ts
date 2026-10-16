@@ -88,7 +88,7 @@ test("coefficient inspection highlights folded and 3D quotient runs without seek
     right(page).locator('[data-selected-run="2"]').first(),
   ).toBeVisible();
   await expect(
-    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+    page.getByRole("slider", { name: "Scrub trajectory" }),
   ).toHaveValue("0");
   await right(page)
     .getByRole("button", { name: "Torus 3D", exact: true })
@@ -109,7 +109,7 @@ test("coefficient inspection highlights folded and 3D quotient runs without seek
   await right(page).focus();
   await page.keyboard.press("ArrowRight");
   await expect(
-    right(page).getByRole("slider", { name: "Scrub trajectory" }),
+    page.getByRole("slider", { name: "Scrub trajectory" }),
   ).not.toHaveValue("0");
   await page.locator(".comparison-grid").screenshot({
     path: `test-results/${info.project.name}-comparison-selected-run.png`,
@@ -133,15 +133,13 @@ test("two H² cameras and layers are independent and share trajectory time", asy
   await expect(
     right(page).getByLabel("Ford circles", { exact: true }),
   ).toBeChecked();
-  await left(page)
-    .getByRole("slider", { name: "Scrub trajectory" })
-    .fill("1.2");
+  await page.getByRole("slider", { name: "Scrub trajectory" }).fill("1.2");
   await expect(
-    left(page).getByRole("slider", { name: "Scrub trajectory" }),
+    page.getByRole("slider", { name: "Scrub trajectory" }),
   ).toHaveValue("1.2");
   await expect(
-    right(page).getByRole("slider", { name: "Scrub trajectory" }),
-  ).toHaveCount(0);
+    page.getByRole("slider", { name: "Scrub trajectory" }),
+  ).toHaveValue("1.2");
   await choose(page, "Right", "torus");
   await right(page).getByLabel("Cover lift", { exact: true }).selectOption("3");
   await expect(
@@ -159,15 +157,15 @@ test("rectangle playback leaves hyperbolic time independent and unavailable inpu
   page,
 }) => {
   await choose(page, "Left", "h2");
-  await left(page).getByRole("slider", { name: "Scrub trajectory" }).fill("2");
-  await right(page)
+  await page.getByRole("slider", { name: "Scrub trajectory" }).fill("2");
+  await page.getByLabel("Playback process").selectOption("rectangle");
+  await page
     .getByRole("button", { name: "Restart dissection", exact: true })
     .click();
-  await right(page)
-    .getByRole("button", { name: "Next stage", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Next stage", exact: true }).click();
+  await page.getByLabel("Playback process").selectOption("trajectory");
   await expect(
-    left(page).getByRole("slider", { name: "Scrub trajectory" }),
+    page.getByRole("slider", { name: "Scrub trajectory" }),
   ).toHaveValue("2");
   for (const value of ["0", "-1", "infinity"]) {
     await number(page, value);
@@ -238,7 +236,7 @@ test("Farey flips preserve the target, shared undo works, and layouts survive re
 }) => {
   await choose(page, "Left", "h2");
   await choose(page, "Right", "triangulation");
-  await right(page)
+  await page
     .getByRole("button", { name: "Next flip step", exact: true })
     .click();
   await expect(
@@ -299,7 +297,7 @@ test("Farey crossing highlights obey each pane's Farey edges toggle while seekin
     await region.getByLabel("Trajectory", { exact: true }).uncheck();
     await region.getByLabel("Convergents", { exact: true }).uncheck();
   }
-  const scrub = left(page).getByRole("slider", { name: "Scrub trajectory" });
+  const scrub = page.getByRole("slider", { name: "Scrub trajectory" });
   await scrub.fill("2");
   await page.locator('.comparison-coefficients [data-coefficient="2"]').click();
   await expect.poll(() => highlightPixels(a)).toBeGreaterThan(0);

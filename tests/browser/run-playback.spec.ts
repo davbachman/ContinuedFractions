@@ -33,24 +33,25 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
   await clock(page).fill("0");
   await expect(disk).toHaveAttribute("data-flip-cursor", "1");
   await expect(diagram(page)).toHaveAttribute("data-stage", "1");
+  await page.getByText("Linked playback options", { exact: true }).click();
   await page.getByLabel("Linked playback speed").selectOption("1");
-  await left
+  await page
     .getByRole("button", { name: "Play linked playback", exact: true })
     .click();
   await expect(
-    right.getByRole("button", { name: "Pause linked playback", exact: true }),
+    page.getByRole("button", { name: "Pause linked playback", exact: true }),
   ).toBeVisible();
   await expect(diagram(page)).toHaveAttribute("data-stage", "2", {
     timeout: 5000,
   });
-  await right
+  await page
     .getByRole("button", { name: "Pause linked playback", exact: true })
     .click();
   const stopped = await clock(page).inputValue();
   await page.waitForTimeout(180);
   await expect(clock(page)).toHaveValue(stopped);
   const pausedStage = Number(await diagram(page).getAttribute("data-stage"));
-  await left
+  await page
     .getByRole("button", { name: "Previous linked stage", exact: true })
     .click();
   await expect(diagram(page)).toHaveAttribute(
@@ -102,7 +103,7 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
     await expect(page.getByTestId("linked-run-status")).toContainText(
       "No crossings",
     );
-    const time = pane(page, "Right").getByText(/Linked run · hyperbolic time/);
+    const time = page.getByTestId("linked-time");
     const held = await time.textContent();
     await clock(page).fill("1");
     await expect(time).toHaveText(held!);
@@ -158,7 +159,7 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
         .dispatchEvent("click");
       await expect(link(page)).not.toBeChecked();
       await expect(
-        right.getByRole("button", { name: "Play trajectory", exact: true }),
+        page.getByRole("button", { name: "Play trajectory", exact: true }),
       ).toBeVisible();
       await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/5");
     }
@@ -172,7 +173,7 @@ test("irrational cutoff and large coefficients are incomplete, not terminal", as
   for (const input of ["phi", "sqrt2", "1/10000"]) {
     await number(page, input);
     await link(page).check();
-    const next = pane(page, "Left").getByRole("button", {
+    const next = page.getByRole("button", {
       name: "Next linked stage",
       exact: true,
     });
@@ -197,32 +198,29 @@ test("smooth run playback traverses multiple crossings and reverses without chan
   await page.goto("/?left=rectangle&right=h2");
   await number(page, "1/7");
   await link(page).check();
+  await page.getByText("Linked playback options", { exact: true }).click();
   await page.getByLabel("Linked playback speed").selectOption("2");
   const right = pane(page, "Right");
-  const start = await right
-    .getByText(/Linked run · hyperbolic time/)
-    .textContent();
-  await right
+  const start = await page.getByTestId("linked-time").textContent();
+  await page
     .getByRole("button", { name: "Play linked playback", exact: true })
     .click();
-  await expect(right.getByText(/Linked run · hyperbolic time/)).not.toHaveText(
-    start!,
-  );
+  await expect(page.getByTestId("linked-time")).not.toHaveText(start!);
   await expect(page.getByTestId("linked-run-status")).toContainText(
     /(?:[1-5]) of 5 flips/,
   );
-  await right
+  await page
     .getByRole("button", { name: "Pause linked playback", exact: true })
     .click();
   await page.getByLabel("Reverse linked playback", { exact: true }).check();
-  await right
+  await page
     .getByRole("button", { name: "Play linked playback", exact: true })
     .click();
   await expect(diagram(page)).toHaveAttribute("data-stage", "0", {
     timeout: 6000,
   });
   await expect(
-    right.getByRole("button", { name: "Play linked playback", exact: true }),
+    page.getByRole("button", { name: "Play linked playback", exact: true }),
   ).toBeVisible({ timeout: 6000 });
   await expect(clock(page)).toHaveValue("0");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("1/7");
@@ -234,9 +232,9 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
   await page.goto("/?left=rectangle&right=tangle");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
-  await left.getByRole("button", { name: "Next stage", exact: true }).click();
-  await left.getByRole("button", { name: "Next stage", exact: true }).click();
-  await left.getByRole("button", { name: "Next stage", exact: true }).click();
+  await page.getByRole("button", { name: "Next stage", exact: true }).click();
+  await page.getByRole("button", { name: "Next stage", exact: true }).click();
+  await page.getByRole("button", { name: "Next stage", exact: true }).click();
   await page
     .getByRole("combobox", { name: "Right representation", exact: true })
     .selectOption("tangle");
@@ -249,7 +247,7 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
   await expect(
     right.locator('path[data-active-region="true"]').first(),
   ).toHaveAttribute("opacity", "1");
-  await left
+  await page
     .getByRole("button", { name: "Previous stage", exact: true })
     .click();
   await expect(right.getByTestId("tangle-run-focus")).toContainText(
@@ -258,7 +256,7 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
   await page
     .locator(".comparison-grid")
     .screenshot({ path: `test-results/${info.project.name}-tangle-step.png` });
-  await left
+  await page
     .getByRole("button", { name: "Restart dissection", exact: true })
     .click();
   await expect(right.getByTestId("tangle-run-focus")).toContainText(

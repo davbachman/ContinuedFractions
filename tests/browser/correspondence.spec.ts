@@ -36,7 +36,7 @@ test("edge inspection is shared while the flip pair has one transport", async ({
     "4",
   );
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
-  await pane(page, "Right")
+  await page
     .getByRole("button", { name: "Next flip step", exact: true })
     .click();
   for (const side of ["Left", "Right"])

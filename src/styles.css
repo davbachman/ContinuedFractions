@@ -3152,3 +3152,97 @@ svg[data-rotation] * {
 .pane-transport .workspace-actions > button {
   min-width: 44px;
 }
+
+/* One navigation area owns both panes; camera controls stay with each model. */
+.shared-playback {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #d8dfd0;
+  border-radius: 7px;
+  background: #f4f6ee;
+  min-width: 0;
+}
+.shared-playback-heading {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.shared-playback-heading label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shared-playback select {
+  max-width: 100%;
+  border: 1px solid #cbd5c0;
+  border-radius: 5px;
+  background: #fffef9;
+  padding: 6px 8px;
+}
+.shared-playback .pane-transport {
+  padding: 0;
+  border: 0;
+}
+.shared-playback .pane-transport > .workspace-actions,
+.shared-playback .tangle-controls,
+.shared-playback .linked-transport {
+  padding: 0;
+  margin: 0 0 8px;
+}
+.shared-playback button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.shared-playback button svg {
+  flex-shrink: 0;
+}
+.shared-playback .pane-scrubber {
+  padding: 0;
+  margin: 8px 0;
+}
+.shared-playback .workspace-details,
+.shared-playback .flip-details {
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+}
+.shared-playback .run-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  margin: 0 0 8px;
+}
+.shared-playback .run-link > label:first-child {
+  margin-bottom: 8px;
+}
+.shared-playback .pane-events,
+.shared-playback .flip-history {
+  max-height: 190px;
+  overflow-y: auto;
+}
+@media (min-width: 761px) {
+  .shared-playback .pane-transport {
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr);
+    column-gap: 24px;
+    align-items: center;
+  }
+  .shared-playback .pane-transport > details {
+    grid-column: 1 / -1;
+  }
+}
+
+.shared-playback .linked-transport {
+  display: flex;
+}
+.shared-playback .linked-transport .primary-action {
+  grid-column: auto;
+  grid-row: auto;
+}
+.shared-playback .run-link {
+  font-size: 12px;
+}
+.shared-playback .run-link > label:first-child {
+  font-weight: 400;
+}
+.shared-playback .run-link .pane-scrubber {
+  font-size: 11px;
+}
