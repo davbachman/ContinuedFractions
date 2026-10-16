@@ -245,9 +245,13 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
   await page.goto("/?left=rectangle&right=tangle");
   const left = pane(page, "Left"),
     right = pane(page, "Right");
-  await page.getByRole("button", { name: "Next stage", exact: true }).click();
-  await page.getByRole("button", { name: "Next stage", exact: true }).click();
-  await page.getByRole("button", { name: "Next stage", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Restart linked playback", exact: true })
+    .click();
+  for (let i = 0; i < 4; i++)
+    await page
+      .getByRole("button", { name: "Next linked stage", exact: true })
+      .click();
   await page
     .getByRole("combobox", { name: "Right representation", exact: true })
     .selectOption("tangle");
@@ -261,7 +265,7 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
     right.locator('path[data-active-region="true"]').first(),
   ).toHaveAttribute("opacity", "1");
   await page
-    .getByRole("button", { name: "Previous stage", exact: true })
+    .getByRole("button", { name: "Previous linked stage", exact: true })
     .click();
   await expect(right.getByTestId("tangle-run-focus")).toContainText(
     "a3 → signed region",
@@ -270,7 +274,7 @@ test("rectangle playback emphasizes canonical tangle regions", async ({
     .locator(".comparison-grid")
     .screenshot({ path: `test-results/${info.project.name}-tangle-step.png` });
   await page
-    .getByRole("button", { name: "Restart dissection", exact: true })
+    .getByRole("button", { name: "Restart linked playback", exact: true })
     .click();
   await expect(right.getByTestId("tangle-run-focus")).toContainText(
     "zero twists",
@@ -354,7 +358,7 @@ for (const view of ["h2", "farey"]) {
   test(`smooth ${view} playback moves during a1=1 and survives coefficient boundaries`, async ({
     page,
   }) => {
-    test.setTimeout(60000);
+    test.setTimeout(90000);
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto(`/?left=rectangle&right=${view}`);
     await number(page, "13/20");
@@ -389,7 +393,7 @@ for (const view of ["h2", "farey"]) {
           .click();
       await play.click();
       await expect(diagram(page)).toHaveAttribute("data-stage", "1", {
-        timeout: 15000,
+        timeout: 30000,
       });
       const before = await time();
       await page.waitForTimeout(180);

@@ -29,15 +29,15 @@ test("visible restart and coefficient following synchronize both flip panes with
     page.getByLabel("Follow selected coefficient", { exact: true }),
   ).toHaveCount(0);
   await coefficient(1, 2).click();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
-  await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 1 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 1 / 5");
   await button(page.locator(".shared-playback"), "Restart flips").click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
   await expect(coefficient(0, 0)).toHaveValue("0");
   await page
     .getByRole("button", { name: "Undo number edit", exact: true })
     .click();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 1 / 5");
   await page
     .getByRole("button", { name: "Redo number edit", exact: true })
     .click();

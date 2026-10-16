@@ -1,3 +1,4 @@
+import { visualColors, DOMAIN_FILL_OPACITY } from "./visualColors";
 import type { DomainFocus } from "./domainFocus";
 import type { SelectedRun } from "./selectedRun";
 import {
@@ -55,7 +56,7 @@ export function HalfPlane({
   selectedEdge,
   scene,
   torusLift,
-  colorFarey = false,
+  colorFarey = true,
   triangulation,
   flipPath,
   onFlipTriangle,
@@ -188,7 +189,7 @@ export function HalfPlane({
       max = toWorld(size.width);
     const geometry = visibleFarey(min, max, scale);
     const tiles =
-      (torusLift === undefined && !domainFocus) || colorFarey
+      torusLift === undefined && !domainFocus
         ? []
         : visibleTorusDomains(
             geometry,
@@ -205,7 +206,7 @@ export function HalfPlane({
     ctx.rect(0, 0, size.width, bottom);
     ctx.clip();
     const triangles =
-      colorFarey && scene.overlays.farey
+      colorFarey && torusLift === undefined && scene.overlays.farey
         ? visibleFareyTriangles(geometry, min, max)
         : [];
     node.dataset.fareyTriangleCount = String(triangles.length);
@@ -242,7 +243,7 @@ export function HalfPlane({
       ctx.fillStyle = fareyTriangleColor(triangle);
       ctx.fill();
     }
-    ctx.globalAlpha = 0.26;
+    ctx.globalAlpha = DOMAIN_FILL_OPACITY;
     for (const tile of tiles) {
       ctx.beginPath();
       tile.boundaries.forEach((boundary, i) => {
@@ -368,7 +369,7 @@ export function HalfPlane({
         }
       }
       ctx.setLineDash([5, 5]);
-      ctx.strokeStyle = "#7b9b8280";
+      ctx.strokeStyle = "#7b9b8270";
       ctx.beginPath();
       ctx.moveTo(0, Y(1));
       ctx.lineTo(size.width, Y(1));
@@ -478,7 +479,7 @@ export function HalfPlane({
     }
     if (scene.overlays.trajectory) {
       const x = X(alpha);
-      ctx.strokeStyle = "#ce734957";
+      ctx.strokeStyle = visualColors.trail + "57";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 5]);
       ctx.beginPath();
@@ -486,7 +487,7 @@ export function HalfPlane({
       ctx.lineTo(x, bottom);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.strokeStyle = "#c7744d";
+      ctx.strokeStyle = visualColors.trail;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x, Y(2));
@@ -525,16 +526,16 @@ export function HalfPlane({
         if (e.time > scene.time) continue;
         ctx.beginPath();
         ctx.arc(x, Y(e.height), 3, 0, Math.PI * 2);
-        ctx.fillStyle = "#c7744d";
+        ctx.fillStyle = visualColors.trail;
         ctx.fill();
       }
       ctx.beginPath();
       ctx.arc(x, Y(y), 12, 0, Math.PI * 2);
-      ctx.fillStyle = "#d27c4a20";
+      ctx.fillStyle = visualColors.point + "20";
       ctx.fill();
       ctx.beginPath();
       ctx.arc(x, Y(y), 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#c57548";
+      ctx.fillStyle = visualColors.point;
       ctx.fill();
       ctx.strokeStyle = "#fffdf7";
       ctx.lineWidth = 2;
@@ -545,12 +546,12 @@ export function HalfPlane({
     ctx.arc(endpointX, bottom, 8, 0, 2 * Math.PI);
     ctx.fillStyle = "#fbfbf6";
     ctx.fill();
-    ctx.strokeStyle = "#bc6944";
+    ctx.strokeStyle = visualColors.endpoint;
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.font = "bold 16px Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillStyle = "#a34f2c";
+    ctx.fillStyle = visualColors.endpoint;
     ctx.fillText("α", endpointX, bottom - 14);
     ctx.strokeStyle = "#c7cdc2";
     ctx.lineWidth = 1;

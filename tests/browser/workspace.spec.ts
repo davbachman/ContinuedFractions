@@ -77,7 +77,7 @@ test("every representation works on either side, including duplicate models with
   }
   expect(errors).toEqual([]);
 });
-test("coefficient inspection highlights folded and 3D quotient runs without seeking, and focused panes support playback keys", async ({
+test("coefficient selection seeks and highlights folded and 3D quotient runs, and focused panes support playback keys", async ({
   page,
 }, info) => {
   await choose(page, "Right", "torus");
@@ -89,7 +89,7 @@ test("coefficient inspection highlights folded and 3D quotient runs without seek
   ).toBeVisible();
   await expect(
     page.getByRole("slider", { name: "Scrub trajectory" }),
-  ).toHaveValue("0");
+  ).not.toHaveValue("0");
   await right(page)
     .getByRole("button", { name: "Torus 3D", exact: true })
     .click();

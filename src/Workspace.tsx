@@ -153,12 +153,7 @@ export function Workspace(props: WorkspaceProps) {
   );
   const [flipPlaying, setFlipPlaying] = useState(false);
   const canLink =
-    !props.rectangle.unavailable &&
-    panes.some((p) => p.kind === "rectangle") &&
-    panes.some(
-      (p) =>
-        isTrajectory(p.kind) || ["farey", "triangulation"].includes(p.kind),
-    );
+    !props.rectangle.unavailable && panes.some((p) => p.kind === "rectangle");
   const runs = useRunPlayback(props, canLink);
   const flipState =
     props.scene.triangulation ?? targetItinerary(props.scene.spec);
@@ -466,6 +461,7 @@ export function Workspace(props: WorkspaceProps) {
                         max="1"
                         step="0.001"
                         value={runs.progress}
+                        disabled={!runs.stage}
                         onChange={(e) =>
                           runs.seekProgress(Number(e.target.value))
                         }
@@ -474,6 +470,8 @@ export function Workspace(props: WorkspaceProps) {
                     <RunTransport run={runs} />
                   </div>
                   <p data-testid="linked-run-status" role="status">
+                    {!runs.stage &&
+                      `a${props.selected} is outside the generated playback path. Its rectangle group remains selected. Extend depth or select an earlier coefficient to play.`}
                     {runs.stage &&
                       (runs.stage.term === 0
                         ? `a₀ = ${runs.stage.coefficient}: ${runs.stage.coefficient === 0n ? "orientation change; no squares removed" : "initial square group"}. ${runs.stage.expected === 0n ? "The ray lies on a Farey edge; no automatic flip." : `Separate initial entry: ${runs.frame?.completed} of 1 crossing.`}`
@@ -529,7 +527,7 @@ export function Workspace(props: WorkspaceProps) {
                       remain distinct constructions.
                     </p>
                   </details>
-                  {runs.stage && !runs.stage.complete && (
+                  {(!runs.stage || !runs.stage.complete) && (
                     <button
                       disabled={props.scene.end >= 24}
                       onClick={() => {
@@ -686,6 +684,7 @@ function RunTransport({ run }: { run: ReturnType<typeof useRunPlayback> }) {
       <button
         className="primary-action"
         onClick={run.toggle}
+        disabled={!run.stage}
         aria-label={
           run.playing ? "Pause linked playback" : "Play linked playback"
         }
@@ -1116,7 +1115,7 @@ function ComparisonPane({
                 scene={localScene}
                 flipPath={flipPartner ? triState : undefined}
                 torusLift={other.kind === "torus" ? other.lift : undefined}
-                colorFarey={other.kind !== "torus" && triangleVisible}
+                colorFarey={other.kind !== "torus"}
                 triangulation={
                   triangleVisible ? currentTriangulation(triState) : undefined
                 }
@@ -1180,7 +1179,6 @@ function ComparisonPane({
             sharedControls
             approximationIndex={p.approximationIndex}
             coefficients={p.coefficients}
-            showClosure={other.kind === "braid"}
             spec={p.scene.spec}
             expression={p.scene.tangle}
             convergents={p.convergents}

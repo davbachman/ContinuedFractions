@@ -65,6 +65,13 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     const contains = (s: (typeof stages)[number]) =>
       time >= s.start - 1e-8 && time <= s.end + 1e-8;
     const selected = stages[props.selected];
+    // Inspection can extend beyond the generated trajectory. Keep that exact
+    // coefficient selected rather than substituting an earlier playable group.
+    if (!selected) {
+      current.current = { term: props.selected, progress: 0 };
+      setPosition(current.current);
+      return;
+    }
     let term =
       selected && contains(selected)
         ? props.selected
@@ -84,7 +91,11 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
   const seek = (term: number, progress = 0) => {
     setPlaying(false);
     props.onPause();
-    const index = Math.max(0, Math.min(stages.length - 1, term));
+    if (term >= stages.length) {
+      props.onSelect(term);
+      return;
+    }
+    const index = Math.max(0, term);
     if (!stages[index]) return;
     current.current = { term: index, progress };
     setPosition(current.current);
@@ -134,6 +145,7 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     return () => cancelAnimationFrame(frame);
   }, [playing, enabled, stages]);
   const toggle = () => {
+    if (!stage) return;
     props.onPause();
     if (!playing) {
       if (props.reverse && position.progress === 0 && position.term === 0)
@@ -155,7 +167,9 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     stages,
     pause,
     seek,
-    progress: sequenceProgress(stages, position),
+    progress: stage
+      ? sequenceProgress(stages, position)
+      : Math.max(0, Math.min(1, props.scene.time / (stages.at(-1)?.end || 1))),
     seekProgress: (progress: number) => {
       const next = sequencePosition(stages, progress);
       seek(next.term, next.progress);

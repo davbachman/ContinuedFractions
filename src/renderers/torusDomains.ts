@@ -11,9 +11,10 @@ import { abelianization, coverSheet, mod6 } from "../math/modularTorus";
 import { rational, value, type Rational } from "../math/rational";
 import type { Edge } from "../math/farey";
 import { idealImage, triangleMatrix } from "./modularGeometry";
-import { stageColor } from "./dissectionColors";
+import { coverSheetColors } from "./visualColors";
 
-export const torusDomainColor = (sheet: number) => stageColor(mod6(sheet));
+export const torusDomainColor = (sheet: number) =>
+  coverSheetColors[mod6(sheet)];
 type Vertex = Point | Rational;
 type Support = readonly [Rational, Rational];
 const zero = rational(0n),

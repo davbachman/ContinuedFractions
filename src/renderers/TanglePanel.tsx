@@ -1,3 +1,4 @@
+import { visualColors, mutedCurveColor } from "./visualColors";
 import { rollCameraPoint } from "./geometry";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -20,7 +21,6 @@ type Props = {
   sharedControls?: boolean;
   approximationIndex?: number;
   coefficients?: readonly bigint[];
-  showClosure?: boolean;
   linkCoefficients?: boolean;
   spec: NumberSpec;
   expression?: TangleExpression;
@@ -34,7 +34,6 @@ export function TanglePanel({
   sharedControls = false,
   approximationIndex,
   coefficients,
-  showClosure = false,
   spec,
   expression,
   convergents,
@@ -44,6 +43,7 @@ export function TanglePanel({
   onError,
   linkCoefficients = false,
 }: Props) {
+  const [showClosure, setShowClosure] = useState(false);
   const approximation = approximationIndex ?? selected;
   const target =
     spec.kind === "rational" ? spec.value : convergents[approximation];
@@ -130,10 +130,12 @@ export function TanglePanel({
     commit([...ops, { kind: "twist", count }]);
   };
   const rotate = (turns: 1 | -1) => commit([...ops, { kind: "rotate", turns }]);
-  const color = (edge: number) =>
-    diagram.component[diagram.edges[edge].from] === 0 ? "#2b7274" : "#b16e38";
-  const mutedColor = (edge: number) =>
-    diagram.component[diagram.edges[edge].from] === 0 ? "#b2cbca" : "#e1c8b4";
+  const color = (edge: number) => {
+    const indices = coefficientMap?.get(diagram.edges[edge].region);
+    return indices?.length
+      ? stageColor(indices.includes(selected) ? selected : indices[0])
+      : visualColors.strand;
+  };
   const point = (id: number) => diagram.nodes[id];
   const canThree = diagram.boxes.length === 0 && diagram.edges.length <= 180;
   const lifted = three && canThree;
@@ -282,6 +284,14 @@ export function TanglePanel({
             Lifted tangle 3D
           </button>
           <label>
+            <input
+              type="checkbox"
+              checked={showClosure}
+              onChange={(e) => setShowClosure(e.target.checked)}
+            />
+            Numerator closure
+          </label>
+          <label>
             Diagram zoom
             <input
               aria-label="Tangle diagram zoom"
@@ -409,7 +419,7 @@ export function TanglePanel({
                     coefficientMap &&
                     highlightRegion >= 0 &&
                     diagram.edges[piece.id].region !== highlightRegion
-                      ? mutedColor(piece.id)
+                      ? mutedCurveColor(color(piece.id))
                       : color(piece.id)
                   }
                   strokeWidth={
@@ -543,7 +553,7 @@ export function TanglePanel({
         {lifted && <p className="rotation-hint">{rotationHint}</p>}
         <p className="topology-note">
           {showClosure
-            ? "Dashed arcs: numerator closure, represented as a 4-plat in the braid pane."
+            ? "Dashed arcs: numerator closure (the closure used by the 4-plat view)."
             : "Open tangle · endpoints NW, NE, SW, SE."}
         </p>
         {!canThree && (

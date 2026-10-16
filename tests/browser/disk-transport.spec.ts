@@ -108,10 +108,12 @@ test("rectangle and coefficient navigation stay above both panes without duplica
   ).toHaveCount(0);
   await expect(page.locator(".comparison-pane .pane-transport")).toHaveCount(0);
   await nav
-    .getByRole("button", { name: "Restart dissection", exact: true })
+    .getByRole("button", { name: "Restart linked playback", exact: true })
     .click();
   await expect(page.getByLabel("Edit coefficient a0")).toBeVisible();
-  await nav.getByRole("button", { name: "Next stage", exact: true }).click();
+  await nav
+    .getByRole("button", { name: "Next linked stage", exact: true })
+    .click();
   await expect(
     page.locator('[data-braid-coefficient="1"]').first(),
   ).toHaveAttribute("data-selected", "true");

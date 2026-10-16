@@ -12,9 +12,9 @@ for (const [left, right, clock, play, reset] of [
   [
     "rectangle",
     "braid",
-    "Dissection stage",
-    "Play dissection",
-    "Restart dissection",
+    "Sequence progress",
+    "Play linked playback",
+    "Restart linked playback",
   ],
 ]) {
   test(`${left}/${right}: alpha then slider with Play and Reset on its right`, async ({

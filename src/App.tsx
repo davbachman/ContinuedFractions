@@ -79,6 +79,7 @@ import {
   serialize,
   deserialize,
   sceneFromLocation,
+  initialScene,
 } from "./state";
 const overlayNames: Record<keyof Overlays, string> = {
   farey: "Farey edges",
@@ -96,7 +97,10 @@ export default function App() {
   const [boot] = useState(sceneFromLocation),
     [history, setHistory] = useState<History>({
       past: [],
-      present: boot.scene,
+      present:
+        !comparison && boot.scene === initialScene
+          ? { ...boot.scene, selectedTerm: 1 }
+          : boot.scene,
       future: [],
     }),
     scene = history.present;
@@ -118,7 +122,6 @@ export default function App() {
     [playing, setPlaying] = useState(false),
     [reverse, setReverse] = useState(false),
     [notice, setNotice] = useState(""),
-    [termSelection, setSelectedTerm] = useState(1),
     [followFlipCoefficient, setFollowFlipCoefficient] = useState(false),
     [coefficientSeekVersion, setCoefficientSeekVersion] = useState(0),
     [coefficient, setCoefficient] = useState("2"),
@@ -132,6 +135,17 @@ export default function App() {
     [fractionView, setFractionView] = useState<"coefficients" | "stacked">(
       "coefficients",
     );
+  const termSelection = scene.selectedTerm ?? 0;
+  function setSelectedTerm(selectedTerm: number) {
+    setHistory((h) =>
+      h.present.selectedTerm === selectedTerm
+        ? h
+        : {
+            ...h,
+            present: { ...h.present, selectedTerm },
+          },
+    );
+  }
   const file = useRef<HTMLInputElement>(null),
     guide = useRef<HTMLDialogElement>(null),
     endpointDragStart = useRef<Scene | null>(null);
@@ -221,14 +235,23 @@ export default function App() {
             : present,
       };
     });
-  function changeNumber(spec: NumberSpec) {
+  function changeNumber(spec: NumberSpec, selectedTerm = comparison ? 0 : 1) {
     try {
       validateSpec(spec);
-      setHistory((h) => execute(h, { type: "number", spec }));
+      setHistory((h) => {
+        const next = execute(h, { type: "number", spec, selectedTerm });
+        // The standalone atlas keeps its independent rectangle inspection and
+        // trajectory position. The comparison workspace seeks by coefficient.
+        return comparison
+          ? next
+          : {
+              ...next,
+              present: followAlpha({ ...next.present, time: 0 }),
+            };
+      });
       setPlaying(false);
       setError("");
       setInspect(null);
-      setSelectedTerm(1);
       setAlternateEnding(false);
     } catch (e) {
       setError((e as Error).message);
@@ -455,7 +478,17 @@ export default function App() {
     setRectanglePlaying(false);
     setSelectedTerm(term);
     const state = scene.triangulation ?? targetItinerary(scene.spec);
-    const position = coefficientFlipPosition(scene.spec, state, term);
+    const interval = comparison
+      ? coefficientInterval(math.farey.crossings, term, scene.end)
+      : undefined;
+    const position = interval
+      ? {
+          time: interval.start,
+          cursor: state.steps.filter(
+            (s) => (s.time ?? Infinity) <= interval.start + 1e-8,
+          ).length,
+        }
+      : coefficientFlipPosition(scene.spec, state, term);
     if (position)
       editTriangulation(
         { ...state, cursor: position.cursor },
@@ -539,7 +572,7 @@ export default function App() {
       const a = [...cf];
       a[selectedTerm] = BigInt(value);
       if (scene.spec.kind === "rational")
-        changeNumber({ kind: "rational", value: fromCF(a) });
+        changeNumber({ kind: "rational", value: fromCF(a) }, selectedTerm);
       else {
         const prefix = a.slice(
             0,
@@ -552,9 +585,8 @@ export default function App() {
             ...scene.spec.period.slice(offset),
             ...scene.spec.period.slice(0, offset),
           ];
-        changeNumber({ kind: "periodic", prefix, period });
+        changeNumber({ kind: "periodic", prefix, period }, selectedTerm);
       }
-      setSelectedTerm(selectedTerm);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -774,11 +806,7 @@ export default function App() {
             coefficients={cf}
             convergents={cs}
             selected={selectedTerm}
-            onSelect={(i) => {
-              setPlaying(false);
-              setRectanglePlaying(false);
-              setSelectedTerm(Math.max(0, Math.min(cf.length - 1, i)));
-            }}
+            onSelect={selectTerm}
             onEditCoefficient={editCoefficient}
             onExtendTerms={() =>
               setRectangleDepth((d) =>
@@ -1959,14 +1987,13 @@ export default function App() {
           selectors. Both automatically follow the α chosen at the top. Each
           crossed Farey side flips one edge. Left/right turns are grouped by
           coefficient, with the initial and terminal offsets shown explicitly.
-          Selecting a coefficient automatically seeks its corresponding flip
-          in both views and moves the shared slider.
-          “Restart flips” returns to the start. Changing α rebuilds the path;
-          stepping the path preserves α. The caption names the retained and
-          replaced slopes. H² playback also advances the follow-target path at
-          its crossing times; flip steps seek those times. Rectangle stages keep
-          a shared coefficient-run clock when paired with hyperbolic or flip
-          views.
+          Selecting a coefficient automatically seeks its corresponding flip in
+          both views and moves the shared slider. “Restart flips” returns to the
+          start. Changing α rebuilds the path; stepping the path preserves α.
+          The caption names the retained and replaced slopes. H² playback also
+          advances the follow-target path at its crossing times; flip steps seek
+          those times. Rectangle stages keep the same coefficient-run clock with
+          every companion view.
         </p>
         <h3>Marked tangles</h3>
         <p>

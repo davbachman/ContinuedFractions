@@ -1,3 +1,4 @@
+import { visualColors, DOMAIN_FILL_OPACITY } from "./visualColors";
 import type { DomainFocus } from "./domainFocus";
 import type { SelectedRun } from "./selectedRun";
 import { useMemo, useState, useRef, useEffect } from "react";
@@ -357,7 +358,7 @@ export function FareyDisk({
                 key={i}
                 d={d.fill}
                 fill={torusDomainColor(d.sheet)}
-                fillOpacity="0.22"
+                fillOpacity={DOMAIN_FILL_OPACITY}
               />
             ))}
           </g>
@@ -580,10 +581,10 @@ export function FareyDisk({
             }
             transform={transform}
             fill="none"
-            stroke="#c7744d"
+            stroke={visualColors.trail}
             strokeWidth={1}
             strokeDasharray="3 4"
-            opacity={0.65}
+            opacity={0.34}
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"
           />
@@ -597,7 +598,7 @@ export function FareyDisk({
             }
             transform={transform}
             fill="none"
-            stroke="#c7744d"
+            stroke={visualColors.trail}
             strokeWidth={2}
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"
@@ -709,7 +710,7 @@ export function FareyDisk({
             cy={185 + 145 * endpoint.y}
             r={7}
             fill="#fbfbf6"
-            stroke="#385c43"
+            stroke={visualColors.endpoint}
             strokeWidth={2}
           />
           <text
@@ -717,7 +718,7 @@ export function FareyDisk({
             y={185 + 126 * endpoint.y}
             textAnchor="middle"
             fontSize={11}
-            fill="#385c43"
+            fill={visualColors.endpoint}
           >
             α
           </text>
@@ -796,7 +797,7 @@ export function FareyDisk({
             cx={190 + 145 * point.x}
             cy={185 + 145 * point.y}
             r={5}
-            fill="#c57548"
+            fill={visualColors.point}
             stroke="#fffaf0"
             strokeWidth={2}
             pointerEvents="none"
@@ -861,8 +862,10 @@ export function FareyDisk({
         </p>
         {showFlipPath && (
           <p>
-            Crossing a colored side replaces the slope of that color. Dashed
-            path segments are future flips.
+            Faces identify fixed Farey triangles; the three edge colors identify
+            slope classes. Crossing a colored side replaces the slope of that
+            color. Path colors identify coefficients; dashed segments are future
+            flips.
           </p>
         )}
       </details>

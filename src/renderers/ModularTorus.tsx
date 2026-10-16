@@ -1,3 +1,4 @@
+import { visualColors } from "./visualColors";
 import type { DomainFocus } from "./domainFocus";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import { rollCameraPoint } from "./geometry";
@@ -194,7 +195,7 @@ export function ModularTorus({
       points: points.map((p) =>
         surfaceProjection(coverSurface(p, j), rotation, roll),
       ),
-      color: "#ac4029",
+      color: visualColors.trail,
       width: 2.5,
       trail: true,
       onSelect: () => onSeek((s.start + Math.min(time, s.end)) / 2),
@@ -406,7 +407,7 @@ export function ModularTorus({
                 key={i}
                 d={svgPath(points.map((p) => project(p, j)))}
                 fill="none"
-                stroke="#ac4029"
+                stroke={visualColors.trail}
                 strokeWidth={2}
                 onClick={() => onSeek((s.start + Math.min(time, s.end)) / 2)}
               >
@@ -435,14 +436,15 @@ export function ModularTorus({
           y1={current.y}
           x2={current.x + (16 * (moved.x - current.x)) / norm}
           y2={current.y + (16 * (moved.y - current.y)) / norm}
-          stroke="#a53e28"
+          stroke={visualColors.trail}
           strokeWidth={2}
         />
         <circle
+          data-moving-surface-point="true"
           cx={current.x}
           cy={current.y}
           r={5}
-          fill="#bd4d31"
+          fill={visualColors.point}
           stroke="white"
           strokeWidth={2}
         />
@@ -473,6 +475,19 @@ export function ModularTorus({
       </p>
       <details className="workspace-details">
         <summary>About this cover</summary>
+        <div className="domain-edge-legend" aria-label="Cover sheet colors">
+          <span>Cover sheets</span>
+          {[0, 1, 2, 3, 4, 5].map((j) => (
+            <span key={j}>
+              <i style={{ background: torusDomainColor(j) }} />
+              {j}
+            </span>
+          ))}
+        </div>
+        <p className="quotient-caption">
+          Muted fills identify cover sheets; the highlighted curve uses the
+          selected coefficient’s color.
+        </p>
         <p className="quotient-caption">
           Sheet {sheet} · χ(T)=1, χ(S)=3 · one cusp of width 6 · genus 1.{" "}
           {limited

@@ -1,3 +1,4 @@
+import { visualColors } from "./visualColors";
 import type { DomainFocus } from "./domainFocus";
 import { useSurfaceRotation, rotationHint } from "./useSurfaceRotation";
 import type { SelectedRun } from "./selectedRun";
@@ -276,7 +277,7 @@ export function Quotient({
                   <path
                     key={i}
                     d={path(points.map(project))}
-                    stroke="#c7744d"
+                    stroke={visualColors.trail}
                     strokeWidth="1.8"
                     fill="none"
                     opacity="0.65"
@@ -299,14 +300,15 @@ export function Quotient({
                       y1={point.y}
                       x2={point.x + (tv.x / len) * 18}
                       y2={point.y + (tv.y / len) * 18}
-                      stroke="#a95734"
+                      stroke={visualColors.trail}
                       strokeWidth="2"
                     />
                     <circle
+                      data-moving-surface-point="true"
                       cx={point.x}
                       cy={point.y}
                       r="5"
-                      fill="#c7744d"
+                      fill={visualColors.point}
                       stroke="#fff"
                       strokeWidth="2"
                     />
@@ -333,7 +335,7 @@ export function Quotient({
                   })) ?? []),
                   ...drawable.map(({ points }) => ({
                     points: points.map(schematic),
-                    color: "#b74d29",
+                    color: visualColors.trail,
                     width: 2.5,
                     trail: true,
                     onSelect: (event: MouseEvent<SVGPathElement>) =>
@@ -342,10 +344,11 @@ export function Quotient({
                 ]}
               />
               <circle
+                data-moving-surface-point="true"
                 cx={schematic(p).x}
                 cy={schematic(p).y}
                 r="5"
-                fill="#c7744d"
+                fill={visualColors.point}
                 stroke="#fff"
               />
               {[

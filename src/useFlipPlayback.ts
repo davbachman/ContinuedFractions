@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
 import type { TriangulationState } from "./math/triangulation";
+import { coefficientAtTime } from "./math/coefficientTimeline";
 
-/** Interpolate the shared H² clock between successive Farey crossings.
- * A full flip interval takes 1.4s at 1×; pause/resume retains partial progress.
- * Frames navigate without adding undo entries. Explicit Previous/Next still seek.
- */
+/** Advance at constant hyperbolic speed, retaining elapsed time across flips.
+ * Explicit Previous/Next seek; playback frames never add undo entries. */
 export function useFlipPlayback(
   playing: boolean,
   state: TriangulationState,
@@ -17,33 +16,29 @@ export function useFlipPlayback(
   latest.current = { time, onFrame, onStop };
   useEffect(() => {
     if (!playing) return;
-    const next = state.steps[state.cursor],
-      end = next?.time;
-    if (end === undefined) {
+    const end = state.steps.at(-1)?.time;
+    if (end === undefined || latest.current.time >= end) {
       latest.current.onStop();
       return;
     }
-    const start = state.steps[state.cursor - 1]?.time ?? 0;
-    const from = Math.max(start, Math.min(end, latest.current.time));
-    const duration =
-      ((1400 / speed) * (end - from)) / Math.max(1e-9, end - start);
+    const crossings = state.steps.map((s) => ({
+      time: s.time!,
+      term: s.term!,
+    }));
     let frame = 0,
-      begun: number | undefined;
+      last = performance.now(),
+      current = latest.current.time;
     const tick = (now: number) => {
-      begun ??= now;
-      const progress =
-        duration <= 0 ? 1 : Math.min(1, (now - begun) / duration);
-      const t = from + (end - from) * progress;
-      // Avoid rounding into the next combinatorial step before its exact endpoint.
-      latest.current.onFrame(
-        progress === 1 ? end : Math.min(t, end - 2e-8),
-        progress === 1
-          ? (next.term ?? 0)
-          : (state.steps[state.cursor - 1]?.term ?? 0),
+      current = Math.min(
+        end,
+        current + (Math.min(100, now - last) * speed) / 1000,
       );
-      if (progress < 1) frame = requestAnimationFrame(tick);
+      last = now;
+      latest.current.onFrame(current, coefficientAtTime(crossings, current));
+      if (current < end) frame = requestAnimationFrame(tick);
+      else latest.current.onStop();
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, state.steps, state.cursor, speed]);
+  }, [playing, state.steps, speed]);
 }

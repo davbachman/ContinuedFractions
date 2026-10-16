@@ -126,7 +126,7 @@ test("tangle diagrams and 3D rotation", async ({ page }, info) => {
   ).toBeVisible();
   await expect(
     page.getByLabel("Numerator closure", { exact: true }),
-  ).toHaveCount(0);
+  ).not.toBeChecked();
   await page
     .locator(".tangle-panel")
     .screenshot({ path: `test-results/${info.project.name}-tangle.png` });

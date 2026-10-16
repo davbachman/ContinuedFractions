@@ -174,3 +174,32 @@ it("extending hyperbolic depth extends the same α itinerary and preserves its p
     after.triangulation!.steps.slice(0, before.triangulation!.steps.length),
   ).toEqual(before.triangulation!.steps);
 });
+
+it("coefficient edits retain selection and seek its new interval; undo/redo and saving restore it", () => {
+  const start = execute(
+    { past: [], present: initialScene, future: [] },
+    {
+      type: "number",
+      spec: parseInput("5/13"),
+      selectedTerm: 2,
+    },
+  );
+  const edited = execute(start, {
+    type: "number",
+    spec: parseInput("8/19"),
+    selectedTerm: 2,
+  });
+  expect(edited.present.selectedTerm).toBe(2);
+  expect(edited.present.time).toBeGreaterThan(0);
+  expect(edited.present.time).not.toBe(start.present.time);
+  expect(undo(edited).present).toEqual(start.present);
+  expect(redo(undo(edited)).present).toEqual(edited.present);
+  expect(deserialize(serialize(edited.present))).toEqual(edited.present);
+  const shortened = execute(edited, {
+    type: "number",
+    spec: parseInput("3"),
+    selectedTerm: 2,
+  });
+  expect(shortened.present.selectedTerm).toBe(0);
+  expect(shortened.present.time).toBe(0);
+});

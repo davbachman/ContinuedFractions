@@ -1,3 +1,4 @@
+import { coefficientInterval } from "./math/coefficientTimeline";
 import {
   targetItinerary,
   validateTriangulationState,
@@ -8,6 +9,7 @@ import {
   type NumberSpec,
   DEFAULT,
   validateSpec,
+  terms,
 } from "./math/continuedFraction";
 import { rational } from "./math/rational";
 import {
@@ -28,6 +30,7 @@ export type Scene = Readonly<{
   spec: NumberSpec;
   tangle?: TangleExpression;
   triangulation?: TriangulationState;
+  selectedTerm?: number;
   time: number;
   end: number;
   speed: number;
@@ -35,7 +38,7 @@ export type Scene = Readonly<{
   overlays: Overlays;
 }>;
 export type Command =
-  | { type: "number"; spec: NumberSpec }
+  | { type: "number"; spec: NumberSpec; selectedTerm?: number }
   | { type: "load"; scene: Scene }
   | { type: "tangle"; expression: TangleExpression }
   | { type: "triangulation"; value: TriangulationState; time?: number };
@@ -43,6 +46,7 @@ export type History = { past: Scene[]; present: Scene; future: Scene[] };
 export const initialScene: Scene = {
   spec: DEFAULT,
   triangulation: targetItinerary(DEFAULT),
+  selectedTerm: 0,
   time: 0,
   end: 12,
   speed: 1,
@@ -79,10 +83,18 @@ export function execute(h: History, c: Command): History {
                 value: tangleFraction(c.expression),
               },
               tangle: [...c.expression],
+              selectedTerm: 0,
               time: 0,
               end: 12,
             }
-          : { ...h.present, spec: c.spec, tangle: undefined, time: 0, end: 12 };
+          : {
+              ...h.present,
+              spec: c.spec,
+              tangle: undefined,
+              selectedTerm: c.selectedTerm ?? 0,
+              time: 0,
+              end: 12,
+            };
   validateSpec(next.spec);
   if (next.triangulation) validateTriangulationState(next.triangulation);
   if (c.type === "triangulation") {
@@ -96,6 +108,23 @@ export function execute(h: History, c: Command): History {
     if (c.value.mode !== "follow" || pathData(c.value) !== pathData(expected))
       throw new Error("The flip path must follow the selected α.");
   } else next = followAlpha(next);
+  if (c.type === "number") {
+    const count =
+      next.spec.kind === "rational" && !next.spec.value.q
+        ? 0
+        : terms(next.spec, 96).length;
+    const term = Math.max(0, Math.min(count - 1, next.selectedTerm ?? 0));
+    const crossings = next.triangulation!.steps.map((s) => ({
+      time: s.time!,
+      term: s.term!,
+    }));
+    const interval = coefficientInterval(crossings, term, next.end);
+    next = followAlpha({
+      ...next,
+      selectedTerm: term,
+      time: interval?.start ?? 0,
+    });
+  }
   return { past: [...h.past.slice(-49), h.present], present: next, future: [] };
 }
 /** Derive the marked triangulation from α and the shared trajectory position.
@@ -245,6 +274,12 @@ export function deserialize(text: string): Scene {
     spec,
     ...(tangle ? { tangle } : {}),
     ...(triangulation ? { triangulation } : {}),
+    selectedTerm:
+      Number.isInteger(raw.selectedTerm) &&
+      raw.selectedTerm >= 0 &&
+      raw.selectedTerm < 96
+        ? raw.selectedTerm
+        : 0,
     time: raw.time,
     end: raw.end,
     speed: raw.speed,

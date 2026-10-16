@@ -17,7 +17,7 @@ rendering. Both retain the three edge-class colors beside edge flips; highlights
 respect the Farey layer toggle. Regression checks cover both pane orders on
 desktop and mobile.
 
-## Remaining findings
+## Interaction findings from the initial scan
 
 1. **Coefficient clicks have different navigation effects.** With Symbolic + H²,
    selecting a₂ highlights that run but leaves time at zero. With Symbolic + edge
@@ -66,7 +66,7 @@ with the pair screenshots and additional 3D surface/tangle comparisons.
 | Ford circles and rational labels          | H², disk                                                                                                                                 | Same finite-circle fill, outline, and label colors. Infinity horocycle outline opacity differs slightly.                                |
 | Selected rational / convergent inspection | H², disk, slope inspection                                                                                                               | Shared inspection color.                                                                                                                |
 
-Remaining visual issues, in priority order:
+Visual findings from the initial scan, in priority order:
 
 1. **Cover-sheet colors imply a false coefficient correspondence.**
    `torusDomainColor(j)` reuses `stageColor(j mod 6)`. Thus sheet 2 and a₂ are
@@ -99,5 +99,30 @@ Remaining visual issues, in priority order:
    key (faces = triangle, edges = slope class, path = coefficient) would help
    more than adding explanatory paragraphs or more colors.
 
-The ordinary Farey-edge mismatch is addressed by this commit. The visual issues
-listed above are findings/recommendations, not additional implemented changes.
+The ordinary Farey-edge mismatch was fixed with the initial scan. The follow-up
+implementation of the remaining recommendations is recorded below.
+
+## Resolution pass — 2026-10-16
+
+Implemented after the scan:
+
+- Separate cover-sheet palette; shared α, moving-point, and trajectory colors.
+- Matching Farey-fill visibility and cover-fill opacity in H² and disk. Existing
+  guides distinguish sheet, face, edge-class, and coefficient colors.
+- Tangle twist regions match coefficient colors in the braid; unrelated connectors
+  are neutral. The mapped coefficient halo remains visible in 2D and 3D.
+- Explicit numerator-closure toggle that survives companion-view changes.
+- Coefficient clicks seek with static/hyperbolic partners as well as flips.
+- Coefficient selection is stored with the exact scene, restored by undo/redo
+  and scene loading. Coefficient edits seek the corresponding interval in the
+  edited number instead of resetting to a₀.
+- Coefficients beyond the generated path remain available for exact rectangle
+  inspection, with playback disabled and a visible depth-limit explanation.
+- Every rectangle pairing uses the same coefficient-run clock; flip playback
+  also has constant hyperbolic speed across interval boundaries.
+
+Intentional distinctions remain: sheets, Farey faces, slope classes, and
+coefficient runs encode different objects. Flat/3D brightness varies with
+lighting and occlusion. Flip playback ends at its last generated crossing;
+trajectory playback can continue within the finite display window. Display
+budgets and explicitly labeled irrational approximations remain in effect.
