@@ -1,4 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
+import { parseInput } from "../../src/math/continuedFraction";
+import {
+  targetItinerary,
+  coefficientFlipPosition,
+} from "../../src/math/triangulation";
 const pane = (page: Page, side: string) =>
   page.getByRole("region", { name: `${side} representation`, exact: true });
 const button = (page: ReturnType<typeof pane>, name: string) =>
@@ -16,19 +21,13 @@ test("visible restart and coefficient following synchronize both flip panes with
   const coefficient = (i: number, _value: number) =>
     page.locator(`.comparison-coefficients [data-coefficient="${i}"]`);
   await coefficient(3, 1).click();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await expect(
-    button(page.locator(".shared-playback"), "Go to selected coefficient"),
-  ).toContainText("Go to a3 = 1");
-  await button(
-    page.locator(".shared-playback"),
-    "Go to selected coefficient",
-  ).click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 4 / 5");
-  await page.getByLabel("Follow selected coefficient", { exact: true }).check();
+  await expect(
+    page.getByRole("button", { name: "Go to selected coefficient" }),
+  ).toHaveCount(0);
   await expect(
     page.getByLabel("Follow selected coefficient", { exact: true }),
-  ).toBeChecked();
+  ).toHaveCount(0);
   await coefficient(1, 2).click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
   await expect(right.getByTestId("flip-status")).toContainText("Step 2 / 5");
@@ -52,11 +51,8 @@ test("visible restart and coefficient following synchronize both flip panes with
     button(page.locator(".shared-playback"), "Play flips"),
   ).toBeVisible();
   await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
-  await page
-    .getByLabel("Follow selected coefficient", { exact: true })
-    .uncheck();
   await coefficient(3, 1).click();
-  await expect(right.getByTestId("flip-status")).toContainText("Step 0 / 5");
+  await expect(right.getByTestId("flip-status")).toContainText("Step 4 / 5");
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("5/13");
   await page.locator(".comparison-grid").screenshot({
     path: `test-results/${info.project.name}-flip-controls.png`,
@@ -73,7 +69,6 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
   await page
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
-  await page.getByLabel("Follow selected coefficient", { exact: true }).check();
   await page.locator('.comparison-coefficients [data-coefficient="1"]').click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 1");
   await expect(right).toContainText("no flip after the boundary offsets");
@@ -96,7 +91,7 @@ test("coefficient following handles empty runs, unavailable depth, and H² time"
   await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
   await expect(
     button(page.locator(".shared-playback"), "Go to selected coefficient"),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(page.locator(".shared-playback")).toContainText(
     "beyond the generated flip path",
   );
@@ -172,11 +167,6 @@ test("paired Farey and square panes share following, coefficient runs and playba
   );
   await page.locator('.comparison-coefficients [data-coefficient="3"]').click();
   await expect(left.locator('[data-selected-run="3"]')).toHaveCount(1);
-  await expect(right.getByTestId("flip-status")).toContainText("Step 2");
-  await button(
-    page.locator(".shared-playback"),
-    "Go to selected coefficient",
-  ).click();
   await expect(right.getByTestId("flip-status")).toContainText("Step 4");
   await button(page.locator(".shared-playback"), "Previous flip step").click();
   // Freeze the animation clock while scrolling between stacked mobile panes.
@@ -407,3 +397,79 @@ test("typed α, coefficient edits, rectangle resize and undo rebuild the same au
     }),
   ).toHaveAttribute("data-slopes", advanced!);
 });
+
+for (const edgeSide of ["Left", "Right"]) {
+  test(`coefficient clicks seek H² and ${edgeSide.toLowerCase()} edge flips automatically for either playback process`, async ({
+    page,
+  }) => {
+    await page.goto(
+      edgeSide === "Left"
+        ? "/?left=triangulation&right=h2"
+        : "/?left=h2&right=triangulation",
+    );
+    await page.getByLabel("ENDPOINT α").fill("13/20");
+    await page
+      .getByRole("button", { name: "Apply endpoint", exact: true })
+      .click();
+    const start = new Date("2026-10-16T12:00:00Z");
+    await page.clock.install({ time: start });
+    await page.clock.pauseAt(start);
+    const spec = parseInput("13/20");
+    const itinerary = targetItinerary(spec);
+    const edge = pane(page, edgeSide);
+    const halfPlane = page.getByRole("img", { name: /Upper half-plane/ });
+    const lattice = edge.getByRole("group", {
+      name: "Marked torus triangulation",
+      exact: true,
+    });
+    const slider = page.getByRole("slider", { name: "Scrub trajectory" });
+    for (const process of ["flips", "trajectory"]) {
+      await page.getByLabel("Playback process").selectOption(process);
+      await page
+        .getByRole("button", {
+          name: process === "flips" ? "Play flips" : "Play trajectory",
+          exact: true,
+        })
+        .click();
+      await page.clock.runFor(300);
+      for (const term of [3, 1, 4, 0, 2]) {
+        await page
+          .locator(`.comparison-coefficients [data-coefficient="${term}"]`)
+          .click();
+        const at = coefficientFlipPosition(spec, itinerary, term)!;
+        await expect(edge.getByTestId("flip-status")).toContainText(
+          `Step ${at.cursor} /`,
+        );
+        expect(Number(await slider.inputValue())).toBeCloseTo(at.time, 2);
+        await expect(halfPlane).toHaveAttribute(
+          "data-triangulation",
+          (await lattice.getAttribute("data-slopes"))!,
+        );
+        await expect(
+          page.getByLabel(`Edit coefficient a${term}`, { exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: /Pause (flips|trajectory)/ }),
+        ).toHaveCount(0);
+      }
+      await page
+        .getByRole("button", { name: "Undo number edit", exact: true })
+        .click();
+      await expect(slider).toHaveValue("0");
+      await page
+        .getByRole("button", { name: "Redo number edit", exact: true })
+        .click();
+      expect(Number(await slider.inputValue())).toBeCloseTo(
+        coefficientFlipPosition(spec, itinerary, 2)!.time,
+        2,
+      );
+    }
+    await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/20");
+    await expect(
+      page.getByLabel("Follow selected coefficient", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Go to selected coefficient" }),
+    ).toHaveCount(0);
+  });
+}

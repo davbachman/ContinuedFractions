@@ -188,8 +188,9 @@ export function Workspace(props: WorkspaceProps) {
     setFlipPlaying(false);
     if (runs.enabled) runs.seek(i);
     else if (
-      props.triangulation.followCoefficient &&
-      panes.some((p) => ["farey", "triangulation"].includes(p.kind))
+      panes.some((p) => p.kind === "triangulation") ||
+      (props.triangulation.followCoefficient &&
+        panes.some((p) => p.kind === "farey"))
     )
       props.triangulation.onSeekCoefficient(i);
     else props.onSelect(i);

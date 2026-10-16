@@ -1959,8 +1959,8 @@ export default function App() {
           selectors. Both automatically follow the α chosen at the top. Each
           crossed Farey side flips one edge. Left/right turns are grouped by
           coefficient, with the initial and terminal offsets shown explicitly.
-          Selecting a coefficient highlights its run; enable “Follow selected
-          coefficient” to seek automatically, or use the “Go to” button.
+          Selecting a coefficient automatically seeks its corresponding flip
+          in both views and moves the shared slider.
           “Restart flips” returns to the start. Changing α rebuilds the path;
           stepping the path preserves α. The caption names the retained and
           replaced slopes. H² playback also advances the follow-target path at

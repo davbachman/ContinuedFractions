@@ -441,7 +441,7 @@ export function TriangulationNavigation(
           )}
         </div>
       </div>
-      {state.mode === "follow" && !props.transport && (
+      {state.mode === "follow" && !props.transport && !props.sharedControls && (
         <div className="tangle-controls flip-coefficient-controls">
           <button
             disabled={!coefficientPosition}
