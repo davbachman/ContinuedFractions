@@ -450,19 +450,23 @@ export function Workspace(props: WorkspaceProps) {
                 <>
                   <div className="playback-row">
                     <label className="pane-scrubber">
-                      Progress through a{runs.position.term} ·{" "}
+                      {props.scene.spec.kind === "rational" &&
+                      runs.stages.at(-1)?.complete
+                        ? "Sequence progress"
+                        : "Displayed sequence progress"}{" "}
+                      · a{runs.position.term} ·{" "}
                       <span data-testid="linked-time">
                         t = {props.scene.time.toFixed(3)}
                       </span>
                       <input
-                        aria-label="Progress through coefficient run"
+                        aria-label="Sequence progress"
                         type="range"
                         min="0"
                         max="1"
                         step="0.001"
-                        value={runs.position.progress}
+                        value={runs.progress}
                         onChange={(e) =>
-                          runs.seek(runs.position.term, Number(e.target.value))
+                          runs.seekProgress(Number(e.target.value))
                         }
                       />
                     </label>

@@ -3,7 +3,7 @@ for (const [left, right, clock, play, reset] of [
   [
     "rectangle",
     "h2",
-    "Progress through coefficient run",
+    "Sequence progress",
     "Play linked playback",
     "Restart linked playback",
   ],
@@ -32,11 +32,9 @@ for (const [left, right, clock, play, reset] of [
     await expect(resetButton).toHaveText(/Reset/);
     await expect(page.getByLabel("Synchronize by coefficient")).toHaveCount(0);
     await expect(
-      page
-        .locator(".comparison-pane")
-        .getByRole("button", {
-          name: /^(Play|Pause|Restart) (trajectory|linked playback|flips|dissection)$/,
-        }),
+      page.locator(".comparison-pane").getByRole("button", {
+        name: /^(Play|Pause|Restart) (trajectory|linked playback|flips|dissection)$/,
+      }),
     ).toHaveCount(0);
     const alpha = (await page.locator(".comparison-strip").boundingBox())!;
     const bar = (await nav.boundingBox())!;
@@ -74,9 +72,7 @@ test("rectangle/H² synchronization stays automatic after coefficient clicks, ed
     .getByRole("button", { name: "Apply endpoint", exact: true })
     .click();
   await page.getByRole("button", { name: "Restart linked playback" }).click();
-  await page
-    .getByRole("slider", { name: "Progress through coefficient run" })
-    .fill("1");
+  await page.getByRole("slider", { name: "Sequence progress" }).fill("0.1");
   await page.getByRole("button", { name: "Next linked stage" }).click();
   await expect(
     page.getByLabel("Edit coefficient a1", { exact: true }),

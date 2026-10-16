@@ -161,9 +161,7 @@ test("rectangle playback automatically synchronizes hyperbolic time and unavaila
   await page
     .getByRole("button", { name: "Restart linked playback", exact: true })
     .click();
-  await page
-    .getByRole("slider", { name: "Progress through coefficient run" })
-    .fill("1");
+  await page.getByRole("slider", { name: "Sequence progress" }).fill("0.1");
   await expect(page.getByTestId("linked-time")).not.toHaveText("t = 0.000");
   await page
     .getByRole("button", { name: "Next linked stage", exact: true })

@@ -1,6 +1,11 @@
 import { it, expect } from "vitest";
 import { parseInput } from "../src/math/continuedFraction";
-import { coefficientStages, stageFrame } from "../src/math/runPlayback";
+import {
+  coefficientStages,
+  stageFrame,
+  sequenceProgress,
+  sequencePosition,
+} from "../src/math/runPlayback";
 import {
   targetItinerary,
   MAX_FLIPS,
@@ -65,4 +70,49 @@ it("has no linked rectangle timeline for zero, negatives or infinity", () => {
     const spec = parseInput(input);
     expect(coefficientStages(spec, targetItinerary(spec))).toEqual([]);
   }
+});
+
+it.each(["13/20", "5/13", "3", "1/2", "phi", "1/10000"])(
+  "%s has one continuous sequence timeline, including holds and display cutoffs",
+  (input) => {
+    const spec = parseInput(input);
+    const stages = coefficientStages(spec, targetItinerary(spec));
+    expect(sequenceProgress(stages, { term: 0, progress: 0 })).toBe(0);
+    expect(sequencePosition(stages, 1)).toEqual({
+      term: stages.length - 1,
+      progress: 1,
+    });
+    for (let term = 0; term < stages.length; term++) {
+      const start = sequenceProgress(stages, { term, progress: 0 });
+      const end = sequenceProgress(stages, { term, progress: 1 });
+      expect(end).toBeGreaterThan(start);
+      if (term) {
+        expect(start).toBe(
+          sequenceProgress(stages, { term: term - 1, progress: 1 }),
+        );
+        const boundary = sequencePosition(stages, start);
+        expect(boundary.term).toBe(term);
+        expect(boundary.progress).toBeCloseTo(0, 10);
+      }
+      const middle = sequencePosition(stages, (start + end) / 2);
+      expect(middle.term).toBe(term);
+      expect(middle.progress).toBeCloseTo(0.5, 10);
+    }
+  },
+);
+
+it("weights sequence intervals by playback duration, including the zero-crossing a1 hold", () => {
+  const spec = parseInput("13/20");
+  const stages = coefficientStages(spec, targetItinerary(spec));
+  expect(stages.map((s) => s.times.length)).toEqual([1, 0, 1, 1, 5]);
+  expect(sequenceProgress(stages, { term: 1, progress: 0 })).toBeCloseTo(
+    1800 / 10200,
+  );
+  expect(sequenceProgress(stages, { term: 4, progress: 0 })).toBeCloseTo(
+    7200 / 10200,
+  );
+  expect(sequencePosition(stages, -1)).toEqual({ term: 0, progress: 0 });
+  expect(sequencePosition(stages, 2)).toEqual({ term: 4, progress: 1 });
+  expect(sequencePosition([], 0.5)).toEqual({ term: 0, progress: 0 });
+  expect(sequenceProgress([], { term: 0, progress: 0 })).toBe(0);
 });

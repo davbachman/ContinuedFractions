@@ -66,3 +66,35 @@ export function stageFrame(
 
 export const stageDuration = (stage: CoefficientStage) =>
   Math.min(6000, Math.max(1800, stage.times.length * 600));
+
+/** One timeline for the displayed sequence. Zero-crossing stages still get
+ * their own interval so selecting or playing them remains visible. */
+export function sequenceProgress(
+  stages: CoefficientStage[],
+  position: { term: number; progress: number },
+) {
+  const durations = stages.map(stageDuration);
+  const total = durations.reduce((a, b) => a + b, 0);
+  if (!total) return 0;
+  const term = Math.max(0, Math.min(stages.length - 1, position.term));
+  return (
+    (durations.slice(0, term).reduce((a, b) => a + b, 0) +
+      durations[term] * Math.max(0, Math.min(1, position.progress))) /
+    total
+  );
+}
+
+export function sequencePosition(stages: CoefficientStage[], progress: number) {
+  const durations = stages.map(stageDuration);
+  let remaining =
+    Math.max(0, Math.min(1, progress)) * durations.reduce((a, b) => a + b, 0);
+  for (let term = 0; term < stages.length; term++) {
+    if (remaining < durations[term] - 1e-9 || term === stages.length - 1)
+      return {
+        term,
+        progress: Math.max(0, Math.min(1, remaining / durations[term])),
+      };
+    remaining -= durations[term];
+  }
+  return { term: 0, progress: 0 };
+}

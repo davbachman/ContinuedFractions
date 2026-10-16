@@ -5,6 +5,8 @@ import {
   coefficientStages,
   stageDuration,
   stageFrame,
+  sequenceProgress,
+  sequencePosition,
 } from "./math/runPlayback";
 
 export function useRunPlayback(props: WorkspaceProps, available: boolean) {
@@ -161,6 +163,11 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
     stages,
     pause,
     seek,
+    progress: sequenceProgress(stages, position),
+    seekProgress: (progress: number) => {
+      const next = sequencePosition(stages, progress);
+      seek(next.term, next.progress);
+    },
     toggle,
     frame: stage ? stageFrame(stage, position.progress) : undefined,
   };
