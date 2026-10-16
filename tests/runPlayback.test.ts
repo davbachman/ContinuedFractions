@@ -1,4 +1,6 @@
 import { it, expect } from "vitest";
+import { coefficientAtTime } from "../src/math/coefficientTimeline";
+import { derive } from "../src/math/trajectory";
 import { parseInput } from "../src/math/continuedFraction";
 import {
   coefficientStages,
@@ -31,7 +33,7 @@ it.each(["13/5", "5/13", "3", "1/2", "phi", "sqrt2"])(
           reverse = stageFrame(s, 1 - (20 - k) / 20);
         expect(reverse.time).toBeCloseTo(forward.time, 10);
         expect(forward.time).toBeGreaterThanOrEqual(s.start);
-        expect(forward.time).toBeLessThanOrEqual(s.times.at(-1) ?? s.start);
+        expect(forward.time).toBeLessThanOrEqual(s.end);
       }
     });
     if (spec.kind === "periodic") expect(stages.at(-1)?.complete).toBe(false);
@@ -48,7 +50,7 @@ it("keeps zero coefficients, zero runs, initial entry and terminal offsets disti
   const half = stages("1/2");
   expect(half.map((s) => s.coefficient)).toEqual([0n, 2n]);
   expect(half.map((s) => s.expected)).toEqual([1n, 0n]);
-  expect(stageFrame(half[1], 0).time).toBe(stageFrame(half[1], 1).time);
+  expect(stageFrame(half[1], 0).time).toBeLessThan(stageFrame(half[1], 1).time);
   expect(stages("3")[0].times).toEqual([]);
   expect(stages("phi")[1].expected).toBe(0n);
 });
@@ -73,7 +75,7 @@ it("has no linked rectangle timeline for zero, negatives or infinity", () => {
 });
 
 it.each(["13/20", "5/13", "3", "1/2", "phi", "1/10000"])(
-  "%s has one continuous sequence timeline, including holds and display cutoffs",
+  "%s has one continuous sequence timeline, including zero-flip intervals and display cutoffs",
   (input) => {
     const spec = parseInput(input);
     const stages = coefficientStages(spec, targetItinerary(spec));
@@ -101,7 +103,7 @@ it.each(["13/20", "5/13", "3", "1/2", "phi", "1/10000"])(
   },
 );
 
-it("weights sequence intervals by playback duration, including the zero-crossing a1 hold", () => {
+it("weights sequence intervals by playback duration, including the zero-crossing a1 interval", () => {
   const spec = parseInput("13/20");
   const stages = coefficientStages(spec, targetItinerary(spec));
   expect(stages.map((s) => s.times.length)).toEqual([1, 0, 1, 1, 5]);
@@ -116,3 +118,23 @@ it("weights sequence intervals by playback duration, including the zero-crossing
   expect(sequencePosition([], 0.5)).toEqual({ term: 0, progress: 0 });
   expect(sequenceProgress([], { term: 0, progress: 0 })).toBe(0);
 });
+
+it.each(["13/20", "53/20", "5/13", "1/2", "3", "phi", "sqrt2"])(
+  "%s moves continuously inside each coefficient interval without inventing flips",
+  (input) => {
+    const spec = parseInput(input);
+    const stages = coefficientStages(spec, targetItinerary(spec));
+    const crossings = derive(spec, 12).farey.crossings;
+    for (const stage of stages) {
+      const early = stageFrame(stage, 0.25);
+      const late = stageFrame(stage, 0.75);
+      expect(late.time).toBeGreaterThan(early.time);
+      expect(coefficientAtTime(crossings, early.time)).toBe(stage.term);
+      expect(coefficientAtTime(crossings, late.time)).toBe(stage.term);
+      if (!stage.expected) {
+        expect(early.completed).toBe(0);
+        expect(late.completed).toBe(0);
+      }
+    }
+  },
+);

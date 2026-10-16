@@ -77,9 +77,7 @@ test("rectangle/H² synchronization stays automatic after coefficient clicks, ed
   await expect(
     page.getByLabel("Edit coefficient a1", { exact: true }),
   ).toHaveValue("1");
-  await expect(page.getByTestId("linked-run-status")).toContainText(
-    "No crossings",
-  );
+  await expect(page.getByTestId("linked-run-status")).toContainText("No flips");
   await page
     .getByRole("button", { name: "Highlight coefficient a2 = 1", exact: true })
     .click();

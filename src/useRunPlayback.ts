@@ -22,14 +22,15 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
   );
   const enabled = available && stages.length > 0;
   const emitted = useRef<{ time: number; term: number } | null>(null);
+  const pending = useRef<{ time: number; term: number }[]>([]);
   const latest = useRef(props);
   latest.current = props;
   const current = useRef(position);
-  current.current = position;
   const stage = stages[position.term];
   const pause = () => setPlaying(false);
   const publish = (time: number, term: number) => {
     emitted.current = { time, term };
+    pending.current.push(emitted.current);
     latest.current.onRunFrame(time, term);
   };
   const context = useRef({ enabled, stages });
@@ -44,16 +45,25 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
       return;
     }
     const last = emitted.current;
-    if (
-      !changed &&
-      last?.time === props.scene.time &&
-      last.term === props.selected
-    )
-      return;
+    const acknowledgement = pending.current.findIndex(
+      (frame) =>
+        frame.time === props.scene.time && frame.term === props.selected,
+    );
+    if (!changed) {
+      // React may commit an earlier frame after the next RAF has emitted one.
+      // Acknowledge that frame without treating it as an external seek.
+      if (acknowledgement >= 0) {
+        pending.current.splice(0, acknowledgement + 1);
+        return;
+      }
+      if (last?.time === props.scene.time && last.term === props.selected)
+        return;
+    }
+    pending.current = [];
     setPlaying(false);
     const time = props.scene.time;
     const contains = (s: (typeof stages)[number]) =>
-      time >= s.start - 1e-8 && time <= (s.times.at(-1) ?? s.start) + 1e-8;
+      time >= s.start - 1e-8 && time <= s.end + 1e-8;
     const selected = stages[props.selected];
     let term =
       selected && contains(selected)
@@ -61,19 +71,9 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
         : stages.findIndex(contains);
     if (term < 0) term = time < stages[0].start ? 0 : stages.length - 1;
     const s = stages[term];
-    let position = 0;
-    let before = s.start;
-    for (const after of s.times) {
-      if (time >= after) position++;
-      else {
-        position += Math.max(0, (time - before) / (after - before));
-        break;
-      }
-      before = after;
-    }
     current.current = {
       term,
-      progress: s.times.length ? position / s.times.length : 0,
+      progress: Math.max(0, Math.min(1, (time - s.start) / (s.end - s.start))),
     };
     setPosition(current.current);
     if (term !== props.selected) publish(time, term);

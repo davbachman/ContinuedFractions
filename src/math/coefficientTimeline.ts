@@ -5,10 +5,11 @@ import type { Crossing } from "./farey";
  * a1=1 contributes no L turns. Later runs begin at their first crossing.
  * The entry crossing itself retains term=0 in the Farey itinerary.
  */
-const afterCrossing = (crossing: Crossing) =>
-  crossing.direction === "initial" ? 1 : crossing.term;
+type CoefficientCrossing = Pick<Crossing, "time" | "term">;
+const afterCrossing = (crossing: CoefficientCrossing) =>
+  crossing.term === 0 ? 1 : crossing.term;
 export function coefficientAtTime(
-  crossings: readonly Crossing[],
+  crossings: readonly CoefficientCrossing[],
   time: number,
 ): number {
   let term = 0;
@@ -19,7 +20,7 @@ export function coefficientAtTime(
   return term;
 }
 export function coefficientInterval(
-  crossings: readonly Crossing[],
+  crossings: readonly CoefficientCrossing[],
   term: number,
   end: number,
 ) {

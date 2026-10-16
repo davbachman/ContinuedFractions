@@ -476,10 +476,10 @@ export function Workspace(props: WorkspaceProps) {
                     {runs.stage &&
                       (runs.stage.term === 0
                         ? `a₀ = ${runs.stage.coefficient}: ${runs.stage.coefficient === 0n ? "orientation change; no squares removed" : "initial square group"}. ${runs.stage.expected === 0n ? "The ray lies on a Farey edge; no automatic flip." : `Separate initial entry: ${runs.frame?.completed} of 1 crossing.`}`
-                        : `a${runs.stage.term} = ${runs.stage.coefficient} · ${runs.stage.term % 2 ? "L" : "R"} run · ${runs.frame?.completed} of ${runs.stage.expected} flips. ${runs.stage.expected === 0n ? "No crossings after the initial/terminal offsets; the point holds while this rectangle stage is shown." : ""}`)}
+                        : `a${runs.stage.term} = ${runs.stage.coefficient} · ${runs.stage.term % 2 ? "L" : "R"} run · ${runs.frame?.completed} of ${runs.stage.expected} flips. ${runs.stage.expected === 0n ? "No flips after the initial/terminal offsets; the point continues through the triangle." : ""}`)}
                     {runs.stage &&
                       !runs.stage.complete &&
-                      ` Only ${runs.stage.times.length} crossings fit this display window. Playback stops here; the run is incomplete.`}
+                      ` Only ${runs.stage.times.length} crossings fit this display window. Playback stops here; the sequence is incomplete.`}
                     {props.scene.spec.kind === "rational" &&
                       runs.position.progress === 1 &&
                       runs.position.term === runs.stages.length - 1 &&
@@ -513,13 +513,12 @@ export function Workspace(props: WorkspaceProps) {
                       Reverse linked playback
                     </label>
                     <p>
-                      One rectangle group spans a run of flips. Crossings
-                      receive equal animation beats, so this is not constant
-                      hyperbolic speed. The interval ends at the group’s last
-                      crossing. a₀ sets the bracket; its entry crossing is
-                      separate. The first and rational last runs use the
-                      documented −1 offsets. Large runs have bounded animation
-                      duration.
+                      Each rectangle group follows its coefficient’s trajectory
+                      interval. The point keeps moving inside triangles even
+                      when no flip occurs. a₀ sets the bracket; its entry
+                      crossing is separate. The first and rational last runs use
+                      the documented −1 offsets. Large runs have bounded
+                      animation duration.
                     </p>
                     <p>
                       All flip paths follow α. Editing, undo, or switching views

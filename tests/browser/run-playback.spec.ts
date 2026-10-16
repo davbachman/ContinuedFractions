@@ -31,7 +31,7 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
   const disk = right.getByRole("group", { name: "Poincare Disk", exact: true });
   await expect(disk.locator("[data-dual-flip-path]")).toHaveCount(0);
   await clock(page).fill("0.4");
-  await expect(disk).toHaveAttribute("data-flip-cursor", "2");
+  await expect(disk).toHaveAttribute("data-flip-cursor", "3");
   await clock(page).fill("0.2");
   await expect(disk).toHaveAttribute("data-flip-cursor", "1");
   await expect(diagram(page)).toHaveAttribute("data-stage", "1");
@@ -107,21 +107,21 @@ for (const view of ["h2", "farey", "orbifold", "torus"]) {
       .click();
     await expect(diagram(page)).toHaveAttribute("data-stage", "1");
     await expect(page.getByTestId("linked-run-status")).toContainText(
-      "No crossings",
+      "No flips",
     );
     const time = page.getByTestId("linked-time");
-    const held = await time.textContent();
+    const entry = await time.textContent();
     await clock(page).fill("1");
-    await expect(time).toHaveText(held!);
+    await expect(time).toHaveText("t = 12.000");
     await page.getByRole("button", { name: "Restart linked playback" }).click();
     await expect(diagram(page)).toHaveAttribute("data-stage", "0");
     await expect(page.getByTestId("linked-run-status")).toContainText(
       "orientation change; no squares removed",
     );
     await clock(page).fill("0.25");
-    await expect(time).not.toHaveText(held!);
+    await expect(time).not.toHaveText(entry!);
     await clock(page).fill("1");
-    await expect(time).toHaveText(held!);
+    await expect(time).toHaveText("t = 12.000");
     if (view === "torus") {
       await pane(page, "Right")
         .getByRole("button", { name: "Torus 3D", exact: true })
@@ -188,7 +188,7 @@ test("irrational cutoff and large coefficients are incomplete, not terminal", as
     for (let i = 0; i < 96 && (await next.isEnabled()); i++) await next.click();
     await clock(page).fill("1");
     await expect(page.getByTestId("linked-run-status")).toContainText(
-      "run is incomplete",
+      "sequence is incomplete",
     );
     await expect(page.getByTestId("linked-run-status")).not.toContainText(
       "Rational dissection complete",
@@ -303,12 +303,10 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
       page.getByLabel(`Edit coefficient a${term}`, { exact: true }),
     ).toBeVisible();
   }
-  // Scrubbing into the zero-crossing a1 must select it, even though H² holds.
+  // Scrubbing into the zero-crossing a1 must select it while H² moves.
   await clock(page).fill("0.25");
   await expect(diagram(page)).toHaveAttribute("data-stage", "1");
-  await expect(page.getByTestId("linked-run-status")).toContainText(
-    "No crossings",
-  );
+  await expect(page.getByTestId("linked-run-status")).toContainText("No flips");
   await page.getByRole("button", { name: "Restart linked playback" }).click();
   await page.getByText("Linked playback options", { exact: true }).click();
   await page.getByLabel("Linked playback speed").selectOption("2");
@@ -345,3 +343,60 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
   });
   await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/20");
 });
+
+for (const view of ["h2", "farey"]) {
+  test(`smooth ${view} playback moves during a1=1 and survives coefficient boundaries`, async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto(`/?left=rectangle&right=${view}`);
+    await number(page, "13/20");
+    await page.getByText("Linked playback options", { exact: true }).click();
+    await page.getByLabel("Linked playback speed").selectOption("2");
+    const time = async () =>
+      Number(
+        (await page.getByTestId("linked-time").textContent())!.replace(
+          "t = ",
+          "",
+        ),
+      );
+    const play = page.getByRole("button", {
+      name: "Play linked playback",
+      exact: true,
+    });
+    const pause = page.getByRole("button", {
+      name: "Pause linked playback",
+      exact: true,
+    });
+    // Real RAF scheduling exercises React commits overlapping animation frames.
+    const session = await page.context().newCDPSession(page);
+    await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    for (const reverse of [false, true]) {
+      if (reverse)
+        await page
+          .getByLabel("Reverse linked playback", { exact: true })
+          .check();
+      else
+        await page
+          .getByRole("button", { name: "Restart linked playback" })
+          .click();
+      await play.click();
+      await expect(diagram(page)).toHaveAttribute("data-stage", "1", {
+        timeout: 15000,
+      });
+      const before = await time();
+      await page.waitForTimeout(180);
+      const after = await time();
+      if (reverse) expect(after).toBeLessThan(before);
+      else expect(after).toBeGreaterThan(before);
+      await expect(pause).toBeVisible();
+      await expect(clock(page)).toHaveValue(reverse ? "0" : "1", {
+        timeout: 20000,
+      });
+      await expect(play).toBeVisible();
+    }
+    await session.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/20");
+  });
+}

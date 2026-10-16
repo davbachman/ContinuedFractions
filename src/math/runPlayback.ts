@@ -1,5 +1,10 @@
 import { terms, type NumberSpec } from "./continuedFraction";
-import { coefficientFlipRun, type TriangulationState } from "./triangulation";
+import {
+  coefficientFlipRun,
+  MAX_FLIPS,
+  type TriangulationState,
+} from "./triangulation";
+import { coefficientInterval } from "./coefficientTimeline";
 
 export type CoefficientStage = {
   term: number;
@@ -7,6 +12,7 @@ export type CoefficientStage = {
   expected: bigint;
   times: number[];
   start: number;
+  end: number;
   complete: boolean;
 };
 
@@ -20,8 +26,18 @@ export function coefficientStages(
     return [];
   const cf = terms(spec, 96);
   const stages: CoefficientStage[] = [];
-  let start = 0;
+  const crossings = itinerary.steps.map((s) => ({
+    time: s.time!,
+    term: s.term!,
+  }));
+  // Never move beyond the exact itinerary when its rendering budget is exhausted.
+  const end =
+    itinerary.steps.length >= MAX_FLIPS
+      ? crossings.at(-1)!.time
+      : itinerary.horizon;
   for (let term = 0; term < cf.length; term++) {
+    const interval = coefficientInterval(crossings, term, end);
+    if (!interval) break;
     const expected =
       term === 0
         ? spec.kind === "rational" && spec.value.q === 1n
@@ -31,35 +47,39 @@ export function coefficientStages(
     const times = itinerary.steps
       .filter((s) => s.term === term)
       .map((s) => s.time!);
-    const complete = BigInt(times.length) === expected;
+    const complete =
+      BigInt(times.length) === expected &&
+      (interval.end < end ||
+        (spec.kind === "rational" && term === cf.length - 1));
     stages.push({
       term,
       coefficient: cf[term],
       expected,
       times,
-      start,
+      ...interval,
       complete,
     });
-    start = times.at(-1) ?? start;
     if (!complete) break;
   }
   return stages;
 }
 
-/** Equal animation beats per crossing, with continuous hyperbolic position.
- * This is deliberately a reparameterization, not constant hyperbolic speed. */
+/** Move through the coefficient's presentation interval, including the
+ * interior of a triangle when there are no flips. Flip counts stay separate. */
 export function stageFrame(
   stage: CoefficientStage,
   progress: number,
   reduced = false,
 ) {
   const p = Math.max(0, Math.min(1, progress));
-  const position = p * stage.times.length;
-  const completed = Math.min(stage.times.length, Math.floor(position + 1e-9));
-  const before = stage.times[completed - 1] ?? stage.start;
-  const after = stage.times[completed] ?? before;
+  const time =
+    p === 1 ? stage.end : stage.start + p * (stage.end - stage.start);
+  const completed = stage.times.filter((t) => t <= time + 1e-8).length;
   return {
-    time: reduced ? before : before + (after - before) * (position - completed),
+    time:
+      reduced && p < 1
+        ? Math.max(stage.start, stage.times[completed - 1] ?? stage.start)
+        : time,
     completed,
   };
 }
