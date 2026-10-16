@@ -1,4 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
+import { parseInput } from "../../src/math/continuedFraction";
+import { derive } from "../../src/math/trajectory";
+import { coefficientInterval } from "../../src/math/coefficientTimeline";
 const pane = (page: Page, side: string) =>
   page.getByRole("region", { name: `${side} representation`, exact: true });
 const diagram = (page: Page) =>
@@ -30,9 +33,9 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     left = pane(page, "Left");
   const disk = right.getByRole("group", { name: "Poincare Disk", exact: true });
   await expect(disk.locator("[data-dual-flip-path]")).toHaveCount(0);
-  await clock(page).fill("0.4");
+  await clock(page).fill("0.3");
   await expect(disk).toHaveAttribute("data-flip-cursor", "3");
-  await clock(page).fill("0.2");
+  await clock(page).fill("0.15");
   await expect(disk).toHaveAttribute("data-flip-cursor", "1");
   await expect(diagram(page)).toHaveAttribute("data-stage", "1");
   await page.getByText("Linked playback options", { exact: true }).click();
@@ -80,7 +83,7 @@ test("rectangle run clock controls either flip pane, pauses, reverses and preser
     .getByRole("combobox", { name: "Right representation", exact: true })
     .selectOption("triangulation");
   await page.getByRole("button", { name: "Restart linked playback" }).click();
-  await clock(page).fill("0.2");
+  await clock(page).fill("0.15");
   await expect(right.getByTestId("flip-status")).toContainText("Step 1");
   await page.locator(".comparison-workspace").screenshot({
     path: `test-results/${info.project.name}-linked-square.png`,
@@ -289,13 +292,16 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
   const start = new Date("2026-10-16T12:00:00Z");
   await page.clock.install({ time: start });
   await page.clock.pauseAt(start);
-  const starts = [0, 1800, 3600, 5400, 7200];
+  const crossings = derive(parseInput("13/20"), 12).farey.crossings;
+  const starts = [0, 1, 2, 3, 4].map(
+    (term) => coefficientInterval(crossings, term, 12)!.start,
+  );
   for (const term of [4, 1, 3, 0, 2]) {
     await page
       .locator(`.comparison-coefficients [data-coefficient="${term}"]`)
       .click();
     expect(Number(await clock(page).inputValue())).toBeCloseTo(
-      starts[term] / 10200,
+      starts[term] / 12,
       2,
     );
     await expect(diagram(page)).toHaveAttribute("data-stage", String(term));
@@ -304,7 +310,7 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
     ).toBeVisible();
   }
   // Scrubbing into the zero-crossing a1 must select it while H² moves.
-  await clock(page).fill("0.25");
+  await clock(page).fill("0.15");
   await expect(diagram(page)).toHaveAttribute("data-stage", "1");
   await expect(page.getByTestId("linked-run-status")).toContainText("No flips");
   await page.getByRole("button", { name: "Restart linked playback" }).click();
@@ -318,7 +324,7 @@ test("one slider traverses the whole sequence and coefficient clicks jump to its
       .click();
     let previous = reverse ? 1 : 0;
     const seen = new Set<number>();
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 26; i++) {
       await page.clock.runFor(250);
       const progress = Number(await clock(page).inputValue());
       if (reverse) expect(progress).toBeLessThanOrEqual(previous);
@@ -400,3 +406,72 @@ for (const view of ["h2", "farey"]) {
     await expect(page.getByLabel("ENDPOINT α")).toHaveValue("13/20");
   });
 }
+
+for (const alpha of ["13/20", "5/13"]) {
+  test(`${alpha}: equal elapsed times give equal hyperbolic motion across coefficient boundaries`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/?left=rectangle&right=h2");
+    await number(page, alpha);
+    const start = new Date("2026-10-16T12:00:00Z");
+    await page.clock.install({ time: start });
+    await page.clock.pauseAt(start);
+    await page.getByRole("button", { name: "Restart linked playback" }).click();
+    await page.getByText("Linked playback options", { exact: true }).click();
+    for (const reverse of [false, true]) {
+      const speed = reverse ? 2 : 1;
+      await page
+        .getByLabel("Linked playback speed")
+        .selectOption(String(speed));
+      await page
+        .getByLabel("Reverse linked playback", { exact: true })
+        .setChecked(reverse);
+      await page
+        .getByRole("button", { name: "Play linked playback", exact: true })
+        .click();
+      for (let i = 1; i <= 24 / speed; i++) {
+        await page.clock.runFor(500);
+        const expectedTime = reverse ? 12 - (i * speed) / 2 : (i * speed) / 2;
+        const time = Number(
+          (await page.getByTestId("linked-time").textContent())!.replace(
+            "t = ",
+            "",
+          ),
+        );
+        expect(Math.abs(time - expectedTime)).toBeLessThan(0.065 * speed);
+        expect(
+          Math.abs(Number(await clock(page).inputValue()) - expectedTime / 12),
+        ).toBeLessThan(0.006 * speed);
+      }
+      await page.clock.runFor(100);
+      await expect(clock(page)).toHaveValue(reverse ? "0" : "1");
+      await expect(
+        page.getByRole("button", { name: "Play linked playback", exact: true }),
+      ).toBeVisible();
+    }
+    await expect(page.getByLabel("ENDPOINT α")).toHaveValue(alpha);
+  });
+}
+
+test("2/7 completes exactly and Play restarts from the beginning", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/?left=rectangle&right=h2");
+  await number(page, "2/7");
+  const start = new Date("2026-10-16T12:00:00Z");
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(start);
+  await clock(page).fill("1");
+  await expect(page.getByTestId("linked-run-status")).toContainText(
+    "Rational dissection complete",
+  );
+  await page
+    .getByRole("button", { name: "Play linked playback", exact: true })
+    .click();
+  await page.clock.runFor(500);
+  expect(Number(await clock(page).inputValue())).toBeGreaterThan(0.03);
+  expect(Number(await clock(page).inputValue())).toBeLessThan(0.05);
+  await expect(diagram(page)).toHaveAttribute("data-stage", "0");
+});

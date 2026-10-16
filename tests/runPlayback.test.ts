@@ -7,6 +7,7 @@ import {
   stageFrame,
   sequenceProgress,
   sequencePosition,
+  stageDuration,
 } from "../src/math/runPlayback";
 import {
   targetItinerary,
@@ -103,21 +104,40 @@ it.each(["13/20", "5/13", "3", "1/2", "phi", "1/10000"])(
   },
 );
 
-it("weights sequence intervals by playback duration, including the zero-crossing a1 interval", () => {
+it("places coefficient jumps at their hyperbolic times, including the zero-crossing a1 interval", () => {
   const spec = parseInput("13/20");
   const stages = coefficientStages(spec, targetItinerary(spec));
   expect(stages.map((s) => s.times.length)).toEqual([1, 0, 1, 1, 5]);
   expect(sequenceProgress(stages, { term: 1, progress: 0 })).toBeCloseTo(
-    1800 / 10200,
+    stages[1].start / 12,
   );
   expect(sequenceProgress(stages, { term: 4, progress: 0 })).toBeCloseTo(
-    7200 / 10200,
+    stages[4].start / 12,
   );
   expect(sequencePosition(stages, -1)).toEqual({ term: 0, progress: 0 });
   expect(sequencePosition(stages, 2)).toEqual({ term: 4, progress: 1 });
   expect(sequencePosition([], 0.5)).toEqual({ term: 0, progress: 0 });
   expect(sequenceProgress([], { term: 0, progress: 0 })).toBe(0);
 });
+
+it.each(["13/20", "5/13", "1/2", "phi", "1/10000"])(
+  "%s uses a linear hyperbolic clock across unequal coefficient intervals",
+  (input) => {
+    const spec = parseInput(input);
+    const stages = coefficientStages(spec, targetItinerary(spec));
+    const end = stages.at(-1)!.end;
+    expect(
+      stages.reduce((total, stage) => total + stageDuration(stage), 0),
+    ).toBeCloseTo(end * 1000, 8);
+    for (let i = 0; i <= 100; i++) {
+      const at = sequencePosition(stages, i / 100);
+      expect(stageFrame(stages[at.term], at.progress).time).toBeCloseTo(
+        (end * i) / 100,
+        10,
+      );
+    }
+  },
+);
 
 it.each(["13/20", "53/20", "5/13", "1/2", "3", "phi", "sqrt2"])(
   "%s moves continuously inside each coefficient interval without inventing flips",
@@ -138,3 +158,16 @@ it.each(["13/20", "53/20", "5/13", "1/2", "3", "phi", "sqrt2"])(
     }
   },
 );
+
+it("ends exactly at the last stage despite floating-point interval lengths", () => {
+  for (let q = 2; q <= 24; q++) {
+    for (let p = 1; p < q; p++) {
+      const spec = parseInput(`${p}/${q}`);
+      const stages = coefficientStages(spec, targetItinerary(spec));
+      expect(sequencePosition(stages, 1), `${p}/${q}`).toEqual({
+        term: stages.length - 1,
+        progress: 1,
+      });
+    }
+  }
+});

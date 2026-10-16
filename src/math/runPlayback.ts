@@ -85,10 +85,10 @@ export function stageFrame(
 }
 
 export const stageDuration = (stage: CoefficientStage) =>
-  Math.min(6000, Math.max(1800, stage.times.length * 600));
+  (stage.end - stage.start) * 1000;
 
-/** One timeline for the displayed sequence. Zero-crossing stages still get
- * their own interval so selecting or playing them remains visible. */
+/** One hyperbolic-time axis for the displayed sequence. Coefficients occupy
+ * their actual trajectory intervals, including intervals without flips. */
 export function sequenceProgress(
   stages: CoefficientStage[],
   position: { term: number; progress: number },
@@ -105,6 +105,8 @@ export function sequenceProgress(
 }
 
 export function sequencePosition(stages: CoefficientStage[], progress: number) {
+  if (!stages.length || progress <= 0) return { term: 0, progress: 0 };
+  if (progress >= 1) return { term: stages.length - 1, progress: 1 };
   const durations = stages.map(stageDuration);
   let remaining =
     Math.max(0, Math.min(1, progress)) * durations.reduce((a, b) => a + b, 0);

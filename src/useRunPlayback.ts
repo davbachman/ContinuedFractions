@@ -96,45 +96,37 @@ export function useRunPlayback(props: WorkspaceProps, available: boolean) {
       last = performance.now(),
       drawn = last;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = stages.reduce((total, s) => total + stageDuration(s), 0);
     const tick = (now: number) => {
       const elapsed = Math.min(100, now - last);
       last = now;
       const at = current.current;
-      const s = stages[at.term];
-      if (!s) {
-        setPlaying(false);
-        return;
-      }
       const reverse = latest.current.reverse;
       const progress = Math.max(
         0,
         Math.min(
           1,
-          at.progress +
+          sequenceProgress(stages, at) +
             ((reverse ? -1 : 1) * elapsed * latest.current.scene.speed) /
-              stageDuration(s),
+              duration,
         ),
       );
-      current.current = { term: at.term, progress };
+      // Advance on the shared time axis, carrying elapsed time across every
+      // coefficient boundary instead of discarding the remainder of a frame.
+      current.current = sequencePosition(stages, progress);
       const boundary = reverse ? progress === 0 : progress === 1;
-      if (now - drawn >= 45 || boundary) {
+      if (now - drawn >= 45 || boundary || current.current.term !== at.term) {
         drawn = now;
         const next = current.current;
         setPosition(next);
-        publish(stageFrame(s, progress, reduced).time, at.term);
+        publish(
+          stageFrame(stages[next.term], next.progress, reduced).time,
+          next.term,
+        );
       }
       if (boundary) {
-        if (
-          reverse ? at.term === 0 : !s.complete || at.term === stages.length - 1
-        ) {
-          setPlaying(false);
-          return;
-        }
-        const term = at.term + (reverse ? -1 : 1),
-          nextProgress = reverse ? 1 : 0;
-        current.current = { term, progress: nextProgress };
-        setPosition(current.current);
-        publish(stageFrame(stages[term], nextProgress, reduced).time, term);
+        setPlaying(false);
+        return;
       }
       frame = requestAnimationFrame(tick);
     };

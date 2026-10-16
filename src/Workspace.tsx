@@ -517,8 +517,9 @@ export function Workspace(props: WorkspaceProps) {
                       interval. The point keeps moving inside triangles even
                       when no flip occurs. a₀ sets the bracket; its entry
                       crossing is separate. The first and rational last runs use
-                      the documented −1 offsets. Large runs have bounded
-                      animation duration.
+                      the documented −1 offsets. Playback has constant
+                      hyperbolic speed; coefficient intervals have different
+                      lengths.
                     </p>
                     <p>
                       All flip paths follow α. Editing, undo, or switching views
